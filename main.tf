@@ -1,0 +1,20 @@
+provider "aws" {
+  version = "~> 2.0"
+  region  = var.region
+}
+
+provider "tls" {
+  version = "~> 2.1"
+}
+
+provider "local" {
+  version = "~> 1.4"
+}
+
+provider "null" {
+  version = "~> 2.1"
+}
+
+locals {
+    private_key_filename = "${var.key_name}.pem"
+}
