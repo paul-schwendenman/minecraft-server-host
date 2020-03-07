@@ -84,6 +84,15 @@ resource "aws_instance" "web" {
     host = aws_instance.web.public_ip
     private_key = tls_private_key.example.private_key_pem
   }
+
+  provisioner "file" {
+    source      = "../instance_home_dir/"
+    destination = "/home/ubuntu"
+  }
+
+  provisioner "remote-exec" {
+    script = "./bootstrap.sh"
+  }
 }
 
 output "instance_id" {
