@@ -85,11 +85,6 @@ resource "aws_instance" "web" {
     private_key = tls_private_key.example.private_key_pem
   }
 
-  provisioner "file" {
-    source      = "../instance_home_dir/"
-    destination = "/home/ubuntu"
-  }
-
   provisioner "remote-exec" {
     script = "./bootstrap.sh"
   }

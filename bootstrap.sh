@@ -23,11 +23,28 @@ wget https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72d
 echo "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38  server.jar" | shasum -a256 -c -
 sudo mv server.jar "${MINECRAFT_HOME}/minecraft_server.jar"
 
-# Install EULA
-sudo mv eula.txt "${MINECRAFT_HOME}"
+# Accept EULA
+sudo -u "${MINECRAFT_USER}" tee "${MINECRAFT_HOME}/eula.txt" > /dev/null << EOF
+eula=true
+EOF
 
 # Install systemd service
-sudo cp minecraft.service /etc/systemd/system/minecraft.service
+sudo tee /etc/systemd/system/minecraft.service > /dev/null << EOF
+[Unit]
+Description=minecraft-server
+
+[Service]
+WorkingDirectory=/srv/minecraft-server
+User=minecraft
+Group=minecraft
+Type=forking
+Restart=on-failure
+RestartSec=20 5
+ExecStart=/usr/bin/screen -h 2048 -dmS minecraft /usr/bin/java -Xms1536M -Xmx1536M -jar minecraft_server.jar nogui
+
+[Install]
+WantedBy=multi-user.target
+EOF
 
 # Start minecraft
 sudo service minecraft start
