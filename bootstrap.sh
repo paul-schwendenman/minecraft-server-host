@@ -50,6 +50,14 @@ Type=forking
 Restart=on-failure
 RestartSec=20 5
 ExecStart=/usr/bin/screen -h 2048 -dmS minecraft /usr/bin/java -Xms1536M -Xmx1536M -jar minecraft_server.jar nogui
+#ExecStart=/bin/sh -c '/usr/bin/screen -DmS mc-%i /usr/bin/java -server -Xms512M -Xmx2048M -XX:+UseG1GC -XX:+CMSIncrementalPacing -XX:+CMSClassUnloadingEnabled -XX:ParallelGCThreads=2 -XX:MinHeapFreeRatio=5 -XX:MaxHeapFreeRatio=10 -jar $(ls -v | grep -i "FTBServer.*jar\|minecraft_server.*jar" | head -n 1) nogui'
+
+ExecReload=/usr/bin/screen -p 0 -S minecraft -X eval 'stuff "reload"\\015'
+
+ExecStop=/usr/bin/screen -p 0 -S minecraft -X eval 'stuff "say SERVER SHUTTING DOWN. Saving map..."\\015'
+ExecStop=/usr/bin/screen -p 0 -S minecraft -X eval 'stuff "save-all"\\015'
+ExecStop=/usr/bin/screen -p 0 -S minecraft -X eval 'stuff "stop"\\015'
+ExecStop=/bin/sleep 10
 
 [Install]
 WantedBy=multi-user.target
