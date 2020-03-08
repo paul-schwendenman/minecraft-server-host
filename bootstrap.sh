@@ -3,6 +3,7 @@
 set -o nounset
 set -o errexit
 set -o pipefail
+set -o verbose
 
 MINECRAFT_HOME="/srv/minecraft-server"
 MINECRAFT_USER="minecraft"
@@ -14,13 +15,17 @@ sudo addgroup --system "${MINECRAFT_GROUP}"
 sudo adduser "${MINECRAFT_USER}" "${MINECRAFT_GROUP}"
 sudo chown -R "${MINECRAFT_USER}.${MINECRAFT_GROUP}" "${MINECRAFT_HOME}"
 
+# Install updates
+#sudo apt update
+#DEBIAN_FRONTEND=noninteractive sudo apt upgrade -y -qq
+
 # Install java
 sudo apt update
-sudo apt install -y openjdk-11-jdk-headless
+sudo apt install -qq -y openjdk-11-jdk-headless openjdk-11-jre-headless
 
 # Download server
-wget https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar minecraft_server.1.14.3.jar
-echo "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38 minecraft_server.1.14.3.jar" | shasum -a256 -c -
+wget https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar -O minecraft_server.1.14.3.jar
+echo "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38  minecraft_server.1.14.3.jar" | shasum -a256 -c -
 sudo cp minecraft_server.1.14.3.jar "${MINECRAFT_HOME}/minecraft_server.jar"
 
 # Accept EULA

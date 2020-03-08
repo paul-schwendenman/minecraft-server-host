@@ -72,7 +72,7 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
-resource "aws_instance" "web" {
+resource "aws_instance" "minecraft_server" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.instance_type
   key_name = var.key_name
@@ -81,7 +81,7 @@ resource "aws_instance" "web" {
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    host = aws_instance.web.public_ip
+    host = aws_instance.minecraft_server.public_ip
     private_key = tls_private_key.example.private_key_pem
   }
 
@@ -91,9 +91,9 @@ resource "aws_instance" "web" {
 }
 
 output "instance_id" {
-  value = "${aws_instance.web.id}"
+  value = "${aws_instance.minecraft_server.id}"
 }
 
 output "ip" {
-  value = "${aws_instance.web.public_ip}"
+  value = "${aws_instance.minecraft_server.public_ip}"
 }
