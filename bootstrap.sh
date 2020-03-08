@@ -65,3 +65,6 @@ EOF
 
 # Start minecraft
 sudo service minecraft start
+
+# Enable on boot
+sudo systemctl enable minecraft
