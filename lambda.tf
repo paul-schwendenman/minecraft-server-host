@@ -1,3 +1,9 @@
+data "archive_file" "api_code" {
+  type        = "zip"
+  source_file = "${path.module}/api/main.js"
+  output_path = "${path.module}/api.zip"
+}
+
 resource "aws_s3_bucket" "lambda_code" {
 #   acl = "private"
 
@@ -6,7 +12,7 @@ resource "aws_s3_bucket" "lambda_code" {
   }
 
   provisioner "local-exec" {
-    command = "aws s3 cp api.zip s3://${aws_s3_bucket.lambda_code.bucket}/v1.0.0/api.zip"
+    command = "aws s3 cp ${data.archive_file.api_code.output_path} s3://${aws_s3_bucket.lambda_code.bucket}/v1.0.0/api.zip"
   }
 }
 
