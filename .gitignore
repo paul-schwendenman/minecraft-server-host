@@ -2,3 +2,6 @@
 *.out
 *.tfstate
 *.tfvars
+
+# Generated Zipfile
+api.zip
