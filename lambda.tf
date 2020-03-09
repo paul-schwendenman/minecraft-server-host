@@ -62,6 +62,41 @@ resource "aws_iam_role" "lambda_exec" {
 EOF
 }
 
+resource "aws_iam_policy" "minecraft_lambda_policy" {
+  name   = "minecraft_lambda_policy"
+  path   = "/"
+  # policy = data.aws_iam_policy_document.lambda.json
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:aws:logs:*:*:*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Start*",
+        "ec2:Stop*"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_iam_role_policy_attachment" "test-attach" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.minecraft_lambda_policy.arn
+}
+
 resource "aws_api_gateway_rest_api" "minecraft_gateway" {
   name        = "MinecraftAPI"
   description = "Minecraft Management Application"
