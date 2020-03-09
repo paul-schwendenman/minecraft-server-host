@@ -1,6 +1,6 @@
 data "archive_file" "api_code" {
   type        = "zip"
-  source_file = "${path.module}/api/main.js"
+  source_file = "${path.module}/api/lambda_handler.py"
   output_path = "${path.module}/api.zip"
 }
 
@@ -31,8 +31,8 @@ resource "aws_lambda_function" "minecraft_api" {
   # "main" is the filename within the zip file (main.js) and "handler"
   # is the name of the property under which the handler function was
   # exported in that file.
-  handler = "main.handler"
-  runtime = "nodejs10.x"
+  handler = "lambda_handler.main_handler"
+  runtime = "python3.8"
 
   role = aws_iam_role.lambda_exec.arn
 }
