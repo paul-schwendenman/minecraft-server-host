@@ -15,7 +15,6 @@ resource "aws_s3_bucket" "lambda_code" {
 resource "null_resource" "zip_file_upload" {
   triggers = {
       zip_file = data.archive_file.api_code.output_sha
-      app_version = var.app_version
   }
   provisioner "local-exec" {
     command = "aws s3 cp ${data.archive_file.api_code.output_path} s3://${aws_s3_bucket.lambda_code.bucket}/v${var.app_version}/api.zip"
