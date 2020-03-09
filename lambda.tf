@@ -24,6 +24,7 @@ resource "null_resource" "zip_file_upload" {
 
 resource "aws_lambda_function" "minecraft_api" {
   function_name = "MinecraftAPI"
+  depends_on = [null_resource.zip_file_upload]
 
   s3_bucket = aws_s3_bucket.lambda_code.bucket
   s3_key    = "v${var.app_version}/api.zip"
