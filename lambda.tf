@@ -35,6 +35,11 @@ resource "aws_lambda_function" "minecraft_api" {
   runtime = "python3.8"
 
   role = aws_iam_role.lambda_exec.arn
+  environment {
+    variables = {
+      INSTANCE_ID = "${aws_instance.minecraft_server.id}"
+    }
+  }
 }
 
 resource "aws_iam_role" "lambda_exec" {
