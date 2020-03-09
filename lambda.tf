@@ -85,7 +85,7 @@ resource "aws_iam_policy" "minecraft_lambda_policy" {
         "ec2:Start*",
         "ec2:Stop*"
       ],
-      "Resource": "*"
+      "Resource": "${aws_instance.minecraft_server.arn}"
     }
   ]
 }
