@@ -17,3 +17,6 @@ variable "key_name" {
   description = "name for generated ssh key"
   default = "minecraft"
 }
+
+variable "app_version" {
+}

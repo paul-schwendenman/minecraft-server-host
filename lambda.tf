@@ -10,9 +10,11 @@ resource "aws_s3_bucket" "lambda_code" {
   tags = {
     Name = "Minecraft Server - Lambda code"
   }
+}
 
+resource "null_resource" "zip_file_upload" {
   provisioner "local-exec" {
-    command = "aws s3 cp ${data.archive_file.api_code.output_path} s3://${aws_s3_bucket.lambda_code.bucket}/v1.0.0/api.zip"
+    command = "aws s3 cp ${data.archive_file.api_code.output_path} s3://${aws_s3_bucket.lambda_code.bucket}/v${var.app_version}/api.zip"
   }
 }
 
@@ -20,7 +22,7 @@ resource "aws_lambda_function" "minecraft_api" {
   function_name = "MinecraftAPI"
 
   s3_bucket = aws_s3_bucket.lambda_code.bucket
-  s3_key    = "v1.0.0/api.zip"
+  s3_key    = "v${var.app_version}/api.zip"
 
   # "main" is the filename within the zip file (main.js) and "handler"
   # is the name of the property under which the handler function was
