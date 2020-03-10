@@ -83,8 +83,8 @@ resource "aws_iam_policy" "minecraft_lambda_policy" {
     {
       "Effect": "Allow",
       "Action": [
-        "ec2:Start*",
-        "ec2:Stop*"
+        "ec2:StartInstances",
+        "ec2:StopInstances"
       ],
       "Resource": "${aws_instance.minecraft_server.arn}"
     },
@@ -94,6 +94,21 @@ resource "aws_iam_policy" "minecraft_lambda_policy" {
         "ec2:DescribeInstances"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListHostedZones"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "route53:ListResourceRecordSets",
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": "arn:aws:route53:::hostedzone/${aws_route53_zone.primary.zone_id}"
     }
   ]
 }
