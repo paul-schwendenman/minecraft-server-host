@@ -38,6 +38,7 @@ resource "aws_lambda_function" "minecraft_api" {
   environment {
     variables = {
       INSTANCE_ID = "${aws_instance.minecraft_server.id}"
+      DNS_NAME = "${var.dns_name}"
     }
   }
 }
