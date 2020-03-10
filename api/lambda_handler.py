@@ -13,9 +13,11 @@ def main_handler(event, context):
         instance = instance_dict.get("Reservations")[0].get("Instances")[0]
 
         ip_address = instance.get("PublicIpAddress")
+        state = instance.get('State').get('Name')
 
         response_message = {
-            "ip_address": ip_address
+            "ip_address": ip_address,
+            "state": state
         }
     elif event["path"] == '/stop':
         ec2.stop_instances(InstanceIds=[instance_id])
