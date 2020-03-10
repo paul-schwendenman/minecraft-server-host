@@ -20,3 +20,6 @@ variable "key_name" {
 
 variable "app_version" {
 }
+
+variable "dns_name" {
+}
