@@ -17,7 +17,7 @@ def main_handler(event, context):
     elif event["path"] == '/start':
         response_message = start_instance(instance_id)
     elif event["path"] == '/dns':
-        response_message = update_dns(dns_name)
+        response_message = update_dns(instance_id, dns_name)
     else:
         response_message = None
     return {
@@ -72,7 +72,7 @@ def list_details(instance_id):
     }
 
 
-def update_dns(dns_name, record_type='A'):
+def update_dns(instance_id, dns_name, record_type='A'):
     hosted_zone_id = get_hosted_zone_id()
     instance = get_instance(instance_id)
     ip_address = instance.get("PublicIpAddress")
