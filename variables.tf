@@ -23,3 +23,6 @@ variable "app_version" {
 
 variable "dns_name" {
 }
+
+variable "webapp_dns_name" {
+}
