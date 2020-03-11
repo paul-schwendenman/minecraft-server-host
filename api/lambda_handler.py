@@ -22,6 +22,9 @@ def main_handler(event, context):
         response_message = None
     return {
         "statusCode": 200,
+        "headers": {
+            "Access-Control-Allow-Origin": "*"
+        },
         "body": json.dumps(response_message)
     }
 
