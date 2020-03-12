@@ -3,7 +3,7 @@ resource "aws_s3_bucket" "www" {
   bucket = var.webapp_dns_name
   // Because we want our site to be available on the internet, we set this so
   // anyone can read this bucket.
-  acl    = "public-read"
+  acl = "public-read"
   // We also need to create a policy that allows anyone to view the content.
   // This is basically duplicating what we did in the ACL but it's required by
   // AWS. This post: http://amzn.to/2Fa04ul explains why.
@@ -40,7 +40,7 @@ resource "aws_acm_certificate" "certificate" {
   // We want a wildcard cert so we can host subdomains later.
   domain_name       = var.webapp_dns_name
   validation_method = "DNS"
-  provider = aws.virgina
+  provider          = aws.virgina
 
   // We also want the cert to be valid for the root domain even though we'll be
   // redirecting to the www. domain immediately.
@@ -64,7 +64,7 @@ resource "aws_cloudfront_distribution" "www_distribution" {
     // Here we're using our S3 bucket's URL!
     domain_name = aws_s3_bucket.www.website_endpoint
     // This can be any name to identify this origin.
-    origin_id   = var.webapp_dns_name
+    origin_id = var.webapp_dns_name
   }
 
   enabled             = true
@@ -77,10 +77,10 @@ resource "aws_cloudfront_distribution" "www_distribution" {
     allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
     // This needs to match the `origin_id` above.
-    target_origin_id       = var.webapp_dns_name
-    min_ttl                = 0
-    default_ttl            = 86400
-    max_ttl                = 31536000
+    target_origin_id = var.webapp_dns_name
+    min_ttl          = 0
+    default_ttl      = 86400
+    max_ttl          = 31536000
 
     forwarded_values {
       query_string = false

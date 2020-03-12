@@ -5,8 +5,8 @@ provider "aws" {
 
 provider "aws" {
   # version = "~> 2.0"
-  region  = "us-east-1"
-  alias = "virgina"
+  region = "us-east-1"
+  alias  = "virgina"
 }
 
 provider "tls" {
@@ -26,5 +26,5 @@ provider "archive" {
 }
 
 locals {
-    private_key_filename = "${var.key_name}.pem"
+  private_key_filename = "${var.key_name}.pem"
 }

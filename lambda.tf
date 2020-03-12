@@ -5,7 +5,7 @@ data "archive_file" "api_code" {
 }
 
 resource "aws_s3_bucket" "lambda_code" {
-#   acl = "private"
+  #   acl = "private"
 
   tags = {
     Name = "Minecraft Server - Lambda code"
@@ -14,7 +14,7 @@ resource "aws_s3_bucket" "lambda_code" {
 
 resource "null_resource" "zip_file_upload" {
   triggers = {
-      zip_file = data.archive_file.api_code.output_sha
+    zip_file = data.archive_file.api_code.output_sha
   }
   provisioner "local-exec" {
     command = "aws s3 cp ${data.archive_file.api_code.output_path} s3://${aws_s3_bucket.lambda_code.bucket}/v${var.app_version}/api.zip"
@@ -23,7 +23,7 @@ resource "null_resource" "zip_file_upload" {
 
 resource "aws_lambda_function" "minecraft_api" {
   function_name = "MinecraftAPI"
-  depends_on = [null_resource.zip_file_upload]
+  depends_on    = [null_resource.zip_file_upload]
 
   s3_bucket = aws_s3_bucket.lambda_code.bucket
   s3_key    = "v${var.app_version}/api.zip"
@@ -38,7 +38,7 @@ resource "aws_lambda_function" "minecraft_api" {
   environment {
     variables = {
       INSTANCE_ID = "${aws_instance.minecraft_server.id}"
-      DNS_NAME = "${var.dns_name}"
+      DNS_NAME    = "${var.dns_name}"
       CORS_ORIGIN = "https://${var.webapp_dns_name}"
     }
   }
@@ -65,8 +65,8 @@ EOF
 }
 
 resource "aws_iam_policy" "minecraft_lambda_policy" {
-  name   = "minecraft_lambda_policy"
-  path   = "/"
+  name = "minecraft_lambda_policy"
+  path = "/"
   # policy = data.aws_iam_policy_document.lambda.json
   policy = <<EOF
 {
