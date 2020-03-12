@@ -9,6 +9,7 @@ r53 = boto3.client('route53')
 def main_handler(event, context):
     instance_id = os.environ['INSTANCE_ID']
     dns_name = os.environ['DNS_NAME']
+    cors_origin = os.environ['CORS_ORIGIN']
 
     if event["path"] == '/':
         response_message = list_details(instance_id)
@@ -23,7 +24,7 @@ def main_handler(event, context):
     return {
         "statusCode": 200,
         "headers": {
-            "Access-Control-Allow-Origin": "*"
+            "Access-Control-Allow-Origin": cors_origin
         },
         "body": json.dumps(response_message)
     }

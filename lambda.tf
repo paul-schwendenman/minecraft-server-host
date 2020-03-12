@@ -39,6 +39,7 @@ resource "aws_lambda_function" "minecraft_api" {
     variables = {
       INSTANCE_ID = "${aws_instance.minecraft_server.id}"
       DNS_NAME = "${var.dns_name}"
+      CORS_ORIGIN = "https://${var.webapp_dns_name}"
     }
   }
 }
