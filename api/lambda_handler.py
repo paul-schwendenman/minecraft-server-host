@@ -11,35 +11,34 @@ def main_handler(event, context):
     dns_name = os.environ['DNS_NAME']
     cors_origin = os.environ['CORS_ORIGIN']
 
-    if event["path"] == '/':
-        response_message = list_details(instance_id)
+    if event["path"] == '/status':
+        response_message = describe_instance(instance_id)
     elif event["path"] == '/stop':
         response_message = stop_instance(instance_id)
     elif event["path"] == '/start':
-        response_message = start_instance(instance_id)
-    elif event["path"] == '/dns':
-        response_message = update_dns(instance_id, dns_name)
+        response_message = start_instance(instance_id, dns_name)
     else:
-        response_message = None
+        response_message = json.dumps(None)
     return {
         "statusCode": 200,
         "headers": {
             "Access-Control-Allow-Origin": cors_origin
         },
-        "body": json.dumps(response_message)
+        "body": response_message
     }
 
 
 def stop_instance(instance_id):
     ec2.stop_instances(InstanceIds=[instance_id])
 
-    return {"state": "stopping"}
+    return "Success"
 
 
-def start_instance(instance_id):
+def start_instance(instance_id, dns_name):
     ec2.start_instances(InstanceIds=[instance_id])
+    update_dns(instance_id, dns_name)
 
-    return {"state": "starting"}
+    return "Success"
 
 
 def get_instance(instance_id):
@@ -57,23 +56,18 @@ def get_hosted_zone_id():
     return r53.list_hosted_zones().get('HostedZones')[0].get('Id')
 
 
-def list_details(instance_id):
+def describe_instance(instance_id):
     hosted_zone_id = get_hosted_zone_id()
     dns_record = get_dns_record(hosted_zone_id)
-
     instance = get_instance(instance_id)
-    ip_address = instance.get("PublicIpAddress")
-    state = instance.get('State').get('Name')
 
-    return {
-        "ip_address": ip_address,
+    state = instance.get('State').get('Name')
+    dns_name = dns_record.get("Name")
+
+    return json.dumps({
         "state": state,
-        "dns": {
-            "name": dns_record.get("Name"),
-            "value": dns_record.get("ResourceRecords")[0].get("Value"),
-            "type": dns_record.get("Type")
-        }
-    }
+        "dns_name": dns_name,
+    })
 
 
 def update_dns(instance_id, dns_name, record_type='A'):
@@ -96,9 +90,3 @@ def update_dns(instance_id, dns_name, record_type='A'):
             }]
         }
     )
-
-    return { "dns": {
-        "value": ip_address,
-        "name": dns_name,
-        "type": record_type
-    }}
