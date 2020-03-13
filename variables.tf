@@ -8,6 +8,11 @@ variable "instance_type" {
   default     = "t3.small"
 }
 
+variable "instance_ami" {
+  description = "AWS instance AMI"
+  default = null
+}
+
 variable "security_group" {
   description = "name for the AWS security group"
   default     = "minecraft"

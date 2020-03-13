@@ -73,7 +73,7 @@ data "aws_ami" "ubuntu" {
 }
 
 resource "aws_instance" "minecraft_server" {
-  ami                    = data.aws_ami.ubuntu.id
+  ami                    = var.instance_ami != null ? var.instance_ami : data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = ["${aws_security_group.minecraft.id}"]
