@@ -68,6 +68,44 @@ ExecStop=/bin/sleep 10
 WantedBy=multi-user.target
 EOF
 
+# Autoshutdown script
+sudo tee /srv/minecraft-server/autoshutdown.sh > /dev/null << EOF
+#!/usr/bin/env bash
+
+MINECRAFT_HOME="/srv/minecraft-server"
+touch_file="\${MINECRAFT_HOME}/no_one_playing"
+
+list_players() {
+    screen -S minecraft -p 0 -X stuff "list^M"
+    sleep 5
+}
+
+list_players;
+last_log_line="\$(tail -n 1 \${MINECRAFT_HOME}/logs/latest.log)";
+echo "\${last_log_line}"
+
+regex="There are [0-9]+ of a max [0-9]+ players online"
+regex2="There are 0 of a max [0-9]+ players online"
+
+if [[ "\$last_log_line" =~ \$regex ]]; then
+    if [[ "\$last_log_line" =~ \$regex2 ]]; then
+        if [ -f "\${touch_file}" ]; then
+            rm "\${touch_file}"
+            poweroff
+        else
+            touch "\${touch_file}"
+        fi
+    fi
+fi
+EOF
+sudo chmod +x /srv/minecraft-server/autoshutdown.sh
+
+# Create CRON job
+sudo tee /srv/minecraft-server/crontab > /dev/null << EOF
+*/5 * * * * /srv/minecraft-server/autoshutdown.sh >/dev/null 2>&1
+EOF
+sudo crontab -u minecraft /srv/minecraft-server/crontab
+
 # Start minecraft
 sudo service minecraft start
 
