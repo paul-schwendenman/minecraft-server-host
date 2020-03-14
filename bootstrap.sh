@@ -90,12 +90,16 @@ regex2="There are 0 of a max [0-9]+ players online"
 if [[ "\$last_log_line" =~ \$regex ]]; then
     if [[ "\$last_log_line" =~ \$regex2 ]]; then
         if [ -f "\${touch_file}" ]; then
-            rm "\${touch_file}"
-            poweroff
+            rm "\${touch_file}";
+            poweroff;
         else
-            touch "\${touch_file}"
+            touch "\${touch_file}";
         fi
+    elif [ -f "\${touch_file}" ]; then
+        rm "\${touch_file}";
     fi
+elif [ -f "\${touch_file}" ]; then
+    rm "\${touch_file}";
 fi
 EOF
 sudo chmod +x /srv/minecraft-server/autoshutdown.sh
