@@ -91,7 +91,7 @@ if [[ "\$last_log_line" =~ \$regex ]]; then
     if [[ "\$last_log_line" =~ \$regex2 ]]; then
         if [ -f "\${touch_file}" ]; then
             rm "\${touch_file}";
-            poweroff;
+            sudo /sbin/poweroff;
         else
             touch "\${touch_file}";
         fi
@@ -103,6 +103,11 @@ elif [ -f "\${touch_file}" ]; then
 fi
 EOF
 sudo chmod +x /srv/minecraft-server/autoshutdown.sh
+
+# Allow minecraft user to run "poweroff"
+sudo tee /etc/sudoers.d/shutdown > /dev/null << EOF
+${MINECRAFT_USER} ALL=(root) NOPASSWD: /sbin/poweroff
+EOF
 
 # Create CRON job
 sudo tee /srv/minecraft-server/crontab > /dev/null << EOF
