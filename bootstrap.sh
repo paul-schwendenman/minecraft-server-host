@@ -24,9 +24,9 @@ sudo apt update
 sudo apt install -qq -y openjdk-11-jdk-headless openjdk-11-jre-headless
 
 # Download server
-wget https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar -O minecraft_server.1.14.3.jar
-echo "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38  minecraft_server.1.14.3.jar" | shasum -a256 -c -
-sudo cp minecraft_server.1.14.3.jar "${MINECRAFT_HOME}/minecraft_server.jar"
+wget https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar -O minecraft_server.1.15.2.jar
+echo "80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a  minecraft_server.1.15.2.jar" | shasum -a256 -c -
+sudo cp minecraft_server.1.15.2.jar "${MINECRAFT_HOME}/minecraft_server.jar"
 
 # Accept EULA
 sudo -u "${MINECRAFT_USER}" tee "${MINECRAFT_HOME}/eula.txt" > /dev/null << EOF
