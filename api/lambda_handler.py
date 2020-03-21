@@ -66,7 +66,7 @@ def describe_state(instance_id):
     instance_ip = instance.get("PublicIpAddress")
 
     dns_record_name = dns_record.get("Name")
-    dns_record_value = dns_record.get("ResourceRecords")[0].get("Value")
+    dns_record_value = dns_record.get("ResourceRecords", [{}])[0].get("Value")
     dns_record_type = dns_record.get("Type")
 
     return {
