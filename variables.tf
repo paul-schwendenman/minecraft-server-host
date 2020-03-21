@@ -10,7 +10,7 @@ variable "instance_type" {
 
 variable "instance_ami" {
   description = "AWS instance AMI"
-  default = null
+  default     = null
 }
 
 variable "security_group" {

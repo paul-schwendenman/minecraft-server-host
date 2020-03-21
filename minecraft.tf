@@ -73,7 +73,7 @@ data "aws_ami" "ubuntu" {
 }
 
 data "local_file" "user_data" {
-    filename = "${path.module}/bootstrap.sh"
+  filename = "${path.module}/bootstrap.sh"
 }
 
 
@@ -82,7 +82,7 @@ resource "aws_instance" "minecraft_server" {
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = ["${aws_security_group.minecraft.id}"]
-  user_data = data.local_file.user_data.content
+  user_data              = data.local_file.user_data.content
 
   connection {
     type        = "ssh"
