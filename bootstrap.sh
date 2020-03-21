@@ -5,6 +5,8 @@ set -o errexit
 set -o pipefail
 set -o verbose
 
+exec > >(tee /var/log/user-data.log|logger -t user-data -s 2>/dev/console) 2>&1
+
 MINECRAFT_HOME="/srv/minecraft-server"
 MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
