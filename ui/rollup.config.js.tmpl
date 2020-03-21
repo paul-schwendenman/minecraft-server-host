@@ -37,7 +37,7 @@ export default {
 		}),
 		commonjs(),
 
-		production && replace({ __baseUrl__: 'https://65ezrnue2e.execute-api.us-east-2.amazonaws.com/dev' }),
+		production && replace({ __baseUrl__: '${api_url}' }),
 		!production && replace({ __baseUrl__: 'http://localhost:5001' }),
 
 		// In dev mode, call `npm run start` once

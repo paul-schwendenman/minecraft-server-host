@@ -122,3 +122,52 @@ resource "aws_route53_record" "cert_validation_alt1" {
   records = ["${aws_acm_certificate.certificate.domain_validation_options.1.resource_record_value}"]
   ttl     = 60
 }
+
+data "archive_file" "ui_code" {
+  type        = "zip"
+  source_dir  = "${path.module}/ui/public/"
+  output_path = "${path.module}/ui.zip"
+}
+
+data "local_file" "ui_dependencies" {
+  filename = "${path.module}/ui/package-lock.json"
+}
+
+resource "null_resource" "ui_dependencies" {
+  triggers = {
+    package_lock = sha1(data.local_file.ui_dependencies.content)
+  }
+
+  provisioner "local-exec" {
+    command     = "npm install"
+    working_dir = "ui"
+  }
+}
+
+resource "local_file" "rollup_config" {
+  content = templatefile("ui/rollup.config.js.tmpl", { api_url: aws_api_gateway_deployment.dev.invoke_url})
+  filename = "ui/rollup.config.js"
+  file_permission = "0644"
+}
+
+resource "null_resource" "ui_build" {
+  depends_on = [null_resource.ui_dependencies, local_file.rollup_config]
+
+  provisioner "local-exec" {
+    command     = "npm run build"
+    working_dir = "ui"
+  }
+}
+
+resource "null_resource" "webapp_upload" {
+  triggers = {
+    zip_file = data.archive_file.ui_code.output_sha
+    build = null_resource.ui_build.id
+  }
+  depends_on = [null_resource.ui_build]
+
+  provisioner "local-exec" {
+    command     = "aws s3 sync public/ s3://${aws_s3_bucket.www.bucket}"
+    working_dir = "ui"
+  }
+}
