@@ -72,11 +72,17 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"] # Canonical
 }
 
+data "local_file" "user_data" {
+    filename = "${path.module}/bootstrap.sh"
+}
+
+
 resource "aws_instance" "minecraft_server" {
   ami                    = var.instance_ami != null ? var.instance_ami : data.aws_ami.ubuntu.id
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = ["${aws_security_group.minecraft.id}"]
+  user_data = data.local_file.user_data.content
 
   connection {
     type        = "ssh"
@@ -85,10 +91,22 @@ resource "aws_instance" "minecraft_server" {
     private_key = tls_private_key.example.private_key_pem
   }
 
-  provisioner "remote-exec" {
-    script = "./bootstrap.sh"
-  }
+  # provisioner "remote-exec" {
+  #   script = "./bootstrap.sh"
+  # }
 }
+
+resource "aws_ebs_volume" "minecraft_world" {
+  availability_zone = aws_instance.minecraft_server.availability_zone
+  size              = 4
+}
+
+resource "aws_volume_attachment" "ebs_att" {
+  device_name = "/dev/sdg"
+  volume_id   = aws_ebs_volume.minecraft_world.id
+  instance_id = aws_instance.minecraft_server.id
+}
+
 
 output "instance_id" {
   value = "${aws_instance.minecraft_server.id}"

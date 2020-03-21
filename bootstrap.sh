@@ -11,6 +11,14 @@ MINECRAFT_HOME="/srv/minecraft-server"
 MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
 
+#Setup Volume
+sudo mkfs -t ext4 /dev/nvme1n1
+sudo mkdir ${MINECRAFT_HOME}
+sudo mount /dev/nvme1n1 ${MINECRAFT_HOME}
+sudo tee -a /etc/fstab > /dev/null << EOF
+/dev/nvme1n1  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
+EOF
+
 # Setup minecraft user
 sudo adduser --system --home "${MINECRAFT_HOME}" "${MINECRAFT_USER}"
 sudo addgroup --system "${MINECRAFT_GROUP}"
