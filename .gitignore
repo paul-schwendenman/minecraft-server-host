@@ -5,3 +5,5 @@
 
 # Generated Zipfile
 api.zip
+ui.zip
+ui/rollup.config.js
