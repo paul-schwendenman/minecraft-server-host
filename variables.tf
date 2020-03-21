@@ -23,7 +23,9 @@ variable "key_name" {
   default     = "minecraft"
 }
 
-variable "app_version" {
+variable "api_version" {
+  description = "version for the Python API code"
+  default     = "1.0.0"
 }
 
 variable "dns_name" {
