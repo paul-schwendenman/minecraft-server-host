@@ -8,6 +8,7 @@ rope = "*"
 
 [packages]
 boto3 = "*"
+mcstatus = "*"
 
 [requires]
 python_version = "3.8"
