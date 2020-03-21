@@ -14,10 +14,10 @@ MINECRAFT_GROUP="minecraft"
 #Setup Volume
 sudo mkfs -t ext4 /dev/nvme1n1
 sudo mkdir ${MINECRAFT_HOME}
-sudo mount /dev/nvme1n1 ${MINECRAFT_HOME}
 sudo tee -a /etc/fstab > /dev/null << EOF
-/dev/nvme1n1  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
+$(blkid | grep -v cloudimg-rootfs | cut -d" " -f 2)  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
 EOF
+sudo mount -a
 
 # Setup minecraft user
 sudo adduser --system --home "${MINECRAFT_HOME}" "${MINECRAFT_USER}"
