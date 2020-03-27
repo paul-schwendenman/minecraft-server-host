@@ -17,6 +17,18 @@ Setup
 
     .. _terraform: https://www.terraform.io/downloads.html
 
+#. Install `AWS CLI`_
+
+    .. _AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+
+#. Configure AWS CLI::
+
+    $ aws configure
+    AWS Access Key ID [None]: accesskey
+    AWS Secret Access Key [None]: secretkey
+    Default region name [None]: us-west-2
+    Default output format [None]:
+
 #. Initialize terraform::
 
     terraform init
