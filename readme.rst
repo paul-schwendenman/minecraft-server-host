@@ -58,3 +58,24 @@ Tearing down the server
 The resources can be removed by running::
 
     terraform destroy
+
+Terraform state backup
+-----------------------
+
+Terraform has the ability to store it's state in a remote store.
+For more information, see the `documentation`_ for more information.
+
+.. _documentation: https://www.terraform.io/docs/backends/types/remote.html
+
+Example (i.e. ``backend.tf``)::
+
+    terraform {
+        backend "remote" {
+            hostname     = "app.terraform.io"
+            organization = "example"
+
+            workspaces {
+                name = "minecraft-server"
+            }
+        }
+    }
