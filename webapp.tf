@@ -145,8 +145,8 @@ resource "null_resource" "ui_dependencies" {
 }
 
 resource "local_file" "rollup_config" {
-  content = templatefile("ui/rollup.config.js.tmpl", { api_url: aws_api_gateway_deployment.dev.invoke_url})
-  filename = "ui/rollup.config.js"
+  content         = templatefile("ui/rollup.config.js.tmpl", { api_url : aws_api_gateway_deployment.dev.invoke_url })
+  filename        = "ui/rollup.config.js"
   file_permission = "0644"
 }
 
@@ -162,7 +162,7 @@ resource "null_resource" "ui_build" {
 resource "null_resource" "webapp_upload" {
   triggers = {
     zip_file = data.archive_file.ui_code.output_sha
-    build = null_resource.ui_build.id
+    build    = null_resource.ui_build.id
   }
   depends_on = [null_resource.ui_build]
 
