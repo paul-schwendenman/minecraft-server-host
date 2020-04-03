@@ -79,6 +79,7 @@ data "local_file" "user_data" {
 
 resource "aws_instance" "minecraft_server" {
   ami                    = var.instance_ami != null ? var.instance_ami : data.aws_ami.ubuntu.id
+  availability_zone      = var.instance_availability_zone
   instance_type          = var.instance_type
   key_name               = var.key_name
   vpc_security_group_ids = ["${aws_security_group.minecraft.id}"]

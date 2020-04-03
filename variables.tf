@@ -1,6 +1,11 @@
 variable "region" {
-  description = "region for minecraft server"
+  description = "AWS region for minecraft server"
   default     = "us-east-2"
+}
+
+variable "instance_availability_zone" {
+  description = "AWS availability zone for minecraft server"
+  default     = "us-east-2c"
 }
 
 variable "instance_type" {
