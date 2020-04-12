@@ -1,0 +1,19 @@
+{
+  "name": "minecraft-server-api",
+  "version": "1.0.0",
+  "description": "API to control an EC2 powered minecraft server",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paul-schwendenman/minecraft-server-host.git"
+  },
+  "author": "Paul Schwendenman",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/paul-schwendenman/minecraft-server-host/issues"
+  },
+  "homepage": "https://github.com/paul-schwendenman/minecraft-server-host#readme"
+}
