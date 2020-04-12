@@ -15,5 +15,11 @@
   "bugs": {
     "url": "https://github.com/paul-schwendenman/minecraft-server-host/issues"
   },
-  "homepage": "https://github.com/paul-schwendenman/minecraft-server-host#readme"
+  "homepage": "https://github.com/paul-schwendenman/minecraft-server-host#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "serverless": "^1.67.3",
+    "serverless-python-requirements": "^5.1.0",
+    "serverless-wsgi": "^1.7.4"
+  }
 }
