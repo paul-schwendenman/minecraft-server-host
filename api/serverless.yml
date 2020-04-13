@@ -19,6 +19,10 @@ service: minecraft-server-api
 # Check out our docs for more details
 # frameworkVersion: "=X.X.X"
 
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+
 provider:
   name: aws
   runtime: python3.7
@@ -56,9 +60,22 @@ provider:
 #    - exclude-me.py
 #    - exclude-me-dir/**
 
+custom:
+  wsgi:
+    app: flask_app.app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: non-linux
+
 functions:
   hello:
     handler: handler.hello
+
+  app:
+    handler: wsgi_handler.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
 #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
