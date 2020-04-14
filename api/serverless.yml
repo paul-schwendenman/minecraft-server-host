@@ -3,6 +3,7 @@ service: minecraft-server-api
 plugins:
   - serverless-python-requirements
   - serverless-wsgi
+  - serverless-dotenv-plugin
 
 provider:
   name: aws
@@ -43,11 +44,12 @@ custom:
     dockerizePip: non-linux
 
 functions:
-  hello:
-    handler: handler.hello
-
   app:
     handler: wsgi_handler.handler
     events:
       - http: ANY /
       - http: 'ANY {proxy+}'
+    environment:
+      INSTANCE_ID: ${env:INSTANCE_ID}
+      DNS_NAME: ${env:DNS_NAME}
+      CORS_ORIGIN: ${env:CORS_ORIGIN}
