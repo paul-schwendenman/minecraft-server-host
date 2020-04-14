@@ -1,4 +1,5 @@
 from flask import Flask, request, abort
+from flask_cors import CORS
 from mcstatus import MinecraftServer
 import socket
 import werkzeug
@@ -15,6 +16,7 @@ dns_name = os.environ['DNS_NAME']
 cors_origin = os.environ['CORS_ORIGIN']
 
 app = Flask(__name__)
+CORS(app, origins=cors_origin)
 
 @app.route("/")
 def hello():
@@ -59,6 +61,7 @@ def start():
 
 @app.route("/syncdns")
 def sync_dns():
+    record_type = 'A'
     hosted_zone_id = get_hosted_zone_id()
     instance = get_instance(instance_id)
     ip_address = instance.get("PublicIpAddress")
@@ -86,7 +89,9 @@ def sync_dns():
 
 @app.route("/details")
 def details():
-    hostname = request.args.get('hostname', default="minecraft.paulandsierra.com", type=str)
+    hostname = request.args.get('hostname', type=str)
+    if not hostname:
+        abort(400)
     server = MinecraftServer(hostname)
     try:
         status = server.status()
@@ -98,6 +103,14 @@ def details():
 @app.errorhandler(werkzeug.exceptions.ServiceUnavailable)
 def handle_bad_request(e):
     return 'Service Unavailable', 503
+
+@app.errorhandler(werkzeug.exceptions.InternalServerError)
+def handle_bad_request(e):
+    return 'Internal Server Error', 500
+
+@app.errorhandler(werkzeug.exceptions.BadRequest)
+def handle_bad_request(e):
+    return 'Bad Request', 400
 
 
 def get_instance(instance_id):

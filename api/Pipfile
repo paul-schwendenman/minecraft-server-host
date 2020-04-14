@@ -10,6 +10,7 @@ rope = "*"
 boto3 = "*"
 mcstatus = "*"
 flask = "*"
+flask-cors = "*"
 
 [requires]
 python_version = "3.7"
