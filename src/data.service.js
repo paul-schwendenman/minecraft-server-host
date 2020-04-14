@@ -39,3 +39,13 @@ export async function syncDnsRecord() {
         throw Error(text);
     }
 }
+
+export async function getDetails() {
+    const resp = await fetch('__baseUrl__/details');
+
+    if (resp.ok) {
+        return await resp.json();
+    } else {
+        throw Error(await resp.text())
+    }
+}
