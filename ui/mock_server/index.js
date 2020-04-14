@@ -53,6 +53,64 @@ const state = {
     }
 };
 
+const details_one_player = {
+    description: {
+        text: "A Minecraft Server"
+    },
+    players: {
+        max: 20,
+        online: 1,
+        sample: [
+        {
+            id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
+            name: "example"
+        }
+        ]
+    },
+    version: {
+        name: "1.15.2",
+        protocol: 578
+    }
+};
+
+const details_two_players = {
+    description: {
+        text: "A Minecraft Server"
+    },
+    players: {
+        max: 20,
+        online: 2,
+        sample: [
+        {
+            id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
+            name: "example"
+        },
+        {
+            id: "d720a93f-da90-41fa-8653-d09d81fa4b77",
+            name: "example2"
+        }
+        ]
+    },
+    version: {
+        name: "1.15.2",
+        protocol: 578
+    }
+};
+
+const details_zero_players = {
+    description: {
+      text: "A Minecraft Server"
+    },
+    players: {
+      max: 20,
+      online: 0
+    },
+    version: {
+      name: "1.15.2",
+      protocol: 578
+    }
+};
+
 app.get('/start', async (req, res) => {
     state.instance.state = "pending";
     await sleep(250);
@@ -90,6 +148,19 @@ app.get('/status', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(state);
 });
+
+app.get('/details', async (req, res) => {
+    await sleep(333);
+
+    const details = [
+        details_zero_players,
+        details_one_player,
+        details_two_players
+    ][Math.floor(Math.random() * 3)];
+
+    res.setHeader('Content-Type', 'application/json');
+    res.send(details);
+})
 
 app.listen(5001, () =>
   console.log('Express server is running on localhost:5001')

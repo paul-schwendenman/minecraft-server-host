@@ -43,5 +43,5 @@ If you're building a single-page app (SPA) with multiple routes, sirv needs to b
 
 ```bash
 npm run build
-aws s3 sync public/ s3://www.minecraft.paulandsierra.com
+aws s3 sync public/ s3://s3bucket.example.com
 ```
