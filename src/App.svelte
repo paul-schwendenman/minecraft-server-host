@@ -55,7 +55,7 @@
 					Update DNS Record
 				</button>
 			{:else}
-				<ServerDetails serverDetails={getDetails()} />
+				<ServerDetails serverDetails={getDetails(data.instance.ip_address)} />
 			{/if}
 			<button on:click={handleStop} class="button">
 				Stop

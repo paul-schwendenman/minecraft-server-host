@@ -150,6 +150,10 @@ app.get('/status', async (req, res) => {
 });
 
 app.get('/details', async (req, res) => {
+    const { hostname } = req.query;
+    if (!hostname) {
+        res.sendStatus(400);
+    }
     await sleep(333);
 
     const details = [

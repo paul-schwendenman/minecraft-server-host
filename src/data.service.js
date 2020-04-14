@@ -40,8 +40,16 @@ export async function syncDnsRecord() {
     }
 }
 
-export async function getDetails() {
-    const resp = await fetch('__baseUrl__/details');
+export async function getDetails(hostname) {
+    const url = new URL('__baseUrl__/details');
+
+    if (hostname) {
+        const params = { hostname };
+
+        url.search = new URLSearchParams(params).toString();
+    }
+
+    const resp = await fetch(url);
 
     if (resp.ok) {
         return await resp.json();
