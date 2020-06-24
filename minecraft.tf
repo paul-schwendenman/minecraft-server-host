@@ -99,7 +99,7 @@ resource "aws_instance" "minecraft_server" {
 
 resource "aws_ebs_volume" "minecraft_world" {
   availability_zone = aws_instance.minecraft_server.availability_zone
-  size              = 4
+  size              = 8
 }
 
 resource "aws_volume_attachment" "ebs_att" {
