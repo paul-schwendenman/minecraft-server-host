@@ -12,7 +12,15 @@ MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
 
 #Setup Volume
-sudo mkfs -t ext4 /dev/nvme1n1
+DEVICE_ID="$(blkid | grep -v cloudimg-rootfs | cut -d":" -f 1)"
+
+if [[ $(blkid ${DEVICE_ID}) ]]; then
+    echo "there is a filesystem"
+else
+    echo "no filesystem found"
+    sudo mkfs -t ext4 ${blkid}
+fi
+
 sudo mkdir ${MINECRAFT_HOME}
 sudo tee -a /etc/fstab > /dev/null << EOF
 $(blkid | grep -v cloudimg-rootfs | cut -d" " -f 2)  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
