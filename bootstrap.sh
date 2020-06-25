@@ -20,10 +20,11 @@ else
     echo "no filesystem found"
     sudo mkfs -t ext4 ${blkid}
 fi
+blkid
 
 sudo mkdir ${MINECRAFT_HOME}
 sudo tee -a /etc/fstab > /dev/null << EOF
-$(blkid | grep -v cloudimg-rootfs | cut -d" " -f 2)  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
+$(blkid | grep "ext4" | grep -v cloudimg-rootfs | cut -d" " -f 2)  ${MINECRAFT_HOME} ext4 defaults,nofail 0 2
 EOF
 sudo mount -a
 
