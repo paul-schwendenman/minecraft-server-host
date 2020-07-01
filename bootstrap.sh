@@ -103,8 +103,8 @@ list_players;
 last_log_line="\$(tail -n 1 \${MINECRAFT_HOME}/logs/latest.log)";
 echo "\${last_log_line}"
 
-regex="There are [0-9]+ of a max [0-9]+ players online"
-regex2="There are 0 of a max [0-9]+ players online"
+regex="There are [0-9]+ of a max( of)? [0-9]+ players online"
+regex2="There are 0 of a max( of)? [0-9]+ players online"
 
 if [[ "\$last_log_line" =~ \$regex ]]; then
     if [[ "\$last_log_line" =~ \$regex2 ]]; then
