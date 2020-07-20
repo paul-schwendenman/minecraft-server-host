@@ -5,21 +5,40 @@
     "build": "rollup -c",
     "dev": "rollup -c -w",
     "mock-server": "node mock_server",
-    "start": "sirv public"
+    "start": "sirv public",
+    "test": "rollup -c rollup.test.config.js && mocha"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^11.0.0",
+    "@rollup/plugin-multi-entry": "^3.0.0",
     "@rollup/plugin-node-resolve": "^7.0.0",
     "@rollup/plugin-replace": "^2.3.1",
+    "@testing-library/svelte": "^3.0.0",
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "chai-dom": "^1.8.2",
     "cors": "^2.8.5",
     "express": "^4.17.1",
+    "fetch-mock": "^9.4.0",
+    "jsdom": "^16.2.2",
+    "jsdom-global": "^3.0.2",
+    "mocha": "^7.1.1",
+    "node-fetch": "^2.6.0",
     "rollup": "^1.20.0",
-    "rollup-plugin-livereload": "^1.0.0",
+    "rollup-plugin-livereload": "^1.2.0",
     "rollup-plugin-svelte": "^5.0.3",
     "rollup-plugin-terser": "^5.1.2",
+    "source-map-support": "^0.5.16",
     "svelte": "^3.0.0"
   },
   "dependencies": {
     "sirv-cli": "^0.4.4"
+  },
+  "mocha": {
+    "spec": "build/bundle-tests.js",
+    "require": [
+      "source-map-support/register",
+      "jsdom-global/register"
+    ]
   }
 }

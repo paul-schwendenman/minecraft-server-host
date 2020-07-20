@@ -41,6 +41,7 @@ function sleep(ms) {
     });
 }
 
+let errorThreshold = 0.9;
 const state = {
     instance: {
         state: "stopped",
@@ -50,6 +51,64 @@ const state = {
         name: "minecraft.example.com.",
         value: "10.0.0.1",
         type: "A"
+    }
+};
+
+const details_one_player = {
+    description: {
+        text: "A Minecraft Server"
+    },
+    players: {
+        max: 20,
+        online: 1,
+        sample: [
+        {
+            id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
+            name: "example"
+        }
+        ]
+    },
+    version: {
+        name: "1.15.2",
+        protocol: 578
+    }
+};
+
+const details_two_players = {
+    description: {
+        text: "A Minecraft Server"
+    },
+    players: {
+        max: 20,
+        online: 2,
+        sample: [
+        {
+            id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
+            name: "example"
+        },
+        {
+            id: "d720a93f-da90-41fa-8653-d09d81fa4b77",
+            name: "example2"
+        }
+        ]
+    },
+    version: {
+        name: "1.15.2",
+        protocol: 578
+    }
+};
+
+const details_zero_players = {
+    description: {
+      text: "A Minecraft Server"
+    },
+    players: {
+      max: 20,
+      online: 0
+    },
+    version: {
+      name: "1.15.2",
+      protocol: 578
     }
 };
 
@@ -73,6 +132,7 @@ app.get('/stop', async (req, res) => {
         state.instance.state = "stopped";
         state.instance.ip_address = null;
     }, 5000)
+    errorThreshold = 0.9;
     res.setHeader('Content-Type', 'application/json');
     res.send({"message": "Success"});
 });
@@ -80,6 +140,9 @@ app.get('/stop', async (req, res) => {
 app.get('/syncdns', async (req, res) => {
     state.dns_record.value = state.instance.ip_address;
     await sleep(250);
+    setTimeout(() => {
+        errorThreshold = 0.2;
+    }, 1000);
 
     res.setHeader('Content-Type', 'application/json');
     res.send({"message": "Success"});
@@ -90,6 +153,33 @@ app.get('/status', async (req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(state);
 });
+
+app.get('/details', async (req, res) => {
+    const { hostname } = req.query;
+    if (!hostname) {
+        res.sendStatus(400);
+    }
+    if (Math.random() < errorThreshold) {
+        const errorCode = [
+            500,
+            503,
+            504,
+        ][Math.floor(Math.random() * 3)];
+
+        res.sendStatus(errorCode);
+        return;
+    }
+    await sleep(333);
+
+    const details = [
+        details_zero_players,
+        details_one_player,
+        details_two_players
+    ][Math.floor(Math.random() * 3)];
+
+    res.setHeader('Content-Type', 'application/json');
+    res.send(details);
+})
 
 app.listen(5001, () =>
   console.log('Express server is running on localhost:5001')
