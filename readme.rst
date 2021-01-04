@@ -79,3 +79,16 @@ Example (i.e. ``backend.tf``)::
             }
         }
     }
+
+asdf - extendable version manager
+----------------------------------
+
+The ``asdf`` tool can be used to manage your local terraform installation.
+
+Install plugin::
+
+    asdf plugin-add terraform https://github.com/Banno/asdf-hashicorp.git
+
+Install the tools::
+
+    asdf install
