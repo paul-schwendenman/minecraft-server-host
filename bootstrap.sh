@@ -44,11 +44,11 @@ sudo apt install -qq -y openjdk-11-jdk-headless openjdk-11-jre-headless
 
 # Download server
 wget https://launcher.mojang.com/v1/objects/35139deedbd5182953cf1caa23835da59ca3d7cd/server.jar -O minecraft_server.1.16.4.jar
-cat << EOF | shasum -a256 -c --ignore-missing -
-942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38  minecraft_server.1.14.3.jar
-80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a  minecraft_server.1.15.2.jar
-2782d547724bc3ffc0ef6e97b2790e75c1df89241f9d4645b58c706f5e6c935b  minecraft_server.1.16.1.jar
-32e450e74c081aec06dcfbadfa5ba9aa1c7f370bd869e658caec0c3004f7ad5b  minecraft_server.1.16.3.jar
+cat << EOF | shasum -a256 -c -
+# 942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38  minecraft_server.1.14.3.jar
+# 80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a  minecraft_server.1.15.2.jar
+# 2782d547724bc3ffc0ef6e97b2790e75c1df89241f9d4645b58c706f5e6c935b  minecraft_server.1.16.1.jar
+# 32e450e74c081aec06dcfbadfa5ba9aa1c7f370bd869e658caec0c3004f7ad5b  minecraft_server.1.16.3.jar
 444d30d903a1ef489b6737bb9d021494faf23434ca8568fd72ce2e3d40b32506  minecraft_server.1.16.4.jar
 EOF
 sudo cp minecraft_server.1.16.4.jar "${MINECRAFT_HOME}/minecraft_server.jar"
