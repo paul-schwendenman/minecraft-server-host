@@ -82,7 +82,7 @@ resource "aws_instance" "minecraft_server" {
   availability_zone      = var.instance_availability_zone
   instance_type          = var.instance_type
   key_name               = var.key_name
-  vpc_security_group_ids = ["${aws_security_group.minecraft.id}"]
+  vpc_security_group_ids = [aws_security_group.minecraft.id]
   user_data              = data.local_file.user_data.content
 
   connection {
@@ -110,9 +110,9 @@ resource "aws_volume_attachment" "ebs_att" {
 
 
 output "instance_id" {
-  value = "${aws_instance.minecraft_server.id}"
+  value = aws_instance.minecraft_server.id
 }
 
 output "ip" {
-  value = "${aws_instance.minecraft_server.public_ip}"
+  value = aws_instance.minecraft_server.public_ip
 }

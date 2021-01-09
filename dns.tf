@@ -7,7 +7,7 @@ resource "aws_route53_record" "minecraft" {
   name    = var.dns_name
   type    = "A"
   ttl     = "300"
-  records = ["${aws_instance.minecraft_server.public_ip}"]
+  records = [aws_instance.minecraft_server.public_ip]
 }
 
 resource "aws_route53_record" "www" {

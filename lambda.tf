@@ -37,8 +37,8 @@ resource "aws_lambda_function" "minecraft_api" {
   role = aws_iam_role.lambda_exec.arn
   environment {
     variables = {
-      INSTANCE_ID = "${aws_instance.minecraft_server.id}"
-      DNS_NAME    = "${var.dns_name}"
+      INSTANCE_ID = aws_instance.minecraft_server.id
+      DNS_NAME    = var.dns_name
       CORS_ORIGIN = "https://${var.webapp_dns_name}"
     }
   }
@@ -188,7 +188,7 @@ resource "aws_lambda_permission" "apigw" {
 }
 
 output "bucket" {
-  value = "${aws_s3_bucket.lambda_code.bucket}"
+  value = aws_s3_bucket.lambda_code.bucket
 }
 
 output "base_url" {

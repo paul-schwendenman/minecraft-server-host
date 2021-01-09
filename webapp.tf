@@ -44,7 +44,7 @@ resource "aws_acm_certificate" "certificate" {
 
   // We also want the cert to be valid for the root domain even though we'll be
   // redirecting to the www. domain immediately.
-  subject_alternative_names = ["${var.dns_name}"]
+  subject_alternative_names = [var.dns_name]
 }
 
 resource "aws_cloudfront_distribution" "www_distribution" {
@@ -92,7 +92,7 @@ resource "aws_cloudfront_distribution" "www_distribution" {
 
   // Here we're ensuring we can hit this distribution using www.runatlantis.io
   // rather than the domain name CloudFront gives us.
-  aliases = ["${var.webapp_dns_name}"]
+  aliases = [var.webapp_dns_name]
 
   restrictions {
     geo_restriction {
@@ -111,7 +111,7 @@ resource "aws_route53_record" "cert_validation" {
   name    = aws_acm_certificate.certificate.domain_validation_options.0.resource_record_name
   type    = aws_acm_certificate.certificate.domain_validation_options.0.resource_record_type
   zone_id = aws_route53_zone.primary.zone_id
-  records = ["${aws_acm_certificate.certificate.domain_validation_options.0.resource_record_value}"]
+  records = [aws_acm_certificate.certificate.domain_validation_options.0.resource_record_value]
   ttl     = 60
 }
 
@@ -119,7 +119,7 @@ resource "aws_route53_record" "cert_validation_alt1" {
   name    = aws_acm_certificate.certificate.domain_validation_options.1.resource_record_name
   type    = aws_acm_certificate.certificate.domain_validation_options.1.resource_record_type
   zone_id = aws_route53_zone.primary.zone_id
-  records = ["${aws_acm_certificate.certificate.domain_validation_options.1.resource_record_value}"]
+  records = [aws_acm_certificate.certificate.domain_validation_options.1.resource_record_value]
   ttl     = 60
 }
 
