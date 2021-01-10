@@ -80,6 +80,22 @@ Example (i.e. ``backend.tf``)::
         }
     }
 
+Example costs (from 2020)
+---------------------------
+
+Since May, I've been running the server as a ``t3.medium`` instance to server about
+4 active players at a time. Below I've included a chart with a couple sample months
+representing different levels of activity.
+
+======= ======= ==============
+Use     Hours   Monthly Cost
+======= ======= ==============
+Low     6       $2.71
+Medium  140     $10.59
+Heavy   275     $21.89
+======= ======= ==============
+
+
 asdf - extendable version manager
 ----------------------------------
 
