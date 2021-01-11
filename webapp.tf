@@ -178,3 +178,9 @@ resource "null_resource" "webapp_upload" {
     working_dir = "ui"
   }
 }
+
+resource "aws_ssm_parameter" "minecraft_cors_url" {
+  name  = "minecraft_cors_url"
+  type  = "String"
+  value = "https://${var.webapp_dns_name}"
+}

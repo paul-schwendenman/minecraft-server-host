@@ -21,3 +21,15 @@ resource "aws_route53_record" "www" {
     evaluate_target_health = false
   }
 }
+
+resource "aws_ssm_parameter" "minecraft_route53_zone_id" {
+  name  = "minecraft_route53_zone_id"
+  type  = "String"
+  value = aws_route53_zone.primary.id
+}
+
+resource "aws_ssm_parameter" "minecraft_dns_name" {
+  name  = "minecraft_dns_name"
+  type  = "String"
+  value = var.dns_name
+}

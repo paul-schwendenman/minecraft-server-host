@@ -108,6 +108,17 @@ resource "aws_volume_attachment" "ebs_att" {
   instance_id = aws_instance.minecraft_server.id
 }
 
+resource "aws_ssm_parameter" "minecraft_instance_id" {
+  name  = "minecraft_instance_id"
+  type  = "String"
+  value = aws_instance.minecraft_server.id
+}
+
+resource "aws_ssm_parameter" "minecraft_instance_arn" {
+  name  = "minecraft_instance_arn"
+  type  = "String"
+  value = aws_instance.minecraft_server.arn
+}
 
 output "instance_id" {
   value = aws_instance.minecraft_server.id
