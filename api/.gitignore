@@ -1,8 +1,0 @@
-/node_modules/
-__pycache__/
-
-# Serverless directories
-.serverless
-
-# Ignore local environment
-.env
