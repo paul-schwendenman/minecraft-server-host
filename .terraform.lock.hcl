@@ -90,3 +90,22 @@ provider "registry.terraform.io/hashicorp/tls" {
     "zh:f4b333c467ae02c1a238ac57465fe66405f6e2a6cfeb4eded9bc321c5652a1bf",
   ]
 }
+
+provider "registry.terraform.io/labd/serverless" {
+  version     = "0.3.0"
+  constraints = "0.3.0"
+  hashes = [
+    "h1:BNtMCZWFfBK3xqDH16uzVpSBjrVmdTxq91NQ5Q7zKx4=",
+    "zh:0ecc0dec23c4a2904ce55e6ce0fdf49472097f9ead8f1a6f3007ed1109239c49",
+    "zh:10e1ed7f78a17be30a49269959f5eab50b41d39a6377d5483daab1ce2d305d88",
+    "zh:2dbc0f6ebecf8b83a65d2565d15b3d4c15279e83d25175af72fce1a964f99c12",
+    "zh:668024e54a092f88891363df5e0bb680b14832f4c1ee8141dfaabab075e4eafe",
+    "zh:7acd574fe22579324e6bf168acd3ea459d88a98f5309291fd42b64096c1ca8e4",
+    "zh:989b009cb13895711a85a26bcca55f0ebcbfe2940944c67b4836f9deb10427d7",
+    "zh:9c04d1f36fa933d5fd5a848dff3dac3fee035dd46a87ebfc053dac8c98cdca01",
+    "zh:9f01775e61d349dd89eabe60f991b57ab1a79205f57ad734c4b731627b1ecfdf",
+    "zh:9f4d5511d9734c6192154c950a2c3054e7b65941c64675f11d5a221f7173886d",
+    "zh:baa6722e024c40fbcea44b0e1e660e22dea1f1171a014501dfc64862349097e9",
+    "zh:e2114ac4d1e1de1432d9efd15969dd57fa4ad7de99564fbf7c68a7401e06e343",
+  ]
+}
