@@ -1,0 +1,51 @@
+name: Deploy master branch
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  CORS_ORIGIN: "doesnotmatter"
+  DNS_NAME: "doesnotmatter"
+  INSTANCE_ID: "doesnotmatter"
+  INSTANCE_ARN: "doesnotmatter"
+  ROUTE_53_ARN: "doesnotmatter"
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x]
+        python-version: [3.7]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade pipenv
+        pipenv install --dev --python $(which python)
+    - run: npm ci
+    - name: serverless package
+      uses: serverless/github-action@master
+      with:
+        args: package
+      # env:
+        # SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+        # or if using AWS credentials directly
+        # AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        # AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: api.zip
+        path: .serverless/minecraft-server-api.zip

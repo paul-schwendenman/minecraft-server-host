@@ -1,0 +1,60 @@
+service: minecraft-server-api
+
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-dotenv-plugin
+
+provider:
+  name: aws
+  runtime: python3.7
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "logs:CreateLogGroup"
+        - "logs:CreateLogStream"
+        - "logs:PutLogEvents"
+      Resource: "arn:aws:logs:*:*:*"
+    - Effect: "Allow"
+      Action:
+        - "ec2:StartInstances"
+        - "ec2:StopInstances"
+      Resource: ${ssm:minecraft_instance_arn}
+    - Effect: "Allow"
+      Action:
+        - "ec2:DescribeInstances"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "route53:ListHostedZones"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "route53:ListResourceRecordSets"
+        - "route53:ChangeResourceRecordSets"
+      Resource: "arn:aws:route53:::hostedzone/${ssm:minecraft_route53_zone_id}"
+
+  stage: dev
+  region: us-east-2
+
+package:
+  include:
+    - flask_app.py
+
+custom:
+  wsgi:
+    app: flask_app.app
+    packRequirements: false
+  pythonRequirements:
+    dockerizePip: non-linux
+
+functions:
+  app:
+    handler: wsgi_handler.handler
+    events:
+      - http: ANY /
+      - http: 'ANY {proxy+}'
+    environment:
+      INSTANCE_ID: ${ssm:minecraft_instance_id}
+      DNS_NAME: ${ssm:minecraft_dns_name}
+      CORS_ORIGIN: ${ssm:minecraft_cors_url}
