@@ -100,6 +100,9 @@ resource "aws_instance" "minecraft_server" {
 resource "aws_ebs_volume" "minecraft_world" {
   availability_zone = aws_instance.minecraft_server.availability_zone
   size              = 8
+  tags = {
+    "Name" = "minecraft_world"
+  }
 }
 
 resource "aws_volume_attachment" "ebs_att" {
