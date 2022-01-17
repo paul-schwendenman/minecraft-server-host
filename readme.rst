@@ -108,3 +108,16 @@ Install plugin::
 Install the tools::
 
     asdf install
+
+
+aws cli
+----------
+
+Install::
+
+    pip install --user awscli
+
+
+Configure::
+
+    aws configure
