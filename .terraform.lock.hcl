@@ -5,6 +5,7 @@ provider "registry.terraform.io/hashicorp/archive" {
   version     = "2.0.0"
   constraints = "~> 2.0"
   hashes = [
+    "h1:WWGcM4hCkZLObytvhPHxR/s6FR7+jhNHGQ+2DYvBKbI=",
     "h1:eOUi4EO4QTgPuz+gmD8xy2LTTxNfyc9txyc9PDARth8=",
     "zh:1c3300a6686481ed0b3ce456949805b5c55f901b77108543046f12118a102914",
     "zh:2d44bcc8a5ea3f2c2ff54ca4c4b273cdc3500ad8bb6929eec6722bb9d10a9714",
@@ -23,6 +24,7 @@ provider "registry.terraform.io/hashicorp/aws" {
   version     = "3.23.0"
   constraints = "~> 3.0"
   hashes = [
+    "h1:GugGr7igctZkUUt0im9b0CbdinTRxb4dNXvmGuN2gZ8=",
     "h1:tSznQxPJvolDnmqqaTK9SsJ0bluTws7OAWcnc1t0ABs=",
     "zh:30b0733027c00472618da998bc77967c692e238ae117c07e046fdd7336b83fa3",
     "zh:3677550a8bef8e01c67cb615407dc8a69d32f4e36017033cd6f71a831c99d5de",
@@ -41,6 +43,7 @@ provider "registry.terraform.io/hashicorp/local" {
   version     = "2.0.0"
   constraints = "~> 2.0"
   hashes = [
+    "h1:EC6eh7avwx1rF56h3RZcxgEp/14ihi7Sk/4J3Hn4nIE=",
     "h1:pO1ANXtOCRfecKsY9Hn4UsXoPBLv6LFiDIEiS1MZ09E=",
     "zh:34ce8b79493ace8333d094752b579ccc907fa9392a2c1d6933a6c95d0786d3f1",
     "zh:5c5a19c4f614a4ffb68bae0b0563f3860115cf7539b8adc21108324cfdc10092",
@@ -60,6 +63,7 @@ provider "registry.terraform.io/hashicorp/null" {
   constraints = "~> 3.0"
   hashes = [
     "h1:V1tzrSG6t3e7zWvUwRbGbhsWU2Jd/anrJpOl9XM+R/8=",
+    "h1:ysHGBhBNkIiJLEpthB/IVCLpA1Qoncp3KbCTFGFZTO0=",
     "zh:05fb7eab469324c97e9b73a61d2ece6f91de4e9b493e573bfeda0f2077bc3a4c",
     "zh:1688aa91885a395c4ae67636d411475d0b831e422e005dcf02eedacaafac3bb4",
     "zh:24a0b1292e3a474f57c483a7a4512d797e041bc9c2fbaac42fe12e86a7fb5a3c",
@@ -78,6 +82,7 @@ provider "registry.terraform.io/hashicorp/tls" {
   constraints = "~> 3.0"
   hashes = [
     "h1:AcQGOAD5xa4KE9gYw5g7R6UU8a77Yn/afPvch4N86lQ=",
+    "h1:LtCEW5v1E5Eo49+kQOsKHRYf9Hc8ZR0jTpK+mXszPHs=",
     "zh:05eac573a1fe53227bcc6b01daf6ddf0b73456f97f56f316f1b3114a4771e175",
     "zh:09390dad764c76f0fd59cae4dad296e3e39487e06de3a4bc0df73916c6bb2f17",
     "zh:142d0bc4722ab088b7ca124b0eb44206b9d100f51035c162d50ef552e09813d0",
