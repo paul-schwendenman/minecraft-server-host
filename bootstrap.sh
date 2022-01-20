@@ -12,13 +12,15 @@ MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
 
 #Setup Volume
-DEVICE_ID="$(blkid | grep -v cloudimg-rootfs | cut -d":" -f 1)"
+# DEVICE_ID="$(sudo blkid | grep -v cloudimg-rootfs | cut -d":" -f 1)"
+DEVICE_ID="/dev/nvme1n1"
+sudo blkid
 
-if [[ $(blkid ${DEVICE_ID}) ]]; then
+if [[ $(sudo blkid ${DEVICE_ID}) ]]; then
     echo "there is a filesystem"
 else
     echo "no filesystem found"
-    sudo mkfs -t ext4 ${blkid}
+    sudo mkfs -t ext4 ${DEVICE_ID}
 fi
 blkid
 
