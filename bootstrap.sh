@@ -42,7 +42,7 @@ sudo chown -R "${MINECRAFT_USER}.${MINECRAFT_GROUP}" "${MINECRAFT_HOME}"
 
 # Install java
 sudo apt update
-sudo apt install -qq -y openjdk-11-jdk-headless openjdk-11-jre-headless
+sudo apt install -qq -y openjdk-17-jdk-headless openjdk-17-jre-headless
 
 # Download server
 wget https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar -O minecraft_server.1.18.1.jar
