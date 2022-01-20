@@ -61,7 +61,7 @@ data "aws_ami" "ubuntu" {
 
   filter {
     name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
   }
 
   filter {
@@ -100,10 +100,11 @@ resource "aws_instance" "minecraft_server" {
 resource "aws_ebs_volume" "minecraft_world" {
   availability_zone = aws_instance.minecraft_server.availability_zone
   size              = 8
+  type              = "gp3"
 }
 
 resource "aws_volume_attachment" "ebs_att" {
-  device_name = "/dev/sdg"
+  device_name = "/dev/sdf"
   volume_id   = aws_ebs_volume.minecraft_world.id
   instance_id = aws_instance.minecraft_server.id
 }
