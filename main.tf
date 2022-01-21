@@ -1,30 +1,35 @@
 terraform {
   required_providers {
     archive = {
-      source = "hashicorp/archive"
+      source  = "hashicorp/archive"
       version = "~> 2.0"
     }
     aws = {
-      source = "hashicorp/aws"
+      source  = "hashicorp/aws"
       version = "~> 3.0"
     }
     local = {
-      source = "hashicorp/local"
+      source  = "hashicorp/local"
       version = "~> 2.0"
     }
     null = {
-      source = "hashicorp/null"
+      source  = "hashicorp/null"
       version = "~> 3.0"
     }
     tls = {
-      source = "hashicorp/tls"
+      source  = "hashicorp/tls"
       version = "~> 3.0"
+    }
+
+    serverless = {
+      source  = "labd/serverless"
+      version = "0.3.0"
     }
   }
 }
 
 provider "aws" {
-  region  = var.region
+  region = var.region
 }
 
 provider "aws" {
@@ -42,6 +47,10 @@ provider "null" {
 }
 
 provider "archive" {
+}
+
+provider "serverless" {
+  # Configuration options
 }
 
 locals {
