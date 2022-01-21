@@ -7,3 +7,6 @@
 api.zip
 ui.zip
 ui/rollup.config.js
+
+# Generated private key
+minecraft.pem
