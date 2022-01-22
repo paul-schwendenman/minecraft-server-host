@@ -187,6 +187,12 @@ resource "aws_lambda_permission" "apigw" {
   source_arn = "${aws_api_gateway_rest_api.minecraft_gateway.execution_arn}/*/*"
 }
 
+resource "serverless_deployment" "api" {
+  stage = "dev"
+  config_dir         = abspath("api")
+  serverless_bin_dir = abspath("api/node_modules/.bin")
+}
+
 output "bucket" {
   value = aws_s3_bucket.lambda_code.bucket
 }
