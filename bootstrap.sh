@@ -115,6 +115,15 @@ echo "\${last_log_line}"
 regex="There are [0-9]+ of a max( of)? [0-9]+ players online"
 regex2="There are 0 of a max( of)? [0-9]+ players online"
 
+# Check for active SSH sessions
+ssh_sessions=$(who | grep 'pts/' || true)
+
+if [[ -n "$ssh_sessions" ]]; then
+    # echo "Active SSH session(s) detected, skipping shutdown"
+    [ -f "${touch_file}" ] && rm "${touch_file}"
+    exit 0
+fi
+
 if [[ "\$last_log_line" =~ \$regex ]]; then
     if [[ "\$last_log_line" =~ \$regex2 ]]; then
         if [ -f "\${touch_file}" ]; then
