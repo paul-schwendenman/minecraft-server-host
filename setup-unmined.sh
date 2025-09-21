@@ -52,6 +52,9 @@ fi
 
 # Configure Caddy to serve map dir
 sudo mkdir -p "${MAP_DIR}"
+sudo chown -R root:${MINECRAFT_GROUP} "${MAP_DIR}"
+sudo chmod -R 775 "${MAP_DIR"
+
 sudo tee /etc/caddy/Caddyfile > /dev/null << EOF
 :80 {
     root * ${MAP_DIR}
