@@ -103,7 +103,7 @@ The ``asdf`` tool can be used to manage your local terraform installation.
 
 Install plugin::
 
-    asdf plugin-add terraform https://github.com/Banno/asdf-hashicorp.git
+    asdf plugin add terraform https://github.com/Banno/asdf-hashicorp.git
 
 Install the tools::
 
