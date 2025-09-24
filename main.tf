@@ -20,11 +20,6 @@ terraform {
       source  = "hashicorp/tls"
       version = "~> 3.0"
     }
-
-    serverless = {
-      source  = "labd/serverless"
-      version = "0.3.0"
-    }
   }
 }
 
@@ -47,10 +42,6 @@ provider "null" {
 }
 
 provider "archive" {
-}
-
-provider "serverless" {
-  # Configuration options
 }
 
 locals {
