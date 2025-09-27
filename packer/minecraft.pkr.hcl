@@ -42,21 +42,13 @@ build {
   name    = "minecraft-ami"
   sources = ["source.amazon-ebs.minecraft"]
 
-  provisioner "shell" {
-    script = "scripts/install_deps.sh"
-  }
+  provisioner "shell" { script = "scripts/install_deps.sh" }
+  provisioner "shell" { script = "scripts/install_systemd.sh" }
 
   provisioner "shell" {
-    script = "scripts/install_systemd.sh"
+    inline = ["sudo mkdir -p /opt/minecraft/jars"]
   }
 
-    provisioner "shell" {
-    inline = [
-      "sudo mkdir -p /opt/minecraft/jars"
-    ]
-  }
-
-  # loop through the list of jars
   provisioner "shell" {
     inline = [
       %{ for jar in var.minecraft_jars ~}
@@ -68,4 +60,7 @@ build {
       "sudo chmod 755 /opt/minecraft/jars"
     ]
   }
+
+  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
+  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
 }
