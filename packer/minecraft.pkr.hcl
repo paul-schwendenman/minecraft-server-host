@@ -64,4 +64,6 @@ build {
   provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
   provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
   provisioner "shell" { script = "scripts/install_create_world.sh" }
+  provisioner "shell" { script = "scripts/install_map_backup.sh" }
+  provisioner "shell" { script = "scripts/install_world_backup.sh" }
 }
