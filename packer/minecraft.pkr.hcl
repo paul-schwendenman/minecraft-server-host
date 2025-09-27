@@ -15,9 +15,39 @@ variable "minecraft_jars" {
   }))
   default = [
     {
+      version = "1.14.3"
+      url     = "https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar"
+      sha256  = "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38"
+    },
+    {
+      version = "1.15.2"
+      url     = "https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar"
+      sha256  = "80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a"
+    },
+    {
+      version = "1.16.1"
+      url     = "https://launcher.mojang.com/v1/objects/a412fd69db1f81db3f511c1463fd304675244077/server.jar"
+      sha256  = "2782d547724bc3ffc0ef6e97b2790e75c1df89241f9d4645b58c706f5e6c935b"
+    },
+    {
+      version = "1.16.3"
+      url     = "https://launcher.mojang.com/v1/objects/f02f4473dbf152c23d7d484952121db0b36698cb/server.jar"
+      sha256  = "32e450e74c081aec06dcfbadfa5ba9aa1c7f370bd869e658caec0c3004f7ad5b"
+    },
+    {
+      version = "1.16.4"
+      url     = "https://launcher.mojang.com/v1/objects/35139deedbd5182953cf1caa23835da59ca3d7cd/server.jar"
+      sha256  = "444d30d903a1ef489b6737bb9d021494faf23434ca8568fd72ce2e3d40b32506"
+    },
+    {
       version = "1.18.1"
       url     = "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar"
       sha256  = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
+    },
+    {
+      version = "1.21.8"
+      url     = "https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar"
+      sha256  = "2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7"
     }
   ]
 }
