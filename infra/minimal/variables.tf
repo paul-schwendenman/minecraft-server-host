@@ -1,0 +1,37 @@
+variable "aws_region" {
+  description = "AWS region to deploy into"
+  type        = string
+  default     = "us-east-2"
+}
+
+variable "aws_profile" {
+  description = "AWS CLI profile to use"
+  type        = string
+  default     = "minecraft"
+}
+
+variable "ami_id" {
+  description = "AMI ID of the Minecraft image built by Packer"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3a.medium"
+}
+
+variable "key_name" {
+  description = "Name of the EC2 keypair for SSH access"
+  type        = string
+}
+
+variable "subnet_id" {
+  description = "Subnet to launch into"
+  type        = string
+}
+
+variable "vpc_id" {
+  description = "VPC to associate security group with"
+  type        = string
+}
