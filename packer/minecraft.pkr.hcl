@@ -52,7 +52,8 @@ build {
   provisioner "shell" {
     inline = concat(
       [
-        "sudo mkdir -p /opt/minecraft/jars"
+        "sudo mkdir -p /opt/minecraft/jars",
+        "sudo chown ubuntu:ubuntu /opt/minecraft/jars"
       ],
       [
         for jar in var.minecraft_jars : <<EOC
