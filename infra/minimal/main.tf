@@ -42,15 +42,20 @@ resource "aws_security_group" "minecraft" {
 }
 
 resource "aws_instance" "minecraft" {
-  ami                         = var.ami_id
-  instance_type               = var.instance_type
-  subnet_id                   = var.subnet_id
-  vpc_security_group_ids      = [aws_security_group.minecraft.id]
-  key_name                    = var.key_name
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
+  subnet_id              = var.subnet_id
+  vpc_security_group_ids = [aws_security_group.minecraft.id]
+  key_name               = var.key_name
 
   root_block_device {
     volume_size = 16
   }
+
+  user_data = <<-EOT
+              #!/bin/bash
+              /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version}
+              EOT
 
   tags = {
     Name = "minecraft-test"

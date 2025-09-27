@@ -35,3 +35,13 @@ variable "vpc_id" {
   description = "VPC to associate security group with"
   type        = string
 }
+
+variable "world_name" {
+  description = "Name of the default world"
+  default     = "default"
+}
+
+variable "world_version" {
+  description = "Minecraft Server Version for default world"
+  default     = "1.21.8"
+}
