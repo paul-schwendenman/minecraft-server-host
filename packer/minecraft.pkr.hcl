@@ -11,13 +11,13 @@ variable "minecraft_jars" {
   type = list(object({
     version = string
     url     = string
-    sha1    = string
+    sha256    = string
   }))
   default = [
     {
       version = "1.18.1"
       url     = "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar"
-      sha1    = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
+      sha256    = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
     }
   ]
 }
@@ -59,7 +59,7 @@ build {
         for jar in var.minecraft_jars : <<EOC
 echo 'Installing Minecraft ${jar.version}'
 curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar
-echo '${jar.sha1}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar' | sha1sum --check -
+echo "${jar.sha256}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar" | shasum -a256 -c -
 EOC
       ],
       [
