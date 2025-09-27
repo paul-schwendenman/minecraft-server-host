@@ -23,8 +23,8 @@ variable "minecraft_jars" {
 }
 
 source "amazon-ebs" "minecraft" {
-  region           = "us-east-2"
-  instance_type    = "t3a.medium"
+  region        = "us-east-2"
+  instance_type = "t3a.medium"
   source_ami_filter {
     filters = {
       name                = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
@@ -34,8 +34,8 @@ source "amazon-ebs" "minecraft" {
     owners      = ["099720109477"] # Canonical
     most_recent = true
   }
-  ssh_username     = "ubuntu"
-  ami_name         = "minecraft-ubuntu-{{timestamp}}"
+  ssh_username = "ubuntu"
+  ami_name     = "minecraft-ubuntu-{{timestamp}}"
 }
 
 build {
@@ -50,16 +50,24 @@ build {
   }
 
   provisioner "shell" {
-    inline = [
-      %{ for jar in var.minecraft_jars ~}
-      "echo 'Installing Minecraft ${jar.version}'",
-      "curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar",
-      "echo '${jar.sha1}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar' | sha1sum --check -",
-      %{ endfor ~}
-      "sudo chown -R root:root /opt/minecraft/jars",
-      "sudo chmod 755 /opt/minecraft/jars"
-    ]
+    inline = concat(
+      [
+        "sudo mkdir -p /opt/minecraft/jars"
+      ],
+      [
+        for jar in var.minecraft_jars : <<EOC
+echo 'Installing Minecraft ${jar.version}'
+curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar
+echo '${jar.sha1}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar' | sha1sum --check -
+EOC
+      ],
+      [
+        "sudo chown -R root:root /opt/minecraft/jars",
+        "sudo chmod 755 /opt/minecraft/jars"
+      ]
+    )
   }
+
 
   provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
   provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
