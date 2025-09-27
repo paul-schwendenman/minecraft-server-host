@@ -36,3 +36,12 @@ Build
 
     aws configure --profile minecraft
     AWS_PROFILE=minecraft packer build minecraft.pkr.hcl
+
+
+::
+
+    packer build -on-error=ask minecraft.pkr.hcl
+
+::
+
+    packer build -debug minecraft.pkr.hcl
