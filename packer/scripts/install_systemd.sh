@@ -33,6 +33,7 @@ ProtectHome=true
 NoNewPrivileges=true
 
 # Start
+Type=forking
 ExecStart=/usr/bin/screen -h 2048 -dmS mc-%i /usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
 ExecReload=/usr/bin/screen -S mc-%i -p 0 -X stuff "reload^M"
 
