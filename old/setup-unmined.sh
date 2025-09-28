@@ -92,14 +92,3 @@ echo "Map rebuild complete. Output at ${MAP_DIR}"
 EOF
 
 sudo chmod +x /srv/minecraft-server/rebuild-map.sh
-
-# --- Systemd override for Minecraft service ---
-sudo mkdir -p /etc/systemd/system/minecraft.service.d
-sudo tee /etc/systemd/system/minecraft.service.d/override.conf > /dev/null << EOF
-[Service]
-ExecStopPost=/srv/minecraft-server/rebuild-map.sh
-EOF
-
-# Reload systemd to apply override
-sudo systemctl daemon-reexec
-sudo systemctl daemon-reload

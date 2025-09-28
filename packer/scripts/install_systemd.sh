@@ -43,7 +43,7 @@ ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-a
 ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} stop
 
 # Map rebuild after stop
-#ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world
+ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world
 
 Restart=on-failure
 RestartSec=20
