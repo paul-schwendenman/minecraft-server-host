@@ -35,11 +35,11 @@ fi
 
 if [[ "${COUNT}" -eq 0 ]]; then
   if [ -f "${TOUCH_FILE}" ]; then
-    logger -t autoshutdown "No players twice in a row — shutting down now"
+    logger -t autoshutdown "No players - second check, shutting down now"
     rm -f "${TOUCH_FILE}"
     sudo /sbin/poweroff
   else
-    logger -t autoshutdown "No players — first check, will shut down if still empty next time"
+    logger -t autoshutdown "No players — first check, will shut down next time"
     touch "${TOUCH_FILE}"
   fi
 else
