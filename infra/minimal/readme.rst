@@ -54,3 +54,21 @@ Use an AWS profile::
     aws configure --profile minecraft
 
 And then append your commands with `AWS_PROFILE=minecraft`
+
+---
+
+::
+
+    systemctl list-timers --all | grep autoshutdown
+    journalctl -u autoshutdown.timer -f
+    journalctl -u autoshutdown.service -f
+    journalctl -u autoshutdown.service -n 50 --no-pager
+
+::
+
+    sudo systemctl status minecraft@default
+    journalctl -u minecraft@default -n 50 --no-pager
+
+Manual trigger::
+
+    sudo systemctl start autoshutdown.service
