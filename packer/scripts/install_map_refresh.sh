@@ -10,6 +10,7 @@ After=network.target
 Type=oneshot
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
+ExecStartPre=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say Saving map..."
 ExecStart=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
 ExecStartPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/*/world
 EOF
