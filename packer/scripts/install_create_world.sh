@@ -32,9 +32,9 @@ sudo chown -R minecraft:minecraft "$WORLD_DIR"
 sudo -u minecraft ln -sf "$JAR_PATH" "${WORLD_DIR}/server.jar"
 
 # Accept EULA
-sudo -u minecraft tee "${WORLD_DIR}/eula.txt" >/dev/null <<EOF
+sudo -u minecraft tee "${WORLD_DIR}/eula.txt" >/dev/null <<EOEULA
 eula=true
-EOF
+EOEULA
 
 # Load shared RCON settings
 source /etc/minecraft.env
