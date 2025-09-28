@@ -12,7 +12,14 @@ MINECRAFT_HOME="/srv/minecraft-server"
 TOUCH_FILE="${MINECRAFT_HOME}/no_one_playing"
 
 # Load shared RCON settings
-source /etc/minecraft.env
+if [[ -z "${RCON_PASSWORD:-}" || -z "${RCON_PORT:-}" ]]; then
+  if [[ -r /etc/minecraft.env ]]; then
+    source /etc/minecraft.env
+  else
+    echo "Error: RCON_PASSWORD/RCON_PORT not set and /etc/minecraft.env not readable" >&2
+    exit 1
+  fi
+fi
 
 # If anyone is SSH’d in, skip shutdown
 if who | grep 'pts/' >/dev/null 2>&1; then
