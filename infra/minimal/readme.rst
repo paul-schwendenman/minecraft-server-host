@@ -72,3 +72,16 @@ And then append your commands with `AWS_PROFILE=minecraft`
 Manual trigger::
 
     sudo systemctl start autoshutdown.service
+
+How to op a player::
+
+    export $(sudo cat /etc/minecraft.env | xargs)
+    mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" "op YourPlayerName"
+
+Or print seed::
+
+    mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" "seed"
+
+Deop::
+
+    mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" "deop YourPlayerName"
