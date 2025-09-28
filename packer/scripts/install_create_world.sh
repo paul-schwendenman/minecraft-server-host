@@ -39,9 +39,6 @@ EOEULA
 # Load shared RCON settings
 source /etc/minecraft.env
 
-# Link jar
-ln -s "$JAR_PATH" "${WORLD_DIR}/server.jar" || true
-
 # server.properties (RCON + MOTD)
 if [[ ! -f "${WORLD_DIR}/server.properties" ]]; then
   sudo -u minecraft tee "${WORLD_DIR}/server.properties" >/dev/null <<EOPROP
@@ -54,8 +51,8 @@ EOPROP
 fi
 
 # --- Systemd enable ---
-sudo systemctl enable "minecraft@${WORLD}"
-sudo systemctl start "minecraft@${WORLD}"
+sudo systemctl enable "minecraft@${WORLD}.service"
+sudo systemctl start "minecraft@${WORLD}.service"
 #sudo systemctl enable --now "minecraft@${WORLD}.service"
 
 # --- Map directory ---
