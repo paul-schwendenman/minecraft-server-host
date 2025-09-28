@@ -56,6 +56,13 @@ sudo tee /usr/local/bin/rebuild-map.sh >/dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "$WORLD_PATH" == *"*"* ]]; then
+  for w in $WORLD_PATH; do
+    [ -d "$w" ] && "$0" "$w"
+  done
+  exit 0
+fi
+
 WORLD_PATH="${1:-/srv/minecraft-server/world}"
 MAP_DIR="/var/www/map"
 UNMINED="/opt/unmined/unmined-cli"
