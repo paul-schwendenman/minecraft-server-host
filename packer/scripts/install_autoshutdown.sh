@@ -21,17 +21,17 @@ if [[ -z "${RCON_PASSWORD:-}" || -z "${RCON_PORT:-}" ]]; then
   fi
 fi
 
+# Query via RCON
+OUTPUT=$(mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" list || true)
+COUNT=$(echo "$OUTPUT" | awk -F' ' '/There are/ {print $3}' || echo "0")
+logger -t autoshutdown "RCON reports $COUNT players online"
+
 # If anyone is SSH’d in, skip shutdown
 if who | grep 'pts/' >/dev/null 2>&1; then
   [ -f "${TOUCH_FILE}" ] && rm -f "${TOUCH_FILE}"
   logger -t autoshutdown "Skipping shutdown: active SSH session(s) detected"
   exit 0
 fi
-
-# Query via RCON
-OUTPUT=$(mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" list || true)
-COUNT=$(echo "$OUTPUT" | awk -F' ' '/There are/ {print $3}' || echo "0")
-logger -t autoshutdown "RCON reports $COUNT players online"
 
 if [[ "${COUNT}" -eq 0 ]]; then
   if [ -f "${TOUCH_FILE}" ]; then
