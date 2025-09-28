@@ -73,6 +73,20 @@ build {
   sources = ["source.amazon-ebs.minecraft"]
 
   provisioner "shell" { script = "scripts/install_deps.sh" }
+
+  provisioner "shell" {
+    inline = [
+      # generate a random password during AMI build
+      "RCON_PASS=$(openssl rand -hex 16)",
+
+      "echo \"RCON_PASSWORD=$RCON_PASS\" | sudo tee /etc/minecraft.env",
+      "echo \"RCON_PORT=25575\" | sudo tee -a /etc/minecraft.env",
+
+      "sudo chown root:root /etc/minecraft.env",
+      "sudo chmod 600 /etc/minecraft.env"
+    ]
+  }
+
   provisioner "shell" { script = "scripts/install_systemd.sh" }
 
   provisioner "shell" {

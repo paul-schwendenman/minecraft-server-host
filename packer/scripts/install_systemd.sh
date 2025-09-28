@@ -25,6 +25,7 @@ WorkingDirectory=/srv/minecraft-server/%i
 User=minecraft
 Group=minecraft
 UMask=002
+EnvironmentFile=-/etc/minecraft.env
 
 # Harden a bit
 PrivateTmp=true
@@ -33,15 +34,16 @@ ProtectHome=true
 NoNewPrivileges=true
 
 # Start
-Type=forking
-ExecStart=/usr/bin/screen -h 2048 -dmS mc-%i /usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
-ExecReload=/usr/bin/screen -S mc-%i -p 0 -X stuff "reload^M"
+ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
 
-# Graceful shutdown; map rebuild hook added via drop-in
-ExecStop=/usr/bin/screen -S mc-%i -p 0 -X stuff "say SERVER SHUTTING DOWN. Saving map...^M"
-ExecStop=/usr/bin/screen -S mc-%i -p 0 -X stuff "save-all^M"
-ExecStop=/usr/bin/screen -S mc-%i -p 0 -X stuff "stop^M"
-TimeoutStopSec=30
+ExecReload=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} reload
+
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say SERVER SHUTTING DOWN. Saving map..."
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} stop
+
+# Map rebuild after stop
+#ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world
 
 Restart=on-failure
 RestartSec=20
