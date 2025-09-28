@@ -7,13 +7,14 @@ sudo tee /usr/local/bin/create-world.sh >/dev/null <<'EOF'
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-  echo "Usage: $0 <world-name> <jar-version>"
-  echo "Example: $0 vanilla-121 1.21.1"
+  echo "Usage: $0 <world-name> <jar-version> [seed]"
+  echo "Example: $0 vanilla-121 1.21.1 8675309"
   exit 1
 fi
 
 WORLD="$1"
 VERSION="$2"
+SEED="${3:-}"
 
 WORLD_DIR="/srv/minecraft-server/${WORLD}"
 JAR_PATH="/opt/minecraft/jars/minecraft_server_${VERSION}.jar"
@@ -48,6 +49,9 @@ rcon.password=${RCON_PASSWORD}
 motd=Welcome to ${WORLD}
 level-name=world
 EOPROP
+  if [[ -n "$SEED" ]]; then
+    echo "level-seed=${SEED}" | sudo tee -a "${WORLD_DIR}/server.properties" >/dev/null
+  fi
 fi
 
 # --- Systemd enable ---
