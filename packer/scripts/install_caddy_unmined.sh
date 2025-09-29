@@ -11,6 +11,7 @@ if [[ ! -x "${UNMINED_DIR}/unmined-cli" ]]; then
   sudo mkdir -p "${UNMINED_DIR}"
 
   wget -O /tmp/unmined-cli.tgz "https://unmined.net/download/unmined-cli-linux-x64-dev/"
+  echo "9509f4aac9f8efac698931bd71f057bd3dbf8aaa717f6f158dc69ae0be33cfca  /tmp/unmined-cli.tgz" | sha256sum -c -
   tar -xzf /tmp/unmined-cli.tgz -C /tmp
 
   EXTRACTED_DIR=$(find /tmp -maxdepth 1 -type d -name "unmined-cli_*_linux-x64" | head -n1)
