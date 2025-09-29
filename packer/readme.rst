@@ -7,6 +7,44 @@ for building the base Minecraft AMI.
 The AMI contains all dependencies and helper scripts required to run and
 manage one or more Minecraft worlds.
 
+Architecture Overview
+---------------------
+
+::
+
+   +------------------+        +---------------------+
+   |   Terraform      |        |   Packer Build      |
+   | (launch AMI)     |        | (create AMI image)  |
+   +--------+---------+        +----------+----------+
+            |                             |
+            v                             v
+   +----------------------------------------------+
+   |                EC2 Instance                  |
+   |----------------------------------------------|
+   |  Systemd Units:                              |
+   |   - minecraft@.service (per world)           |
+   |   - autoshutdown.timer/service               |
+   |   - map-rebuild.timer/service                |
+   |                                              |
+   |  Tools & Scripts:                            |
+   |   - create-world.sh                          |
+   |   - rebuild-map.sh                           |
+   |   - autoshutdown.sh                          |
+   |   - mcrcon / mcstatus                        |
+   |                                              |
+   |  Dependencies:                               |
+   |   - OpenJDK 21                               |
+   |   - uNmINeD CLI                              |
+   |   - Caddy (map web server)                   |
+   +----------------------------------------------+
+                      |
+                      v
+              +-----------------+
+              |   Caddy Server  |
+              | (serves maps at |
+              |  /var/www/map)  |
+              +-----------------+
+
 Included Tools & Scripts
 ------------------------
 
