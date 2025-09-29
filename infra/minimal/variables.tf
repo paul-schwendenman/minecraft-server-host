@@ -45,3 +45,8 @@ variable "world_version" {
   description = "Minecraft Server Version for default world"
   default     = "1.21.8"
 }
+
+variable "world_seed" {
+  description = "Minecraft Server Seed"
+  default     = ""
+}

@@ -54,7 +54,7 @@ resource "aws_instance" "minecraft" {
 
   user_data = <<-EOT
               #!/bin/bash
-              /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version}
+              /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
               EOT
 
   tags = {
