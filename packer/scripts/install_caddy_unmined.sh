@@ -91,12 +91,19 @@ mkdir -p "${MAP_DIR}"
 
 # --- Rebuild landing page ---
 INDEX="${MAP_ROOT}/index.html"
+ACTIVE_WORLDS=$(systemctl list-units --state=running 'minecraft@*.service' \
+    | awk -F'[@.]' '{print $2}')
+
 {
   echo "<html><head><title>Minecraft Worlds</title></head><body>"
   echo "<h1>Available Worlds</h1><ul>"
   for d in "${MAP_ROOT}"/*/; do
     name=$(basename "$d")
-    echo "<li><a href=\"./${name}/\">${name}</a></li>"
+    if echo "$ACTIVE_WORLDS" | grep -qw "$name"; then
+      echo "<li><b><a href=\"./${name}/\">${name}</a> (active)</b></li>"
+    else
+      echo "<li><a href=\"./${name}/\">${name}</a></li>"
+    fi
   done
   echo "</ul></body></html>"
 } > "$INDEX"
