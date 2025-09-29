@@ -56,6 +56,9 @@ sudo tee /usr/local/bin/rebuild-map.sh >/dev/null <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
+WORLD_PATH="${1:-/srv/minecraft-server/world}"
+
+# If WORLD_PATH is a glob, expand it and recurse
 if [[ "$WORLD_PATH" == *"*"* ]]; then
   for w in $WORLD_PATH; do
     [ -d "$w" ] && "$0" "$w"
@@ -63,8 +66,7 @@ if [[ "$WORLD_PATH" == *"*"* ]]; then
   exit 0
 fi
 
-WORLD_PATH="${1:-/srv/minecraft-server/world}"
-MAP_DIR="/var/www/map"
+MAP_ROOT="/var/www/map"
 UNMINED="/opt/unmined/unmined-cli"
 
 if [[ ! -x "${UNMINED}" ]]; then
@@ -72,7 +74,13 @@ if [[ ! -x "${UNMINED}" ]]; then
   exit 1
 fi
 
+# Derive a world name from the path (basename of parent dir)
+WORLD_NAME=$(basename "$(dirname "$WORLD_PATH")")
+MAP_DIR="${MAP_ROOT}/${WORLD_NAME}"
+
+echo "Rebuilding map for world '${WORLD_NAME}' -> ${MAP_DIR}"
 mkdir -p "${MAP_DIR}"
+
 "${UNMINED}" web render \
   --world="${WORLD_PATH}" \
   --output="${MAP_DIR}" \
