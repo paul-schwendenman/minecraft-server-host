@@ -88,6 +88,20 @@ mkdir -p "${MAP_DIR}"
   --zoomin=4 \
   --shadows=3d \
   --players
+
+# --- Rebuild landing page ---
+INDEX="${MAP_ROOT}/index.html"
+{
+  echo "<html><head><title>Minecraft Worlds</title></head><body>"
+  echo "<h1>Available Worlds</h1><ul>"
+  for d in "${MAP_ROOT}"/*/; do
+    name=$(basename "$d")
+    echo "<li><a href=\"./${name}/\">${name}</a></li>"
+  done
+  echo "</ul></body></html>"
+} > "$INDEX"
+
+echo "Landing page regenerated at ${INDEX}"
 EOF
 sudo chmod 0755 /usr/local/bin/rebuild-map.sh
 
