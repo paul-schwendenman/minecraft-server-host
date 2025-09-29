@@ -85,3 +85,11 @@ Or print seed::
 Deop::
 
     mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" "deop YourPlayerName"
+
+
+## Caddy
+
+::
+
+    systemctl status caddy
+    journalctl -u caddy --no-pager | less +G
