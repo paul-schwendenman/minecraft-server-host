@@ -63,20 +63,6 @@ sudo systemctl start "minecraft@${WORLD}.service"
 sudo mkdir -p "$MAP_DIR"
 sudo chown -R minecraft:minecraft "$MAP_DIR"
 
-# --- Update Caddy config ---
-CADDYFILE="/etc/caddy/Caddyfile"
-BLOCK="
-handle_path /map/${WORLD}/* {
-    root * ${MAP_DIR}
-    file_server
-}
-"
-
-if ! grep -q "/map/${WORLD}" "$CADDYFILE"; then
-  echo "$BLOCK" | sudo tee -a "$CADDYFILE" >/dev/null
-  sudo systemctl reload caddy
-fi
-
 # --- Success ---
 echo "World '${WORLD}' created with jar version ${VERSION}."
 echo "Minecraft running as systemd unit minecraft@${WORLD}."
