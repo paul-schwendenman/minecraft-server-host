@@ -36,6 +36,7 @@ resource "aws_instance" "minecraft" {
   vpc_security_group_ids      = [aws_security_group.minecraft.id]
   key_name                    = var.key_name
   associate_public_ip_address = true
+  availability_zone           = var.availability_zone
 
   root_block_device {
     volume_size = var.root_volume_size
@@ -77,7 +78,7 @@ resource "aws_instance" "minecraft" {
 }
 
 resource "aws_ebs_volume" "world" {
-  availability_zone = aws_instance.minecraft.availability_zone
+  availability_zone = var.availability_zone
   size              = var.data_volume_size
   type              = "gp3"
 

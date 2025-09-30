@@ -8,6 +8,11 @@ variable "ami_id" {
   type        = string
 }
 
+variable "availability_zone" {
+  description = "Availability Zone where the server and its world volume should be placed"
+  type        = string
+}
+
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
