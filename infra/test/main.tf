@@ -32,3 +32,15 @@ module "mc_stack" {
   ssh_cidr_blocks  = ["104.230.245.46/32"]
   world_version    = "1.21.8"
 }
+
+output "server_public_ip" {
+  value = module.mc_stack.public_ip
+}
+
+output "server_private_ip" {
+  value = module.mc_stack.private_ip
+}
+
+output "server_ipv6" {
+  value = module.mc_stack.ipv6_addresses
+}
