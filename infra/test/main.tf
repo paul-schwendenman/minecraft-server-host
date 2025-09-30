@@ -9,6 +9,17 @@ data "aws_subnets" "default" {
   }
 }
 
+variable "aws_profile" {
+  description = "AWS CLI profile to use"
+  type        = string
+  default     = "minecraft"
+}
+
+provider "aws" {
+  region  = "us-east-2"
+  profile = var.aws_profile
+}
+
 module "mc_stack" {
   source           = "../modules/mc_stack"
   name             = "minecraft-test"
