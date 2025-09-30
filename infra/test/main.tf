@@ -8,4 +8,5 @@ module "mc_stack" {
   key_name         = "minecraft-packer"
   root_volume_size = 8
   ssh_cidr_blocks  = ["104.230.245.46/32"]
+  world_version    = "1.21.8"
 }

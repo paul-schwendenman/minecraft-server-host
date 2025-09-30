@@ -52,3 +52,20 @@ variable "ssh_cidr_blocks" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "world_name" {
+  description = "Minecraft world name"
+  type        = string
+  default     = "default"
+}
+
+variable "world_version" {
+  description = "Minecraft server version"
+  type        = string
+}
+
+variable "world_seed" {
+  description = "Seed for Minecraft world"
+  type        = string
+  default     = ""
+}
