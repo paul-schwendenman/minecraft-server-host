@@ -1,6 +1,7 @@
 .terraform/
 *.out
 *.tfstate
+*.tfstate.backup
 *.tfvars
 
 # Generated Zipfile
