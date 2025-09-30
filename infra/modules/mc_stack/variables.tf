@@ -35,6 +35,18 @@ variable "root_volume_size" {
   default     = 8
 }
 
+variable "data_volume_size" {
+  description = "Size of Minecraft world EBS volume (GB)"
+  type        = number
+  default     = 8
+}
+
+variable "data_volume_device_name" {
+  description = "Device name to attach EBS volume as (Linux)"
+  type        = string
+  default     = "/dev/sdf"
+}
+
 variable "ssh_cidr_blocks" {
   description = "CIDRs allowed to SSH"
   type        = list(string)
