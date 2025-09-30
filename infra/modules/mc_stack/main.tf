@@ -84,6 +84,9 @@ resource "aws_ebs_volume" "world" {
   tags = {
     Name = "${var.name}-world-data"
   }
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_volume_attachment" "world_attachment" {
