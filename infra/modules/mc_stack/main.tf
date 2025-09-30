@@ -63,6 +63,12 @@ resource "aws_instance" "minecraft" {
 
               # hand off to world creation script (will create world inside $MOUNT_POINT)
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+
+              mkdir -p /srv/minecraft-server/maps
+              if [ ! -L /var/www/maps ]; then
+                rm -rf /var/www/maps
+                ln -s /srv/minecraft-server/maps /var/www/maps
+              fi
               EOT
 
   tags = {
