@@ -89,7 +89,7 @@ EOF
 
 sudo chmod 0755 /usr/local/bin/mc-healthcheck.sh
 
-cat >/etc/systemd/system/minecraft-health.service <<'EOF'
+sudo tee /etc/systemd/system/minecraft-health.service >/dev/null <<'EOF'
 [Unit]
 Description=Minecraft stack health check
 Wants=network-online.target
