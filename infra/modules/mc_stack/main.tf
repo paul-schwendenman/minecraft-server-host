@@ -86,7 +86,7 @@ resource "aws_instance" "minecraft" {
               # Format the device --> Create Filesystem
               if ! blkid "${DEVICE}" >/dev/null 2>&1; then
                   echo "Creating filesystem on ${DEVICE}"
-                  mkfs.ext4 "${DEVICE}"
+                  mkfs.xfs "${DEVICE}"
               fi
 
               # Create MountPoint Dircetory
@@ -98,7 +98,7 @@ resource "aws_instance" "minecraft" {
 
               # input fstab Entry
               if ! grep -q "$UUID" /etc/fstab; then
-                  echo "UUID=$UUID ${MOUNT_POINT} ext4 defaults,nofail 0 2" >> /etc/fstab
+                  echo "UUID=$UUID ${MOUNT_POINT} xfs defaults,nofail 0 2" >> /etc/fstab
               fi
 
               # Check Conflicting mounts (if already occur)
