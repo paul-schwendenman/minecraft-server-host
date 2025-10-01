@@ -112,9 +112,9 @@ resource "aws_instance" "minecraft" {
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
 
               mkdir -p /srv/minecraft-server/maps
-              if [ ! -L /var/www/maps ]; then
-                rm -rf /var/www/maps
-                ln -s /srv/minecraft-server/maps /var/www/maps
+              if [ ! -L /var/www/map ]; then
+                rm -rf /var/www/map
+                ln -s /srv/minecraft-server/maps /var/www/map
               fi
               EOT
 
