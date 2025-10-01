@@ -48,26 +48,71 @@ resource "aws_instance" "minecraft" {
               set -euxo pipefail
 
               MOUNT_POINT="/srv/minecraft-server"
-              DEVICE="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${aws_ebs_volume.world.id}"
 
-              # wait for the symlink
-              for i in $(seq 1 60); do
-                [ -e "$DEVICE" ] && break
-                sleep 2
-              done
-              [ -e "$DEVICE" ] || { echo "ERROR: device $DEVICE not found"; exit 1; }
+              # Initialization wait
+              sleep 30
 
-              # format if needed
-              if ! blkid -o value -s TYPE "$DEVICE" >/dev/null 2>&1; then
-                mkfs.xfs -f "$DEVICE"
+              # Detect Root to Exclude
+              get_root_device() {
+                  root_mount=$(findmnt -n -o SOURCE /)
+                  echo "${root_mount%p*}"  # Removes partition suffix (p1---pn) --> To get Base Disk
+              }
+
+              ROOT_DEVICE=$(get_root_device)
+
+              DEVICE=""
+
+              # Check NVMe device first & Exclude ROOT
+              if ls /dev/nvme* 1>/dev/null 2>&1; then
+                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/nvme[0-9]" | awk '{print $1}' | grep -v "${ROOT_DEVICE}" | head -1)
               fi
 
-              mkdir -p "$MOUNT_POINT"
+              # No NVMe, check for xvd devices
+              if [ -z "${DEVICE}" ]; then
+                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/xvd[f-p]" | awk '{print $1}' | head -1)
+              fi
 
-              UUID="$(blkid -s UUID -o value "$DEVICE")"
-              grep -q "$UUID" /etc/fstab || echo "UUID=$UUID $MOUNT_POINT xfs defaults,nofail 0 2" >> /etc/fstab
+              # No NVMe || xvd, check for sd devices
+              if [ -z "${DEVICE}" ]; then
+                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/sd[f-p]" | awk '{print $1}' | head -1)
+              fi
 
-              mount -a
+              # None found --> Exit
+              if [ -z "${DEVICE}" ]; then
+                  echo "No suitable EBS volume found"
+                  exit 1
+              fi
+
+              # Format the device --> Create Filesystem
+              if ! blkid "${DEVICE}" >/dev/null 2>&1; then
+                  echo "Creating filesystem on ${DEVICE}"
+                  mkfs.ext4 "${DEVICE}"
+              fi
+
+              # Create MountPoint Dircetory
+              mkdir -p "${MOUNT_POINT}"
+
+              # Retrieve UUID of the device
+              UUID=$(blkid -s UUID -o value "${DEVICE}")
+              echo "Device UUID: $UUID"
+
+              # input fstab Entry
+              if ! grep -q "$UUID" /etc/fstab; then
+                  echo "UUID=$UUID ${MOUNT_POINT} ext4 defaults,nofail 0 2" >> /etc/fstab
+              fi
+
+              # Check Conflicting mounts (if already occur)
+              if mountpoint -q "${MOUNT_POINT}"; then
+                  umount "${MOUNT_POINT}"
+              fi
+
+              # Mount
+              mount "${MOUNT_POINT}" || mount -a
+
+
+              # Set Permissions
+              chown -R ubuntu:ubuntu "${MOUNT_POINT}"
+              chmod 755 "${MOUNT_POINT}"
 
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
 
