@@ -45,24 +45,30 @@ resource "aws_instance" "minecraft" {
 
   user_data = <<-EOT
               #!/bin/bash
-              set -eux
+              set -euxo pipefail
 
-              DEVICE="${var.data_volume_device_name}"
-              MOUNT_POINT="/srv/minecraft-server/"
+              MOUNT_POINT="/srv/minecraft-server"
+              DEVICE="/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_${aws_ebs_volume.world.id}"
 
-              # wait for device
-              while [ ! -e $DEVICE ]; do sleep 1; done
+              # wait for the symlink
+              for i in $(seq 1 60); do
+                [ -e "$DEVICE" ] && break
+                sleep 2
+              done
+              [ -e "$DEVICE" ] || { echo "ERROR: device $DEVICE not found"; exit 1; }
 
               # format if needed
-              if ! file -s $DEVICE | grep -q "filesystem"; then
-                mkfs.xfs -f $DEVICE
+              if ! blkid -o value -s TYPE "$DEVICE" >/dev/null 2>&1; then
+                mkfs.xfs -f "$DEVICE"
               fi
 
-              mkdir -p $MOUNT_POINT
-              mount $DEVICE $MOUNT_POINT
-              echo "$DEVICE $MOUNT_POINT xfs defaults,nofail 0 2" >> /etc/fstab
+              mkdir -p "$MOUNT_POINT"
 
-              # hand off to world creation script (will create world inside $MOUNT_POINT)
+              UUID="$(blkid -s UUID -o value "$DEVICE")"
+              grep -q "$UUID" /etc/fstab || echo "UUID=$UUID $MOUNT_POINT xfs defaults,nofail 0 2" >> /etc/fstab
+
+              mount -a
+
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
 
               mkdir -p /srv/minecraft-server/maps
