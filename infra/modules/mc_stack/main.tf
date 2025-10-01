@@ -55,6 +55,7 @@ resource "aws_instance" "minecraft" {
   key_name                    = var.key_name
   associate_public_ip_address = true
   availability_zone           = var.availability_zone
+  ipv6_address_count          = 1
 
   root_block_device {
     volume_size = var.root_volume_size
