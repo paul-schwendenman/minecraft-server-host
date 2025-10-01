@@ -45,74 +45,50 @@ resource "aws_instance" "minecraft" {
 
   user_data = <<-EOT
               #!/bin/bash
+              # volumes.sh for Minecraft
               set -euxo pipefail
 
               MOUNT_POINT="/srv/minecraft-server"
 
-              # Initialization wait
-              sleep 30
+              # Wait up to 2 min for block devices to appear
+              for i in $(seq 1 60); do
+                DISK_COUNT=$(lsblk -dn -o TYPE | grep -c disk || true)
+                if [ "$DISK_COUNT" -ge 2 ]; then
+                  break
+                fi
+                sleep 2
+              done
 
-              # Detect Root to Exclude
-              get_root_device() {
-                  root_mount=$(findmnt -n -o SOURCE /)
-                  echo "${root_mount%p*}"  # Removes partition suffix (p1---pn) --> To get Base Disk
-              }
-
-              ROOT_DEVICE=$(get_root_device)
+              # Detect root device to exclude
+              ROOT_DEVICE=$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" || true)
 
               DEVICE=""
 
-              # Check NVMe device first & Exclude ROOT
-              if ls /dev/nvme* 1>/dev/null 2>&1; then
-                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/nvme[0-9]" | awk '{print $1}' | grep -v "${ROOT_DEVICE}" | head -1)
+              # Find first non-root disk (NVMe first)
+              DEVICE=$(lsblk -dn -o NAME,TYPE | awk -v root="$ROOT_DEVICE" '$2=="disk" && $1!=root {print "/dev/"$1; exit}')
+
+              if [ -z "$DEVICE" ]; then
+                echo "No extra EBS device found"
+                exit 1
               fi
 
-              # No NVMe, check for xvd devices
-              if [ -z "${DEVICE}" ]; then
-                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/xvd[f-p]" | awk '{print $1}' | head -1)
+              # Format if needed
+              if ! blkid "$DEVICE" >/dev/null 2>&1; then
+                mkfs.xfs -f "$DEVICE"
               fi
 
-              # No NVMe || xvd, check for sd devices
-              if [ -z "${DEVICE}" ]; then
-                  DEVICE=$(lsblk -n -p -o NAME,TYPE | grep "disk" | grep -E "/dev/sd[f-p]" | awk '{print $1}' | head -1)
-              fi
+              mkdir -p "$MOUNT_POINT"
 
-              # None found --> Exit
-              if [ -z "${DEVICE}" ]; then
-                  echo "No suitable EBS volume found"
-                  exit 1
-              fi
+              UUID=$(blkid -s UUID -o value "$DEVICE")
 
-              # Format the device --> Create Filesystem
-              if ! blkid "${DEVICE}" >/dev/null 2>&1; then
-                  echo "Creating filesystem on ${DEVICE}"
-                  mkfs.xfs "${DEVICE}"
-              fi
-
-              # Create MountPoint Dircetory
-              mkdir -p "${MOUNT_POINT}"
-
-              # Retrieve UUID of the device
-              UUID=$(blkid -s UUID -o value "${DEVICE}")
-              echo "Device UUID: $UUID"
-
-              # input fstab Entry
               if ! grep -q "$UUID" /etc/fstab; then
-                  echo "UUID=$UUID ${MOUNT_POINT} xfs defaults,nofail 0 2" >> /etc/fstab
+                echo "UUID=$UUID $MOUNT_POINT xfs defaults,nofail 0 2" >> /etc/fstab
               fi
 
-              # Check Conflicting mounts (if already occur)
-              if mountpoint -q "${MOUNT_POINT}"; then
-                  umount "${MOUNT_POINT}"
-              fi
+              mount -a
 
-              # Mount
-              mount "${MOUNT_POINT}" || mount -a
-
-
-              # Set Permissions
-              chown -R ubuntu:ubuntu "${MOUNT_POINT}"
-              chmod 755 "${MOUNT_POINT}"
+              chown -R minecraft:minecraft "$MOUNT_POINT"
+              chmod 755 "$MOUNT_POINT"
 
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
 
