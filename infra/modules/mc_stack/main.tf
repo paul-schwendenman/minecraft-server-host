@@ -109,7 +109,14 @@ resource "aws_instance" "minecraft" {
               chown -R minecraft:minecraft "$MOUNT_POINT"
               chmod 755 "$MOUNT_POINT"
 
-              /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+              WORLD_DIR="$MOUNT_POINT/${var.world_name}"
+              # Check if world already exists
+              if [[ -f "$WORLD_DIR/server.jar" || -f "$WORLD_DIR/level.dat" ]]; then
+                echo "[user-data] World '${var.world_name}' already exists, skipping create-world.sh"
+              else
+                echo "[user-data] Creating new world '${var.world_name}'"
+                /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+              fi
 
               mkdir -p /srv/minecraft-server/maps
               if [ ! -L /var/www/map ]; then
