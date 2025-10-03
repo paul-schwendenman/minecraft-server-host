@@ -35,7 +35,8 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   restrictions {
     geo_restriction {
-      restriction_type = "none"
+      restriction_type = "whitelist"
+      locations        = ["US", "CA", "MX"]
     }
   }
 
