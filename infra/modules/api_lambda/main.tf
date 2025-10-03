@@ -23,8 +23,8 @@ resource "aws_iam_role_policy" "lambda_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "ec2:StartInstances",
           "ec2:StopInstances"
         ]
@@ -36,14 +36,24 @@ resource "aws_iam_role_policy" "lambda_policy" {
         Resource = "*" # AWS requires wildcard here
       },
       {
-        Effect   = "Allow"
-        Action   = [
+        Effect = "Allow"
+        Action = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:ListHostedZones",
+          "route53:ListResourceRecordSets",
+          "route53:ChangeResourceRecordSets"
+        ]
+        Resource = "*"
       }
+
     ]
   })
 }
@@ -60,14 +70,16 @@ resource "aws_lambda_function" "mc_control" {
   handler       = "handler.lambda_handler"
   runtime       = "python3.11"
 
-#   filename         = "${path.module}/lambda/lambda.zip"
-#   source_code_hash = filebase64sha256("${path.module}/lambda/lambda.zip")
+  #   filename         = "${path.module}/lambda/lambda.zip"
+  #   source_code_hash = filebase64sha256("${path.module}/lambda/lambda.zip")
   filename         = data.archive_file.lambda_zip.output_path
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
     variables = {
       INSTANCE_ID = var.instance_id
+      DNS_NAME    = var.dns_name
+      CORS_ORIGIN = var.cors_origin
     }
   }
 }

@@ -12,3 +12,15 @@ variable "instance_arn" {
   description = "EC2 instance ARN for Minecraft server"
   type        = string
 }
+
+variable "dns_name" {
+  description = "DNS record name to update (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "cors_origin" {
+  description = "CORS origin allowed in responses (optional)"
+  type        = string
+  default     = "*"
+}
