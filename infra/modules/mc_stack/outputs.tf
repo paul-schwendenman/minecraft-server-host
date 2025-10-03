@@ -2,6 +2,11 @@ output "instance_id" {
   value = aws_instance.minecraft.id
 }
 
+output "instance_arn" {
+  description = "The ARN of the Minecraft EC2 instance"
+  value       = aws_instance.minecraft.arn
+}
+
 output "public_ip" {
   value = aws_instance.minecraft.public_ip
 }

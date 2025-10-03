@@ -23,17 +23,21 @@ resource "aws_iam_role_policy" "lambda_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect = "Allow"
-        Action = [
+        Effect   = "Allow"
+        Action   = [
           "ec2:StartInstances",
-          "ec2:StopInstances",
-          "ec2:DescribeInstances"
+          "ec2:StopInstances"
         ]
-        Resource = "*"
+        Resource = var.instance_arn
       },
       {
-        Effect = "Allow"
-        Action = [
+        Effect   = "Allow"
+        Action   = "ec2:DescribeInstances"
+        Resource = "*" # AWS requires wildcard here
+      },
+      {
+        Effect   = "Allow"
+        Action   = [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
           "logs:PutLogEvents"

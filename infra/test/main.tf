@@ -34,6 +34,7 @@ module "api_lambda" {
   source      = "../modules/api_lambda"
   name        = "minecraft-test"
   instance_id = module.mc_stack.instance_id
+  instance_arn = module.mc_stack.instance_arn
 }
 
 output "server_public_ip" {
