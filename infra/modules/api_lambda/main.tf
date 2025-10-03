@@ -44,14 +44,22 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+data "archive_file" "lambda_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/handler.py"
+  output_path = "${path.module}/lambda/lambda.zip"
+}
+
 resource "aws_lambda_function" "mc_control" {
   function_name = "${var.name}-mc-control"
   role          = aws_iam_role.lambda_exec.arn
   handler       = "handler.lambda_handler"
   runtime       = "python3.11"
 
-  filename         = "${path.module}/lambda/lambda.zip"
-  source_code_hash = filebase64sha256("${path.module}/lambda/lambda.zip")
+#   filename         = "${path.module}/lambda/lambda.zip"
+#   source_code_hash = filebase64sha256("${path.module}/lambda/lambda.zip")
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
 
   environment {
     variables = {
