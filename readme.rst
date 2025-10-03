@@ -45,3 +45,19 @@ Build
 ::
 
     packer build -debug minecraft.pkr.hcl
+
+Testing
+========
+
+::
+
+    cd infra/test
+    terraform init
+    terraform plan
+    terraform apply
+
+::
+
+    cd ui/
+    pnpm build
+    aws s3 sync ./dist/ s3://minecraft-test-webapp
