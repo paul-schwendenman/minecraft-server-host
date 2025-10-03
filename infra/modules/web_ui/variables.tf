@@ -19,3 +19,9 @@ variable "zone_id" {
   type        = string
   default     = ""
 }
+
+variable "geo_whitelist" {
+  description = "Optional list of ISO country codes allowed (e.g., [\"US\", \"CA\", \"MX\"]). Empty = unrestricted"
+  type        = list(string)
+  default     = []
+}

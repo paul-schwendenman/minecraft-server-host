@@ -36,9 +36,9 @@ module "mc_stack" {
 }
 
 module "api_lambda" {
-  source      = "../modules/api_lambda"
-  name        = "minecraft-test"
-  instance_id = module.mc_stack.instance_id
+  source       = "../modules/api_lambda"
+  name         = "minecraft-test"
+  instance_id  = module.mc_stack.instance_id
   instance_arn = module.mc_stack.instance_arn
   dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
   zone_id      = data.aws_route53_zone.prod.zone_id
@@ -46,14 +46,17 @@ module "api_lambda" {
 }
 
 module "web_ui" {
-  source      = "../modules/web_ui"
-  name        = "minecraft-test"
+  source = "../modules/web_ui"
+  name   = "minecraft-test"
 
   api_endpoint = module.api_lambda.api_endpoint
 
   # optional DNS if you want a pretty domain
   # dns_name = "testui.minecraft.paulandsierra.com"
   # zone_id  = data.aws_route53_zone.prod.zone_id
+
+  # Restrict to North America for testing
+  geo_whitelist = ["US", "CA", "MX"]
 }
 
 output "server_public_ip" {
