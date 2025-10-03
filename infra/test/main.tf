@@ -45,6 +45,17 @@ module "api_lambda" {
   cors_origin  = "*"
 }
 
+module "web_ui" {
+  source      = "../modules/web_ui"
+  name        = "minecraft-test"
+
+  api_endpoint = module.api_lambda.api_endpoint
+
+  # optional DNS if you want a pretty domain
+  # dns_name = "testui.minecraft.paulandsierra.com"
+  # zone_id  = data.aws_route53_zone.prod.zone_id
+}
+
 output "server_public_ip" {
   value = module.mc_stack.public_ip
 }
@@ -57,7 +68,10 @@ output "server_ipv6" {
   value = module.mc_stack.ipv6_addresses
 }
 
-
 output "api_endpoint" {
   value = module.api_lambda.api_endpoint
+}
+
+output "webapp_url" {
+  value = module.web_ui.webapp_url
 }
