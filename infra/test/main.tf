@@ -9,6 +9,11 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+data "aws_route53_zone" "prod" {
+  name         = "minecraft.paulandsierra.com."
+  private_zone = false
+}
+
 module "networking" {
   source             = "../modules/networking"
   name               = "minecraft-test"
@@ -35,6 +40,9 @@ module "api_lambda" {
   name        = "minecraft-test"
   instance_id = module.mc_stack.instance_id
   instance_arn = module.mc_stack.instance_arn
+  dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
+  zone_id      = data.aws_route53_zone.prod.zone_id
+  cors_origin  = "*"
 }
 
 output "server_public_ip" {
