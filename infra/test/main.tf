@@ -30,6 +30,12 @@ module "mc_stack" {
   availability_zone = "us-east-2b"
 }
 
+module "api_lambda" {
+  source      = "../modules/api_lambda"
+  name        = "minecraft-test"
+  instance_id = module.mc_stack.instance_id
+}
+
 output "server_public_ip" {
   value = module.mc_stack.public_ip
 }
@@ -40,4 +46,9 @@ output "server_private_ip" {
 
 output "server_ipv6" {
   value = module.mc_stack.ipv6_addresses
+}
+
+
+output "api_endpoint" {
+  value = module.api_lambda.api_endpoint
 }
