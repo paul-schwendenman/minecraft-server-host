@@ -84,6 +84,12 @@ resource "aws_apigatewayv2_integration" "lambda" {
   integration_method = "POST"
 }
 
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.http.id
+  name        = "$default"
+  auto_deploy = true
+}
+
 resource "aws_apigatewayv2_route" "root" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "POST /{action}" # e.g. POST /start, POST /stop, POST /status
@@ -92,21 +98,22 @@ resource "aws_apigatewayv2_route" "root" {
 
 resource "aws_apigatewayv2_route" "status" {
   api_id    = aws_apigatewayv2_api.http.id
-  route_key = "GET /status"
+  route_key = "ANY /status"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "start" {
   api_id    = aws_apigatewayv2_api.http.id
-  route_key = "POST /start"
+  route_key = "ANY /start"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "stop" {
   api_id    = aws_apigatewayv2_api.http.id
-  route_key = "POST /stop"
+  route_key = "ANY /stop"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
+
 
 
 resource "aws_lambda_permission" "apigw" {
