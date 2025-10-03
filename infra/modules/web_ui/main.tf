@@ -22,8 +22,9 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   # Origin 2: API Gateway
   origin {
-    domain_name = replace(var.api_endpoint, ["https://", "http://"], "")
+    domain_name = replace(replace(var.api_endpoint, "https://", ""), "http://", "")
     origin_id   = "api-origin"
+
     custom_origin_config {
       origin_protocol_policy = "https-only"
       http_port              = 80
