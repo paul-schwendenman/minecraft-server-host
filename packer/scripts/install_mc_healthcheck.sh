@@ -44,9 +44,9 @@ fi
 
 # 3. Check autoshutdown timer/service
 echo "[*] Checking autoshutdown..."
-if systemctl is-enabled --quiet minecraft-autoshutdown.timer; then
+if systemctl is-enabled --quiet autoshutdown.timer; then
     echo "  ✔ autoshutdown timer is enabled"
-    systemctl list-timers --all | grep minecraft-autoshutdown || true
+    systemctl list-timers --all | grep autoshutdown || true
 else
     echo "  ✘ autoshutdown timer not enabled"
 fi
@@ -62,10 +62,10 @@ fi
 
 # 5. Check directories and symlink
 echo "[*] Checking map symlink..."
-if [[ -L /var/www/maps ]]; then
-    echo "  ✔ /var/www/maps is a symlink → $(readlink -f /var/www/maps)"
+if [[ -L /var/www/map ]]; then
+    echo "  ✔ /var/www/map is a symlink → $(readlink -f /var/www/map)"
 else
-    echo "  ✘ /var/www/maps is missing or not a symlink"
+    echo "  ✘ /var/www/map is missing or not a symlink"
 fi
 
 # 6. Check ports (Minecraft + Caddy)

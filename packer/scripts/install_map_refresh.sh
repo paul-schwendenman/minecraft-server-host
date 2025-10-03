@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-sudo tee /etc/systemd/system/minecraft-maprefresh.service > /dev/null <<'EOF'
+sudo tee /etc/systemd/system/minecraft-map-rebuild.service > /dev/null <<'EOF'
 [Unit]
 Description=Save world and rebuild uNmINeD map
 After=network.target
@@ -15,14 +15,14 @@ ExecStart=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD}
 ExecStartPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/*/world
 EOF
 
-sudo tee /etc/systemd/system/minecraft-maprefresh.timer > /dev/null <<'EOF'
+sudo tee /etc/systemd/system/minecraft-map-rebuild.timer > /dev/null <<'EOF'
 [Unit]
-Description=Run Minecraft map refresh periodically
+Description=Run Minecraft map rebuild periodically
 
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=15min
-Unit=minecraft-maprefresh.service
+Unit=minecraft-map-rebuild.service
 
 [Install]
 WantedBy=timers.target
@@ -30,4 +30,4 @@ EOF
 
 # Enable and start timer
 sudo systemctl daemon-reload
-sudo systemctl enable --now minecraft-maprefresh.timer
+sudo systemctl enable --now minecraft-map-rebuild.timer
