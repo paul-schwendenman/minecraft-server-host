@@ -1,5 +1,5 @@
 resource "aws_s3_bucket" "webapp" {
-  bucket = "${var.name}-webapp"
+  bucket        = "${var.name}-webapp"
   force_destroy = true
 }
 
@@ -30,6 +30,12 @@ resource "aws_cloudfront_distribution" "webapp" {
       cookies {
         forward = "none"
       }
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
     }
   }
 
