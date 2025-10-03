@@ -90,6 +90,25 @@ resource "aws_apigatewayv2_route" "root" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "status" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /status"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "start" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /start"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "stop" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "POST /stop"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
