@@ -68,6 +68,7 @@ resource "aws_instance" "minecraft" {
               set -euxo pipefail
 
               MOUNT_POINT="/srv/minecraft-server"
+              CONFIG_FILE="$MOUNT_POINT/minecraft.env"
 
               # Wait up to 2 min for block devices to appear
               for i in $(seq 1 60); do
@@ -110,6 +111,27 @@ resource "aws_instance" "minecraft" {
               chmod 755 "$MOUNT_POINT"
 
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+
+
+              # After mounting the EBS volume...
+
+              if [ -f "$CONFIG_FILE" ]; then
+                  echo "Reusing existing $CONFIG_FILE"
+                  rm -f /etc/minecraft.env
+                  ln -s "$CONFIG_FILE" /etc/minecraft.env
+              else
+                  if [ -f /etc/minecraft.env ]; then
+                      echo "Migrating existing /etc/minecraft.env to $CONFIG_FILE"
+                      mv /etc/minecraft.env "$CONFIG_FILE"
+                  else
+                      echo "Generating new $CONFIG_FILE"
+                      cat > "$CONFIG_FILE" <<EOF
+RCON_PASS=$(openssl rand -hex 16)
+RCON_PORT=25575
+EOF
+                  fi
+                  ln -s "$CONFIG_FILE" /etc/minecraft.env
+              fi
 
               mkdir -p /srv/minecraft-server/maps
               if [ ! -L /var/www/map ]; then
