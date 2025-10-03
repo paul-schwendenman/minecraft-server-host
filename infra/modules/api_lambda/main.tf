@@ -135,7 +135,17 @@ resource "aws_apigatewayv2_route" "stop" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
+resource "aws_apigatewayv2_route" "proxy_root" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "ANY /{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
 
+resource "aws_apigatewayv2_route" "proxy_api" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "ANY /api/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
 
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"

@@ -13,13 +13,13 @@ def lambda_handler(event, context):
 
     path = event.get("path", "/")
 
-    if path == "/status":
+    if path in ("/status", "/api/status"):
         response_message = describe_state(instance_id)
-    elif path == "/stop":
+    elif path in ("/stop", "/api/stop"):
         response_message = stop_instance(instance_id)
-    elif path == "/start":
+    elif path in ("/start", "/api/start"):
         response_message = start_instance(instance_id)
-    elif path == "/syncdns":
+    elif path in ("/syncdns", "/api/syncdns"):
         if dns_name:
             response_message = update_dns(instance_id, dns_name)
         else:
