@@ -19,7 +19,7 @@ module "networking" {
 module "mc_stack" {
   source            = "../modules/mc_stack"
   name              = "minecraft-test"
-  ami_id            = "ami-09b1684e1740cf826"
+  ami_id            = "ami-0b614a8d1bbd4e963"
   instance_type     = "t3.small"
   vpc_id            = module.networking.vpc_id
   subnet_id         = module.networking.public_subnet_id
