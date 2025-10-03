@@ -64,80 +64,10 @@ resource "aws_instance" "minecraft" {
 
   user_data = <<-EOT
               #!/bin/bash
-              # volumes.sh for Minecraft
-              set -euxo pipefail
-
-              MOUNT_POINT="/srv/minecraft-server"
-              CONFIG_FILE="$MOUNT_POINT/minecraft.env"
-
-              # Wait up to 2 min for block devices to appear
-              for i in $(seq 1 60); do
-                DISK_COUNT=$(lsblk -dn -o TYPE | grep -c disk || true)
-                if [ "$DISK_COUNT" -ge 2 ]; then
-                  break
-                fi
-                sleep 2
-              done
-
-              # Detect root device to exclude
-              ROOT_DEVICE=$(lsblk -no PKNAME "$(findmnt -no SOURCE /)" || true)
-
-              DEVICE=""
-
-              # Find first non-root disk (NVMe first)
-              DEVICE=$(lsblk -dn -o NAME,TYPE | awk -v root="$ROOT_DEVICE" '$2=="disk" && $1!=root {print "/dev/"$1; exit}')
-
-              if [ -z "$DEVICE" ]; then
-                echo "No extra EBS device found"
-                exit 1
-              fi
-
-              # Format if needed
-              if ! blkid "$DEVICE" >/dev/null 2>&1; then
-                mkfs.xfs -f "$DEVICE"
-              fi
-
-              mkdir -p "$MOUNT_POINT"
-
-              UUID=$(blkid -s UUID -o value "$DEVICE")
-
-              if ! grep -q "$UUID" /etc/fstab; then
-                echo "UUID=$UUID $MOUNT_POINT xfs defaults,nofail 0 2" >> /etc/fstab
-              fi
-
-              mount -a
-
-              chown -R minecraft:minecraft "$MOUNT_POINT"
-              chmod 755 "$MOUNT_POINT"
-
+              /usr/local/bin/mount-ebs.sh
+              /usr/local/bin/setup-env.sh
+              /usr/local/bin/setup-maps.sh
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
-
-
-              # After mounting the EBS volume...
-
-              if [ -f "$CONFIG_FILE" ]; then
-                  echo "Reusing existing $CONFIG_FILE"
-                  rm -f /etc/minecraft.env
-                  ln -s "$CONFIG_FILE" /etc/minecraft.env
-              else
-                  if [ -f /etc/minecraft.env ]; then
-                      echo "Migrating existing /etc/minecraft.env to $CONFIG_FILE"
-                      mv /etc/minecraft.env "$CONFIG_FILE"
-                  else
-                      echo "Generating new $CONFIG_FILE"
-                      cat > "$CONFIG_FILE" <<EOF
-RCON_PASS=$(openssl rand -hex 16)
-RCON_PORT=25575
-EOF
-                  fi
-                  ln -s "$CONFIG_FILE" /etc/minecraft.env
-              fi
-
-              mkdir -p /srv/minecraft-server/maps
-              if [ ! -L /var/www/map ]; then
-                rm -rf /var/www/map
-                ln -s /srv/minecraft-server/maps /var/www/map
-              fi
               EOT
 
   tags = {

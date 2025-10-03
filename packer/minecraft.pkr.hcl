@@ -125,5 +125,6 @@ EOC
   provisioner "shell" { script = "scripts/install_map_backup.sh" }
   provisioner "shell" { script = "scripts/install_world_backup.sh" }
   provisioner "shell" { script = "scripts/install_map_refresh.sh" }
+  provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
   provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
 }
