@@ -21,40 +21,49 @@ resource "aws_iam_role_policy" "lambda_policy" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ec2:StartInstances",
-          "ec2:StopInstances"
-        ]
-        Resource = var.instance_arn
-      },
-      {
-        Effect   = "Allow"
-        Action   = "ec2:DescribeInstances"
-        Resource = "*" # AWS requires wildcard here
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ]
-        Resource = "*"
-      },
-      {
-        Effect = "Allow"
-        Action = [
-          "route53:ListHostedZones",
-          "route53:ListResourceRecordSets",
-          "route53:ChangeResourceRecordSets"
-        ]
-        Resource = "*"
-      }
-
-    ]
+    Statement = concat(
+      [
+        {
+          Effect = "Allow"
+          Action = [
+            "ec2:StartInstances",
+            "ec2:StopInstances"
+          ]
+          Resource = var.instance_arn
+        },
+        {
+          Effect   = "Allow"
+          Action   = "ec2:DescribeInstances"
+          Resource = "*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "logs:CreateLogGroup",
+            "logs:CreateLogStream",
+            "logs:PutLogEvents"
+          ]
+          Resource = "*"
+        },
+        {
+          "Effect" : "Allow",
+          "Action" : [
+            "route53:ListHostedZones"
+          ],
+          "Resource" : "*"
+        }
+      ],
+      var.zone_id != "" ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "route53:ListResourceRecordSets",
+            "route53:ChangeResourceRecordSets"
+          ]
+          Resource = "arn:aws:route53:::hostedzone/${var.zone_id}"
+        }
+      ] : []
+    )
   })
 }
 

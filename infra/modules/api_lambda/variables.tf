@@ -24,3 +24,9 @@ variable "cors_origin" {
   type        = string
   default     = "*"
 }
+
+variable "zone_id" {
+  description = "Optional Route53 hosted zone ID to allow DNS updates against"
+  type        = string
+  default     = ""
+}
