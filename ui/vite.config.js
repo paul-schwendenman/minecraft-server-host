@@ -4,10 +4,14 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { mockServer } from './plugins/mock-server'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    mockServer(),
-    svelte()
-  ],
+export default defineConfig(({ command, mode }) => {
+  const isDev = command === 'serve' || mode === 'development'
+
+  return {
+    plugins: [
+      tailwindcss(),
+      ...(isDev ? [mockServer()] : []),
+      svelte(),
+    ],
+  }
 })
