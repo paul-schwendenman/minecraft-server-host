@@ -1,1 +1,40 @@
 @import "tailwindcss";
+
+
+@layer base {
+    body {
+        @apply font-sans;
+    }
+
+    h1 {
+        @apply text-2xl my-4 font-semibold;
+    }
+
+    p {
+        @apply my-2;
+    }
+}
+
+.btn {
+    @apply text-gray-700 text-lg bg-gray-200 border border-gray-500 p-4 m-px outline-none rounded;
+}
+
+body {
+    @apply text-gray-700 bg-gray-100;
+}
+
+@screen sm {
+    .btn {
+        @apply py-2 px-4 text-base;
+    }
+}
+
+@variant dark {
+  body {
+    @apply text-white bg-gray-900;
+  }
+
+  .btn {
+    @apply text-gray-100 bg-gray-700 border-none;
+  }
+}
