@@ -14,7 +14,7 @@ def lambda_handler(event, context):
     path = event.get("path", "/")
 
     if path in ("/status", "/api/status"):
-        response_message = describe_state(instance_id)
+        response_message = describe_state(instance_id, dns_name)
     elif path in ("/stop", "/api/stop"):
         response_message = stop_instance(instance_id)
     elif path in ("/start", "/api/start"):
@@ -48,9 +48,20 @@ def get_instance(instance_id):
     return ec2.describe_instances(InstanceIds=[instance_id])["Reservations"][0]["Instances"][0]
 
 
-def get_dns_record(hosted_zone_id, record_type="A"):
-    sets = r53.list_resource_record_sets(HostedZoneId=hosted_zone_id)["ResourceRecordSets"]
-    return next((item for item in sets if item.get("Type") == record_type), {})
+def get_dns_record(hosted_zone_id, record_name, record_type="A"):
+    result = r53.list_resource_record_sets(
+        HostedZoneId=hosted_zone_id,
+        StartRecordName=record_name,
+        StartRecordType=record_type,
+        MaxItems="1",
+    )
+    for item in result["ResourceRecordSets"]:
+        if (
+            item["Type"] == record_type
+            and item["Name"].rstrip(".") == record_name.rstrip(".")
+        ):
+            return item
+    return {}
 
 
 def get_hosted_zone_id():
@@ -58,7 +69,7 @@ def get_hosted_zone_id():
     return zones[0]["Id"] if zones else None
 
 
-def describe_state(instance_id):
+def describe_state(instance_id, dns_name):
     instance = get_instance(instance_id)
 
     state = instance["State"]["Name"]
@@ -69,7 +80,7 @@ def describe_state(instance_id):
         hosted_zone_id = os.environ.get("ZONE_ID", get_hosted_zone_id())
 
         if hosted_zone_id:
-            record = get_dns_record(hosted_zone_id)
+            record = get_dns_record(hosted_zone_id, dns_name)
             dns_record = {
                 "name": record.get("Name"),
                 "value": record.get("ResourceRecords", [{}])[0].get("Value"),
