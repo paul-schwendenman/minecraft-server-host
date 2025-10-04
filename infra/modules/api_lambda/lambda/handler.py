@@ -66,7 +66,8 @@ def describe_state(instance_id):
 
     dns_record = {"name": None, "value": None, "type": None}
     try:
-        hosted_zone_id = get_hosted_zone_id()
+        hosted_zone_id = os.environ.get("ZONE_ID", get_hosted_zone_id())
+
         if hosted_zone_id:
             record = get_dns_record(hosted_zone_id)
             dns_record = {

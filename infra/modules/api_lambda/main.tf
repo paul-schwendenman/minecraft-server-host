@@ -89,6 +89,7 @@ resource "aws_lambda_function" "mc_control" {
       INSTANCE_ID = var.instance_id
       DNS_NAME    = var.dns_name
       CORS_ORIGIN = var.cors_origin
+      ZONE_ID     = var.zone_id
     }
   }
 }
