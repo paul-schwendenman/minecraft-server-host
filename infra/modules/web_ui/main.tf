@@ -10,6 +10,14 @@ resource "aws_s3_bucket_website_configuration" "webapp" {
   }
 }
 
+resource "aws_cloudfront_origin_access_control" "webapp" {
+  name                              = "${var.name}-oac"
+  description                       = "Access control for ${var.name} CloudFront to S3"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
 resource "aws_cloudfront_distribution" "webapp" {
   enabled             = true
   default_root_object = "index.html"
@@ -18,6 +26,8 @@ resource "aws_cloudfront_distribution" "webapp" {
   origin {
     domain_name = aws_s3_bucket.webapp.bucket_regional_domain_name
     origin_id   = "webapp-origin"
+
+    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
   }
 
   # Origin 2: API Gateway
@@ -74,6 +84,30 @@ resource "aws_cloudfront_distribution" "webapp" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+}
+
+resource "aws_s3_bucket_policy" "webapp" {
+  bucket = aws_s3_bucket.webapp.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid       = "AllowCloudFrontServicePrincipalRead",
+        Effect    = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Action = ["s3:GetObject"],
+        Resource = "${aws_s3_bucket.webapp.arn}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.webapp.arn
+          }
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_route53_record" "webapp_dns" {
