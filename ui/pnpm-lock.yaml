@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      workbox-window:
-        specifier: ^7.3.0
-        version: 7.3.0
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^6.2.1
