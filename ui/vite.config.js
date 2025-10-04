@@ -23,8 +23,8 @@ export default defineConfig(({ command, mode }) => {
           display: 'standalone',
           orientation: 'portrait-primary',
           start_url: '/',
-          background_color: '#1a202c', // tailwind gray-900 (v3)
-          theme_color: '#1a202c',
+          background_color: '#18181b',
+          theme_color: '#18181b',
           icons: [
             {
               src: '/favicon.png',
