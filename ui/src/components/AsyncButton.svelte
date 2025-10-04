@@ -1,25 +1,25 @@
 <script>
-    import Spinner from './Spinner.svelte';
+  import Spinner from "./Spinner.svelte";
 
-    export let action;
+  export let action;
 
-    let pending = false;
+  let pending = false;
 
-    const handleClick = () => {
-        if(!pending) {
-            pending = true
+  const handleClick = () => {
+    if (!pending) {
+      pending = true;
 
-            action().then(() => {
-                pending = false;
-            });
-        }
+      action().then(() => {
+        pending = false;
+      });
     }
+  };
 </script>
 
 <button on:click={handleClick} class="btn {$$props.class}" disabled={pending}>
-    {#if !pending}
-        <slot></slot>
-    {:else}
-        <Spinner />
-    {/if}
+  {#if !pending}
+    <slot></slot>
+  {:else}
+    <Spinner />
+  {/if}
 </button>
