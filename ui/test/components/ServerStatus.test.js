@@ -1,138 +1,109 @@
-import ServerStatus from "../../src/components/ServerStatus.svelte";
-import { render } from '@testing-library/svelte';
-import chai, { expect } from 'chai';
-import chaiDom from 'chai-dom';
+import { render } from '@testing-library/svelte'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { writable } from 'svelte/store'
+import '@testing-library/jest-dom'
+import * as stores from '../../src/stores.js'
+import ServerStatus from '../../src/components/ServerStatus.svelte'
 
-chai.use(chaiDom);
+describe('ServerStatus', () => {
+    beforeEach(() => {
+        vi.restoreAllMocks()
+    })
 
-describe(ServerStatus.name, () => {
-    describe("base", () => {
-        it("displays dns name as heading", () => {
-            const { getByRole } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {
-                        name: "example.test"
-                    },
-                    instance: {}
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+    describe('base', () => {
+        it('displays DNS name as heading', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'stopped', ip_address: null },
+                    dns_record: { name: 'example.test' }
+                })
+            )
 
-           expect(getByRole("heading", {name: "example.test"})).to.exist;
-        });
+            const { getByRole } = render(ServerStatus)
+            expect(getByRole('heading', { name: 'example.test' })).toBeInTheDocument()
+        })
 
-        it("displays instance state", () => {
-            const { getByText } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {},
-                    instance: {
-                        state: "terminated"
-                    }
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+        it('displays instance state', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'terminated' },
+                    dns_record: {}
+                })
+            )
 
-           expect(getByText(/^Server is \w+.$/)).to.have.text("Server is terminated.");
-        });
+            const { getByText } = render(ServerStatus)
+            expect(getByText('Server is terminated.')).toBeInTheDocument()
+        })
 
-        it("has refresh button", () => {
-            const { getByRole } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {},
-                    instance: {}
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+        it('has refresh button', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'stopped' },
+                    dns_record: {}
+                })
+            )
 
-           expect(getByRole("button", {name: "Refresh"})).to.exist;
-        });
-    });
+            const { getByRole } = render(ServerStatus)
+            expect(getByRole('button', { name: 'Refresh' })).toBeInTheDocument()
+        })
+    })
 
-    describe("running", () => {
-        it("has a stop button", () => {
-            const { getByRole } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {},
-                    instance: {
-                        state: "running"
-                    }
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+    describe('running', () => {
+        it('has a stop button', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'running' },
+                    dns_record: {}
+                })
+            )
+            vi.spyOn(stores, 'details', 'get').mockReturnValue(
+                writable({
+                    players: { online: 0, max: 20 },
+                })
+            )
 
-           expect(getByRole("button", {name: "Stop"})).to.exist;
-        });
+            const { getByRole } = render(ServerStatus)
+            expect(getByRole('button', { name: 'Stop' })).toBeInTheDocument()
+        })
 
-        it("displays the current IP address", () => {
-            const { getByText } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {},
-                    instance: {
-                        state: "running",
-                        ip_address: "10.0.0.1"
-                    }
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+        it('displays the current IP address', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'running', ip_address: '10.0.0.1' },
+                    dns_record: {}
+                })
+            )
 
-           expect(getByText(/IP address:/)).to.have.text('IP address: 10.0.0.1');
+            const { getByText } = render(ServerStatus)
+            expect(getByText(/IP address:/)).toHaveTextContent('IP address: 10.0.0.1')
+        })
+    })
 
-        });
-    });
+    describe('stopped', () => {
+        it('has a start button', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'stopped' },
+                    dns_record: {}
+                })
+            )
 
-    describe("stopped", () => {
-        it("has a start button", () => {
-            const { getByRole } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {},
-                    instance: {
-                        state: "stopped"
-                    }
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
+            const { getByRole } = render(ServerStatus)
+            expect(getByRole('button', { name: 'Start' })).toBeInTheDocument()
+        })
+    })
 
-           expect(getByRole("button", {name: "Start"})).to.exist;
-        });
-    });
+    describe('mismatched DNS', () => {
+        it('allows updating of DNS record', () => {
+            vi.spyOn(stores, 'status', 'get').mockReturnValue(
+                writable({
+                    instance: { state: 'running', ip_address: '10.0.0.1' },
+                    dns_record: { value: '10.0.0.2' }
+                })
+            )
 
-    describe("mismatched DNS", () => {
-        it("allows updating of DNS record", () => {
-            const { getByRole } = render(ServerStatus, {
-                serverStatus: {
-                    dns_record: {
-                        value: "10.0.0.2"
-                    },
-                    instance: {
-                        state: "running",
-                        ip_address: "10.0.0.1"
-                    }
-                },
-                handleStart: () => {},
-                handleStop: () => {},
-                handleRefresh: () => {},
-                handleSyncDNS: () => {},
-            });
-
-           expect(getByRole("button", {name: "Update DNS Record"})).to.exist;
-        });
-    });
-});
+            const { getByRole } = render(ServerStatus)
+            expect(getByRole('button', { name: 'Update DNS' })).toBeInTheDocument()
+        })
+    })
+})
