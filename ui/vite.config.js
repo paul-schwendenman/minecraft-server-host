@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { svelteTesting } from '@testing-library/svelte/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { mockServer } from './plugins/mock-server'
 
@@ -13,6 +14,7 @@ export default defineConfig(({ command, mode }) => {
       tailwindcss(),
       ...(isDev ? [mockServer()] : []),
       svelte(),
+      svelteTesting(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.png', 'robots.txt'],
@@ -71,5 +73,14 @@ export default defineConfig(({ command, mode }) => {
         },
       })
     ],
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './src/setupTests.js',
+      include: ['{src,test}/**/*.{test,spec}.{js,ts}'],
+      coverage: {
+        reporter: ['text', 'html'],
+      },
+    },
   }
 })
