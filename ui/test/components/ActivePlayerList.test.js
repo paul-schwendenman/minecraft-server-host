@@ -1,37 +1,30 @@
-import ActivePlayerList from "../../src/components/ActivePlayerList.svelte";
-import { render } from '@testing-library/svelte';
-import chai, { expect } from 'chai';
-import chaiDom from 'chai-dom';
+import { render } from '@testing-library/svelte'
+import { describe, it, expect } from 'vitest'
+import '@testing-library/jest-dom'
+import ActivePlayerList from '../../src/components/ActivePlayerList.svelte'
 
-chai.use(chaiDom);
+describe('ActivePlayerList', () => {
+  it('handles no active users', () => {
+    const { container, queryAllByRole } = render(ActivePlayerList)
 
-describe(ActivePlayerList.name, () => {
-  it("handles no active users", () => {
-    const { container, queryAllByRole } = render(ActivePlayerList, { });
+    expect(container).toHaveTextContent('')
+    expect(queryAllByRole('listitem')).toHaveLength(0)
+  })
 
-    expect(container).to.have.text('');
-    expect(queryAllByRole('listitem')).to.be.empty;
-  });
+  it('handles one active user', () => {
+    const samplePlayers = [{ name: 'Bob' }]
+    const { getByText, getAllByRole } = render(ActivePlayerList, { props: { players: samplePlayers } })
 
-  it("handles one active user", () => {
-    const samplePlayers = [
-        { name: 'Bob'}
-    ];
-    const { getByText, getAllByRole } = render(ActivePlayerList, { players: samplePlayers});
+    expect(getAllByRole('listitem')).toHaveLength(1)
+    expect(getByText('Bob')).toBeInTheDocument()
+  })
 
-    expect(getAllByRole('listitem')).to.have.lengthOf(1);
-    expect(getByText('Bob')).to.exist;
-  });
+  it('handles multiple active users', () => {
+    const samplePlayers = [{ name: 'Bob' }, { name: 'Bill' }]
+    const { getByText, getAllByRole } = render(ActivePlayerList, { props: { players: samplePlayers } })
 
-  it("handles multiple active users", () => {
-    const samplePlayers = [
-        { name: 'Bob'},
-        { name: 'Bill'}
-    ];
-    const { getByText, getAllByRole } = render(ActivePlayerList, { players: samplePlayers});
-
-    expect(getAllByRole('listitem')).to.have.lengthOf(2);
-    expect(getByText('Bob')).to.exist;
-    expect(getByText('Bill')).to.exist;
-  });
-});
+    expect(getAllByRole('listitem')).toHaveLength(2)
+    expect(getByText('Bob')).toBeInTheDocument()
+    expect(getByText('Bill')).toBeInTheDocument()
+  })
+})
