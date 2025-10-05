@@ -16,7 +16,7 @@
 }
 
 .btn {
-    @apply text-gray-700 text-lg bg-gray-200 border border-gray-500 p-4 m-px outline-none rounded cursor-pointer;
+    @apply text-gray-700 text-lg bg-gray-200 border border-gray-500 p-4 m-px outline-none rounded cursor-pointer min-h-12;
 }
 
 body {
