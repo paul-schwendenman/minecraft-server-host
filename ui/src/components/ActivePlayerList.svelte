@@ -1,12 +1,11 @@
 <script>
-	export let players = [];
+  export let players = [];
 </script>
 
-<style>
-</style>
-
-<ul class="list-disc pl-8 mb-4 space-y-2">
+{#if players && players.length > 0}
+  <ul class="list-disc pl-8 mb-4 space-y-2">
     {#each players as player}
-        <li>{player?.name}</li>
+      <li>{player.name}</li>
     {/each}
-</ul>
+  </ul>
+{/if}
