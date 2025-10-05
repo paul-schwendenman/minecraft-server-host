@@ -1,105 +1,93 @@
-import ServerDetails from "../../src/components/ServerDetails.svelte";
-import { render } from '@testing-library/svelte';
-import { expect } from 'chai';
+import { render } from '@testing-library/svelte'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { writable } from 'svelte/store'
+import '@testing-library/jest-dom'
+import * as stores from '../../src/stores.js'
+import ServerDetails from '../../src/components/ServerDetails.svelte'
 
-describe(ServerDetails.name, () => {
-  describe("server details returned sucessfully", () => {
-    it("handles resolved promise", async () => {
-      const serverDetails = Promise.resolve({
-        players: {
+describe('ServerDetails', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  describe('server details returned successfully', () => {
+    it('handles resolved promise', async () => {
+      const fakeDetails = writable({
+        players: { max: 20, online: 0 }
+      })
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(fakeDetails)
+
+      const { getByText } = render(ServerDetails)
+      expect(getByText('The server has no active players.')).toBeInTheDocument()
+    })
+
+    it('handles no active users', () => {
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(
+        writable({
+          players: { max: 20, online: 0 }
+        })
+      )
+      const { getByText } = render(ServerDetails)
+      expect(getByText('The server has no active players.')).toBeInTheDocument()
+    })
+
+    it('handles 1 active user', () => {
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(
+        writable({
+          players: {
             max: 20,
-            online: 0,
-        }
-      });
-      const { getByText } = render(ServerDetails, {
-          serverDetails
-      });
-
-      await serverDetails;
-
-      expect(getByText('The server has no active players.')).to.exist;
-    });
-
-    it("handles no active users", () => {
-      const { getByText } = render(ServerDetails, {
-          serverDetails: {
-            players: {
-                max: 20,
-                online: 0,
-            }
+            online: 1,
+            sample: [{ id: 'cdce37cd', name: 'example' }]
           }
-      });
+        })
+      )
+      const { getByText, getAllByRole } = render(ServerDetails)
+      expect(getByText('The server has 1 active player:')).toBeInTheDocument()
+      expect(getAllByRole('listitem')).toHaveLength(1)
+      expect(getByText('example')).toBeInTheDocument()
+    })
 
-      expect(getByText('The server has no active players.')).to.exist;
-    });
-
-    it("handles 1 active user", () => {
-      const { getByText } = render(ServerDetails, {
-          serverDetails: {
-              players: {
-                  max: 20,
-                  online: 1,
-                  sample: [{
-                      id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
-                      name: "example"
-                  }]
-              }
+    it('handles multiple active users', () => {
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(
+        writable({
+          players: {
+            max: 20,
+            online: 2,
+            sample: [
+              { id: '1', name: 'example' },
+              { id: '2', name: 'example2' }
+            ]
           }
-      });
+        })
+      )
+      const { getByText, getAllByRole } = render(ServerDetails)
+      expect(getByText('The server has 2 active players:')).toBeInTheDocument()
+      expect(getAllByRole('listitem')).toHaveLength(2)
+      expect(getByText('example')).toBeInTheDocument()
+      expect(getByText('example2')).toBeInTheDocument()
+    })
+  })
 
-      expect(getByText('The server has 1 active player:')).to.exist;
-      expect(getByText('example')).to.exist;
-    });
+  describe('server details are still loading', () => {
+    it('displays loading message', () => {
+      const pending = new Promise(() => { })
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(writable(pending))
 
-    it("handles multiple active users", () => {
-      const { getByText } = render(ServerDetails, {
-          serverDetails: {
-              players: {
-                  max: 20,
-                  online: 2,
-                  sample: [
-                      {
-                          id: "cdce37cd-2215-42ef-a4a4-c8b9189c9259",
-                          name: "example"
-                      },
-                      {
-                          id: "d720a93f-da90-41fa-8653-d09d81fa4b77",
-                          name: "example2"
-                      }
-                  ]
-              }
-          }
-      });
+      const { getByText } = render(ServerDetails)
+      expect(getByText('Loading details...')).toBeInTheDocument()
+    })
+  })
 
-      expect(getByText('The server has 2 active players:')).to.exist;
-      expect(getByText('example')).to.exist;
-      expect(getByText('example2')).to.exist;
-    });
+  describe('server details failed to load', () => {
+    it('displays an error message', async () => {
+      const failing = writable(Promise.reject('Error'))
+      vi.spyOn(stores, 'details', 'get').mockReturnValue(failing)
 
-  });
+      const { findByText } = render(ServerDetails)
+      const errorEl = await findByText('Failed to load details.')
+      expect(errorEl).toBeInTheDocument()
+      expect(errorEl.className).toContain('text-red-700')
+    })
 
-  describe("server details are still loading", () => {
-    it("displays loading message", () => {
-      const serverDetails = new Promise(() => {});
-      const { getByText } = render(ServerDetails, {
-          serverDetails
-      });
-
-      expect(getByText('Loading details...')).to.exist;
-    });
-  });
-
-  describe("server details failed to load", () => {
-    it("displays an error message", async () => {
-      const serverDetails = Promise.reject("Error");
-      const { getByText } = render(ServerDetails, {
-          serverDetails
-      });
-
-      await serverDetails.catch(() => {});
-
-      expect(getByText('Failed to load details.')).to.exist;
-      expect(getByText('Failed to load details.').attributes[0].value).to.contain('error');
-    });
-  });
-});
+  })
+})
