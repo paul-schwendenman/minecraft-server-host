@@ -10,6 +10,7 @@ dependencies = [
 dev = [
     "boto3>=1.34",
     "fastapi[standard]>=0.115",
+    "terraform-local",
 ]
 
 [tool.uv]
