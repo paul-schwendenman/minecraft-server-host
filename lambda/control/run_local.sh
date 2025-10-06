@@ -4,8 +4,7 @@ set -euo pipefail
 # --- Config ---
 APP="lambda.control.app:app"
 REGION="us-east-2"
-INSTANCE_ID="i-localstack-test"
-DNS_NAME="minecraft.localstack.test"
+DNS_NAME="minecraft.example.com"
 ZONE_NAME="example.com"
 AWS_LOCAL=1
 PORT=8000
@@ -46,14 +45,23 @@ done
 
 # --- Create fake resources ---
 echo "🌐 Creating fake AWS resources..."
-aws --endpoint-url=http://localhost:4566 ec2 run-instances \
-  --image-id ami-12345678 \
-  --count 1 \
-  --region "$REGION" >/dev/null
 
-aws --endpoint-url=http://localhost:4566 route53 create-hosted-zone \
-  --name "$ZONE_NAME" \
-  --caller-reference "test-$(date +%s)" >/dev/null
+# create a dummy instance and grab its ID
+INSTANCE_ID=$(
+  aws --endpoint-url=http://localhost:4566 ec2 run-instances \
+    --image-id ami-12345678 --count 1 --region "$REGION" \
+    --query 'Instances[0].InstanceId' --output text
+)
+echo "🖥️  Created mock EC2 instance: $INSTANCE_ID"
+
+# create a fake hosted zone if none exists yet
+ZONE_ID=$(
+  aws --endpoint-url=http://localhost:4566 route53 create-hosted-zone \
+    --name "example.com" --caller-reference "test-$(date +%s)" \
+    --query 'HostedZone.Id' --output text
+)
+echo "🌎 Created mock Route53 zone: $ZONE_ID"
+
 
 # --- Export environment vars for the app ---
 export INSTANCE_ID="$INSTANCE_ID"
