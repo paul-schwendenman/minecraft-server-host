@@ -22,6 +22,13 @@ LAMBDAS          := control details
 UI_DIR           := ui
 UI_DIST          := $(UI_DIR)/dist
 
+# --- AWS config (override with `make VAR=value`) ---
+AWS_REGION       ?= us-east-2
+CONTROL_FUNC     ?= minecraft-control
+DETAILS_FUNC     ?= minecraft-details
+S3_BUCKET        ?= my-minecraft-ui
+CLOUDFRONT_DIST  ?= E123456ABCDEF
+
 # ============================================================
 # Top-level targets
 # ============================================================
@@ -63,6 +70,37 @@ $(LAMBDAS): %:
 
 	@echo "✅ Built $(DIST_DIR)/$@.zip"
 	@du -h $(DIST_DIR)/$@.zip | awk '{print "📦  Size:", $$1}'
+
+# ============================================================
+# Deploy targets
+# ============================================================
+
+deploy: deploy-lambdas deploy-ui
+.PHONY: deploy
+
+deploy-lambdas:
+	@echo "🚀 Deploying Lambda functions..."
+	aws lambda update-function-code \
+		--function-name $(CONTROL_FUNC) \
+		--zip-file fileb://$(DIST_DIR)/control.zip \
+		--region $(AWS_REGION)
+	aws lambda update-function-code \
+		--function-name $(DETAILS_FUNC) \
+		--zip-file fileb://$(DIST_DIR)/details.zip \
+		--region $(AWS_REGION)
+	@echo "✅ Lambda functions updated"
+
+deploy-ui:
+	@echo "🌐 Deploying web UI to S3..."
+	aws s3 sync $(UI_DIST)/ s3://$(S3_BUCKET)/ --delete --region $(AWS_REGION)
+ifdef CLOUDFRONT_DIST
+	@echo "💨 Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation \
+		--distribution-id $(CLOUDFRONT_DIST) \
+		--paths '/*'
+endif
+	@echo "✅ UI deployed to https://$(S3_BUCKET).s3.$(AWS_REGION).amazonaws.com/"
+.PHONY: deploy-lambdas deploy-ui
 
 # ============================================================
 # Maintenance
