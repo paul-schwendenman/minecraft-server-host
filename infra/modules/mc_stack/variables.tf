@@ -58,6 +58,16 @@ variable "ssh_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
+variable "iam_instance_profile" {
+  description = "IAM instance profile to attach to the EC2 instance"
+  type        = string
+}
+
+variable "map_bucket" {
+  description = "Name of the S3 bucket used for maps"
+  type        = string
+}
+
 variable "world_name" {
   description = "Minecraft world name"
   type        = string
