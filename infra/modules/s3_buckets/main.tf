@@ -41,9 +41,15 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "maps" {
 # Optional lifecycle for backups older than 90 days
 resource "aws_s3_bucket_lifecycle_configuration" "backups" {
   bucket = aws_s3_bucket.backups.id
+
   rule {
     id     = "expire-old-backups"
     status = "Enabled"
-    expiration { days = 90 }
+
+    filter {}  # ← apply to all objects
+
+    expiration {
+      days = 90
+    }
   }
 }
