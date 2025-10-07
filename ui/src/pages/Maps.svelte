@@ -8,7 +8,8 @@
     try {
       const res = await fetch("/api/maps");
       if (!res.ok) throw new Error("Failed to fetch maps");
-      maps = await res.json();
+      const data = await res.json();
+      maps = data?.maps ?? [];
     } catch (err) {
       error = err;
     } finally {

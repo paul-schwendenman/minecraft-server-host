@@ -1,3 +1,24 @@
+const mockWorlds = [
+    {
+        id: 'world-1',
+        name: 'Survival World',
+        preview: '/mock/worlds/survival.png',
+        lastUpdated: '2025-10-05T15:00:00Z',
+    },
+    {
+        id: 'world-2',
+        name: 'Creative Sandbox',
+        preview: '/mock/worlds/creative.png',
+        lastUpdated: '2025-09-28T09:00:00Z',
+    },
+    {
+        id: 'world-3',
+        name: 'Nether Adventures',
+        preview: '/mock/worlds/nether.png',
+        lastUpdated: '2025-09-15T22:00:00Z',
+    },
+]
+
 export function mockServer() {
     return {
         name: 'mock-server',
@@ -114,6 +135,10 @@ export function mockServer() {
                     await sleep(333)
                     const sample = [details.zero, details.one, details.two]
                     return send(res, sample[Math.floor(Math.random() * 3)])
+                }
+
+                if (path === '/maps') {
+                    return send(res, { maps: mockWorlds })
                 }
 
                 next()
