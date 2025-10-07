@@ -22,3 +22,10 @@ tar -xzf mcrcon.tar.gz
 cd "mcrcon-${MCRCON_VERSION}"
 make
 sudo make install
+
+# Install AWS CLI v2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+echo "bf1150ac34672ebec370f724578c85f6a49f72390670022a06b9cf0f68b6d36e  /tmp/awscliv2.zip" | sha256sum -c -
+unzip -q /tmp/awscliv2.zip -d /tmp
+sudo /tmp/aws/install
+rm -rf /tmp/aws /tmp/awscliv2.zip
