@@ -13,7 +13,9 @@
   }
 </script>
 
-<section class="h-full max-w-full p-8 sm:pt-16 sm:max-w-sm sm:mx-auto">
+<section
+  class="flex flex-col justify-between flex-1 h-full max-w-full p-8 sm:pt-16 sm:max-w-sm sm:mx-auto"
+>
   {#await serverStatus}
     <p>Loading...</p>
   {:then _}
