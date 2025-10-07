@@ -30,3 +30,9 @@ variable "zone_id" {
   type        = string
   default     = ""
 }
+
+variable "details_zip_path" {
+  description = "Path to the details lambda zip"
+  type        = string
+  default     = "./../../dist/details.zip"
+}

@@ -94,6 +94,22 @@ resource "aws_lambda_function" "mc_control" {
   }
 }
 
+resource "aws_lambda_function" "details" {
+  function_name = "${var.name}-details"
+  filename      = var.details_zip_path
+
+  source_code_hash = filebase64sha256(var.details_zip_path)
+  handler          = "app.main.lambda_handler"
+  runtime          = "python3.11"
+  role             = aws_iam_role.lambda_exec.arn
+
+  environment {
+    variables = {
+    }
+  }
+}
+
+
 resource "aws_apigatewayv2_api" "http" {
   name          = "${var.name}-api"
   protocol_type = "HTTP"
@@ -147,6 +163,29 @@ resource "aws_apigatewayv2_route" "proxy_api" {
   route_key = "ANY /api/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
+
+resource "aws_apigatewayv2_integration" "details" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.details.invoke_arn
+  integration_method     = "POST"
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "details" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "ANY /api/details"
+  target    = "integrations/${aws_apigatewayv2_integration.details.id}"
+}
+
+resource "aws_lambda_permission" "apigw_invoke_details" {
+  statement_id  = "AllowAPIGatewayInvokeDetails"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.details.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*"
+}
+
 
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
