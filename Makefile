@@ -24,6 +24,8 @@ LAMBDAS          := control details
 # Generic pattern rule (builds each lambda/<name>/package.zip)
 # ============================================================
 
+all: $(LAMBDAS)
+
 $(LAMBDAS): %:
 	@echo "🐍 Building Lambda package: $@"
 	rm -rf $(PKG_DIR)
@@ -40,7 +42,7 @@ $(LAMBDAS): %:
 			-r requirements.txt
 
 	cd $(PKG_DIR) && zip -qr ../$(DIST_DIR)/$@.zip .
-	cd lambda/$@ && zip -qr ../../$(DIST_DIR)/$@.zip .
+	cd lambda/$@ && zip -qr ../../$(DIST_DIR)/$@.zip app
 
 	@echo "✅ Built $(DIST_DIR)/$@.zip"
 	@du -h $(DIST_DIR)/$@.zip | awk '{print "📦  Size:", $$1}'
@@ -53,4 +55,4 @@ clean:
 	rm -rf $(PKG_DIR) $(DIST_DIR)
 	@echo "🧹 Cleaned build artifacts"
 
-.PHONY: $(LAMBDAS) clean
+.PHONY: $(LAMBDAS) clean all
