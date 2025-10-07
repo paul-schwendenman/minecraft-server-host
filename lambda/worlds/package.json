@@ -1,0 +1,17 @@
+{
+    "name": "minecraft-worlds-lambda",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "AWS Lambda function to list Minecraft worlds stored in S3.",
+    "main": "app/index.mjs",
+    "scripts": {
+        "build": "zip -qr ../../dist/worlds.zip app package.json",
+        "start": "AWS_REGION=us-east-2 WORLD_BUCKET=my-worlds node app/index.mjs"
+    },
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.678.0"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}
