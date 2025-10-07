@@ -1,30 +1,47 @@
 # ============================================================
-# Lambda packaging Makefile
+# Project Build Makefile
+# Builds:
+#   - Lambda zips (control + details)
+#   - Web UI (pnpm / vite / svelte)
 # Usage:
 #   make control        # builds dist/control.zip
 #   make details        # builds dist/details.zip
+#   make ui             # builds ui/dist/
 #   make clean          # removes build artifacts
 # ============================================================
 
-# Python & platform targets
+# Lambda config
 PYTHON_VERSION   := 3.13
-PYTHON_PLATFORM  := x86_64-manylinux2014     # change to aarch64-manylinux2014 for ARM Lambdas
-
-# Directories
+PYTHON_PLATFORM  := x86_64-manylinux2014
 DIST_DIR         := dist
 PKG_DIR          := packages
-
-# Common build flags for uv
 UV_FLAGS         := --frozen --no-dev --no-editable
-
-# Lambda package names (subdirectories under lambda/)
 LAMBDAS          := control details
 
+# UI config
+UI_DIR           := ui
+UI_DIST          := $(UI_DIR)/dist
+
 # ============================================================
-# Generic pattern rule (builds each lambda/<name>/package.zip)
+# Top-level targets
 # ============================================================
 
-all: $(LAMBDAS)
+all: lambdas ui
+.PHONY: all
+
+lambdas: $(LAMBDAS)
+.PHONY: lambdas
+
+ui:
+	@echo "🖥️  Building web UI..."
+	cd $(UI_DIR) && pnpm install --frozen-lockfile && pnpm run build
+	@echo "✅ UI built at $(UI_DIST)"
+.PHONY: ui
+
+# ============================================================
+# Generic pattern rule (builds dist/<lambda>.zip)
+# Each Lambda's code lives in lambda/<lambda>/app/
+# ============================================================
 
 $(LAMBDAS): %:
 	@echo "🐍 Building Lambda package: $@"
@@ -52,7 +69,7 @@ $(LAMBDAS): %:
 # ============================================================
 
 clean:
-	rm -rf $(PKG_DIR) $(DIST_DIR)
-	@echo "🧹 Cleaned build artifacts"
+	rm -rf $(PKG_DIR) $(DIST_DIR) $(UI_DIST)
+	@echo "🧹 Cleaned all build artifacts"
 
-.PHONY: $(LAMBDAS) clean all
+.PHONY: $(LAMBDAS) clean
