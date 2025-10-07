@@ -12,3 +12,6 @@ ui/rollup.config.js
 
 # Generated private key
 minecraft.pem
+
+packages/
+dist/*.zip
