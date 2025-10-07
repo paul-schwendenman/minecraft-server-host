@@ -21,6 +21,18 @@ module "networking" {
   public_subnet_cidr = "10.0.1.0/24"
 }
 
+module "s3_buckets" {
+  source = "../modules/s3_buckets"
+  name   = "minecraft-test"
+}
+
+module "ec2_role" {
+  source        = "../modules/ec2_role"
+  name          = "minecraft-test"
+  map_bucket    = module.s3_buckets.map_bucket_name
+  backup_bucket = module.s3_buckets.backup_bucket_name
+}
+
 module "mc_stack" {
   source            = "../modules/mc_stack"
   name              = "minecraft-test"
@@ -33,6 +45,9 @@ module "mc_stack" {
   ssh_cidr_blocks   = ["104.230.245.46/32"]
   world_version     = "1.21.8"
   availability_zone = "us-east-2b"
+
+  iam_instance_profile = module.ec2_role.instance_profile_name
+  map_bucket           = module.s3_buckets.map_bucket_name
 }
 
 module "api_lambda" {
