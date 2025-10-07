@@ -26,8 +26,9 @@ LAMBDAS          := control details
 
 $(LAMBDAS): %:
 	@echo "🐍 Building Lambda package: $@"
-	rm -rf $(PKG_DIR) $(DIST_DIR)
+	rm -rf $(PKG_DIR)
 	mkdir -p $(DIST_DIR)
+	rm -f $(DIST_DIR)/$@.zip
 	cd lambda/$@ && \
 		uv export $(UV_FLAGS) -o requirements.txt && \
 		uv pip install \
