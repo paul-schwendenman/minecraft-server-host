@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { svelteTesting } from '@testing-library/svelte/vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import { mockServer } from './plugins/mock-server'
+import { mockServer } from './src/plugins/mock-server'
 
 // https://vite.dev/config/
 export default defineConfig(({ command, mode }) => {
