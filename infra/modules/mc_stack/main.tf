@@ -69,6 +69,11 @@ resource "aws_instance" "minecraft" {
               /usr/local/bin/setup-env.sh
               /usr/local/bin/setup-maps.sh
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+              if ! grep -q '^MC_MAP_BUCKET=' /etc/minecraft.env; then
+                echo "MC_MAP_BUCKET=${var.map_bucket}" | sudo tee -a /etc/minecraft.env
+              else
+                echo "MC_MAP_BUCKET already set, skipping append"
+              fi
               EOT
 
   tags = {
