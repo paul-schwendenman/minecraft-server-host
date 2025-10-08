@@ -121,7 +121,7 @@ resource "aws_cloudfront_distribution" "webapp" {
   # Still handled by the Svelte UI (so routing works client-side)
   ordered_cache_behavior {
     path_pattern           = "/maps*"
-    target_origin_id       = "webapp-origin"
+    target_origin_id       = "maps-origin"
     viewer_protocol_policy = "redirect-to-https"
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]

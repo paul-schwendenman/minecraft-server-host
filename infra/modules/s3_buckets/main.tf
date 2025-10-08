@@ -60,3 +60,15 @@ resource "aws_s3_bucket_lifecycle_configuration" "backups" {
     }
   }
 }
+
+resource "aws_s3_bucket_website_configuration" "maps" {
+  bucket = aws_s3_bucket.maps.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
+  }
+}
