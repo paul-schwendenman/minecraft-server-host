@@ -111,15 +111,17 @@ resource "aws_lambda_function" "details" {
 
 resource "aws_lambda_function" "worlds" {
   function_name = "${var.name}-worlds"
-  role          = aws_iam_role.lambda.arn
-  handler       = "handler.handler"
-  runtime       = "python3.12"
-  filename      = "${path.root}/../../../dist/worlds.zip"
+  role          = aws_iam_role.lambda_exec.arn
+  filename      = var.worlds_zip_path
+
+  source_code_hash = filebase64sha256(var.worlds_zip_path)
+  handler          = "app.main.lambda_handler"
+  runtime          = "python3.11"
   timeout       = 10
 
   environment {
     variables = {
-      MAPS_BUCKET = module.s3_buckets.map_bucket_name
+      MAPS_BUCKET = var.map_bucket_name
       CORS_ORIGIN = var.cors_origin
       MAP_PREFIX  = "maps/"
       BASE_PATH   = ""
@@ -137,6 +139,13 @@ resource "aws_apigatewayv2_integration" "lambda" {
   integration_type   = "AWS_PROXY"
   integration_uri    = aws_lambda_function.mc_control.invoke_arn
   integration_method = "POST"
+}
+
+resource "aws_apigatewayv2_integration" "worlds" {
+  api_id                 = aws_apigatewayv2_api.http.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.worlds.invoke_arn
+  payload_format_version = "2.0"
 }
 
 resource "aws_apigatewayv2_stage" "default" {
@@ -207,7 +216,6 @@ resource "aws_apigatewayv2_route" "worlds_maps" {
   target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
 }
 
-
 resource "aws_lambda_permission" "apigw_invoke_details" {
   statement_id  = "AllowAPIGatewayInvokeDetails"
   action        = "lambda:InvokeFunction"
@@ -216,6 +224,14 @@ resource "aws_lambda_permission" "apigw_invoke_details" {
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*"
 }
 
+
+resource "aws_lambda_permission" "allow_api_worlds" {
+  statement_id  = "AllowAPIGatewayInvokeWorlds"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.worlds.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
+}
 
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"

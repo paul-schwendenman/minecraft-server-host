@@ -57,6 +57,7 @@ module "api_lambda" {
   instance_arn = module.mc_stack.instance_arn
   dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
   zone_id      = data.aws_route53_zone.prod.zone_id
+  map_bucket_name   = module.s3_buckets.map_bucket_name
   cors_origin  = "*"
 }
 

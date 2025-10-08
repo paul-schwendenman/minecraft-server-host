@@ -36,3 +36,14 @@ variable "details_zip_path" {
   type        = string
   default     = "./../../dist/details.zip"
 }
+
+variable "worlds_zip_path" {
+  description = "Path to the worlds lambda zip"
+  type        = string
+  default     = "./../../dist/worlds.zip"
+}
+
+variable "map_bucket_name" {
+  description = "Name of the S3 bucket that stores rendered maps"
+  type        = string
+}
