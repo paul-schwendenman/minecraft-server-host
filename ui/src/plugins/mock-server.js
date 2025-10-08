@@ -1,23 +1,26 @@
 const mockWorlds = [
     {
-        id: 'world-1',
-        name: 'Survival World',
-        preview: '/mock/worlds/survival.png',
-        lastUpdated: '2025-10-05T15:00:00Z',
+        name: "default",
+        id: "default",
+        map_url: "/maps/default/",
+        preview_url: "/maps/default/overworld/preview.png",
+        last_updated: "2025-10-08T02:59:47Z",
     },
     {
-        id: 'world-2',
-        name: 'Creative Sandbox',
-        preview: '/mock/worlds/creative.png',
-        lastUpdated: '2025-09-28T09:00:00Z',
+        name: "creative_realm",
+        id: "creative_realm",
+        map_url: "/maps/creative_realm/",
+        preview_url: "/maps/creative_realm/overworld/preview.png",
+        last_updated: "2025-09-21T19:33:12Z",
     },
     {
-        id: 'world-3',
-        name: 'Nether Adventures',
-        preview: '/mock/worlds/nether.png',
-        lastUpdated: '2025-09-15T22:00:00Z',
+        name: "hardcore",
+        id: "hardcore",
+        map_url: "/maps/hardcore/",
+        preview_url: "/maps/hardcore/overworld/preview.png",
+        last_updated: "2025-09-14T08:11:00Z",
     },
-]
+];
 
 export function mockServer() {
     return {
@@ -137,8 +140,8 @@ export function mockServer() {
                     return send(res, sample[Math.floor(Math.random() * 3)])
                 }
 
-                if (path === '/maps') {
-                    return send(res, { maps: mockWorlds })
+                if (path === '/worlds') {
+                    return send(res, { worlds: mockWorlds })
                 }
 
                 next()
