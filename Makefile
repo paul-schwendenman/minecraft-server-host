@@ -27,7 +27,7 @@ AWS_REGION       ?= us-east-2
 CONTROL_FUNC     ?= minecraft-test-control
 DETAILS_FUNC     ?= minecraft-test-details
 WORLD_FUNC       ?= minecraft-test-worlds
-S3_BUCKET        ?= my-minecraft-ui
+S3_BUCKET        ?= minecraft-test-webapp
 CLOUDFRONT_DIST  ?= E123456ABCDEF
 
 # ============================================================
