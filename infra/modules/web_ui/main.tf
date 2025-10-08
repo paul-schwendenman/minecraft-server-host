@@ -43,6 +43,15 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
+  # Origin 3: Maps S3 Bucket
+  origin {
+    domain_name = "${var.map_bucket_name}.s3.amazonaws.com"
+    origin_id   = "maps-origin"
+
+    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
+  }
+
+
   default_cache_behavior {
     target_origin_id       = "webapp-origin"
     viewer_protocol_policy = "redirect-to-https"
@@ -74,6 +83,42 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
+  # Maps static content: /maps/<world>/<dimension>/*
+  ordered_cache_behavior {
+    path_pattern           = "/maps/*/*"
+    target_origin_id       = "maps-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  # Maps SPA routes: /maps and /maps/<world>
+  # Still handled by the Svelte UI (so routing works client-side)
+  ordered_cache_behavior {
+    path_pattern           = "/maps*"
+    target_origin_id       = "webapp-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+
   restrictions {
     geo_restriction {
       restriction_type = length(var.geo_whitelist) > 0 ? "whitelist" : "none"
@@ -84,6 +129,19 @@ resource "aws_cloudfront_distribution" "webapp" {
   viewer_certificate {
     cloudfront_default_certificate = true
   }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
+
 }
 
 resource "aws_s3_bucket_policy" "webapp" {
@@ -93,12 +151,12 @@ resource "aws_s3_bucket_policy" "webapp" {
     Version = "2012-10-17",
     Statement = [
       {
-        Sid       = "AllowCloudFrontServicePrincipalRead",
-        Effect    = "Allow",
+        Sid    = "AllowCloudFrontServicePrincipalRead",
+        Effect = "Allow",
         Principal = {
           Service = "cloudfront.amazonaws.com"
         },
-        Action = ["s3:GetObject"],
+        Action   = ["s3:GetObject"],
         Resource = "${aws_s3_bucket.webapp.arn}/*",
         Condition = {
           StringEquals = {
@@ -109,6 +167,31 @@ resource "aws_s3_bucket_policy" "webapp" {
     ]
   })
 }
+
+resource "aws_s3_bucket_policy" "maps" {
+  bucket = var.map_bucket_name
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontReadMaps",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Action   = ["s3:GetObject"],
+        Resource = "arn:aws:s3:::${var.map_bucket_name}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.webapp.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
 
 resource "aws_route53_record" "webapp_dns" {
   count   = var.dns_name != "" && var.zone_id != "" ? 1 : 0

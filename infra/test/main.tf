@@ -64,7 +64,8 @@ module "web_ui" {
   source = "../modules/web_ui"
   name   = "minecraft-test"
 
-  api_endpoint = module.api_lambda.api_endpoint
+  api_endpoint    = module.api_lambda.api_endpoint
+  map_bucket_name = module.s3_buckets.map_bucket_name
 
   # optional DNS if you want a pretty domain
   # dns_name = "testui.minecraft.paulandsierra.com"

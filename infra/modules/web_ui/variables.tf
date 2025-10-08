@@ -25,3 +25,8 @@ variable "geo_whitelist" {
   type        = list(string)
   default     = []
 }
+
+variable "map_bucket_name" {
+  description = "Name of the S3 bucket that stores rendered maps"
+  type        = string
+}
