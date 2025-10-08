@@ -63,6 +63,12 @@ resource "aws_instance" "minecraft" {
     volume_type = "gp3"
   }
 
+  lifecycle {
+    ignore_changes = [
+      associate_public_ip_address,
+    ]
+  }
+
   user_data = <<-EOT
               #!/bin/bash
               /usr/local/bin/mount-ebs.sh
