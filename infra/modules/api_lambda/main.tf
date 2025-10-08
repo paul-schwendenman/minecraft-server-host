@@ -109,6 +109,23 @@ resource "aws_lambda_function" "details" {
   }
 }
 
+resource "aws_lambda_function" "worlds" {
+  function_name = "${var.name}-worlds"
+  role          = aws_iam_role.lambda.arn
+  handler       = "handler.handler"
+  runtime       = "python3.12"
+  filename      = "${path.root}/../../../dist/worlds.zip"
+  timeout       = 10
+
+  environment {
+    variables = {
+      MAPS_BUCKET = module.s3_buckets.map_bucket_name
+      CORS_ORIGIN = var.cors_origin
+      MAP_PREFIX  = "maps/"
+      BASE_PATH   = ""
+    }
+  }
+}
 
 resource "aws_apigatewayv2_api" "http" {
   name          = "${var.name}-api"
@@ -177,6 +194,19 @@ resource "aws_apigatewayv2_route" "details" {
   route_key = "ANY /api/details"
   target    = "integrations/${aws_apigatewayv2_integration.details.id}"
 }
+
+resource "aws_apigatewayv2_route" "worlds_list" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/worlds"
+  target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
+}
+
+resource "aws_apigatewayv2_route" "worlds_maps" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/worlds/{world}/maps"
+  target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
+}
+
 
 resource "aws_lambda_permission" "apigw_invoke_details" {
   statement_id  = "AllowAPIGatewayInvokeDetails"

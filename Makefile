@@ -16,7 +16,7 @@ PYTHON_PLATFORM  := x86_64-manylinux2014
 DIST_DIR         := dist
 PKG_DIR          := packages
 UV_FLAGS         := --frozen --no-dev --no-editable
-LAMBDAS          := control details
+LAMBDAS          := control details worlds
 
 # UI config
 UI_DIR           := ui
@@ -33,7 +33,7 @@ CLOUDFRONT_DIST  ?= E123456ABCDEF
 # Top-level targets
 # ============================================================
 
-all: lambdas worlds ui
+all: lambdas ui
 .PHONY: all
 
 lambdas: $(LAMBDAS)
@@ -70,14 +70,6 @@ $(LAMBDAS): %:
 
 	@echo "✅ Built $(DIST_DIR)/$@.zip"
 	@du -h $(DIST_DIR)/$@.zip | awk '{print "📦  Size:", $$1}'
-
-worlds:
-	@echo "📦 Building worlds Lambda"
-	mkdir -p $(DIST_DIR)
-	rm -f $(DIST_DIR)/worlds.zip
-	cd lambda/worlds && zip -qr ../../$(DIST_DIR)/worlds.zip app package.json
-	@echo "✅ Built $(DIST_DIR)/worlds.zip"
-
 
 # ============================================================
 # Deploy targets
