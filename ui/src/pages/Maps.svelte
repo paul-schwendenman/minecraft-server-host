@@ -41,7 +41,7 @@
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {#each worlds as world}
         <a
-          href={world.map_url}
+          href={`#${world.map_url}`}
           class="group block bg-gray-800 rounded-2xl shadow hover:shadow-lg overflow-hidden transition transform hover:-translate-y-1"
         >
           {#if world.preview_url}
