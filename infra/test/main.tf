@@ -51,14 +51,14 @@ module "mc_stack" {
 }
 
 module "api_lambda" {
-  source       = "../modules/api_lambda"
-  name         = "minecraft-test"
-  instance_id  = module.mc_stack.instance_id
-  instance_arn = module.mc_stack.instance_arn
-  dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
-  zone_id      = data.aws_route53_zone.prod.zone_id
-  map_bucket_name   = module.s3_buckets.map_bucket_name
-  cors_origin  = "*"
+  source          = "../modules/api_lambda"
+  name            = "minecraft-test"
+  instance_id     = module.mc_stack.instance_id
+  instance_arn    = module.mc_stack.instance_arn
+  dns_name        = "testmc.${data.aws_route53_zone.prod.name}"
+  zone_id         = data.aws_route53_zone.prod.zone_id
+  map_bucket_name = module.s3_buckets.map_bucket_name
+  cors_origin     = "*"
 }
 
 module "web_ui" {

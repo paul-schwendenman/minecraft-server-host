@@ -67,6 +67,29 @@ resource "aws_iam_role_policy" "lambda_policy" {
   })
 }
 
+resource "aws_iam_role_policy" "lambda_s3_maps" {
+  name = "${var.name}-lambda-s3-maps"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:GetObjectAttributes"
+        ],
+        Resource = [
+          "arn:aws:s3:::${var.map_bucket_name}",
+          "arn:aws:s3:::${var.map_bucket_name}/*"
+        ]
+      }
+    ]
+  })
+}
+
 data "archive_file" "lambda_zip" {
   type        = "zip"
   source_file = "${path.module}/lambda/handler.py"
@@ -117,7 +140,7 @@ resource "aws_lambda_function" "worlds" {
   source_code_hash = filebase64sha256(var.worlds_zip_path)
   handler          = "app.main.lambda_handler"
   runtime          = "python3.11"
-  timeout       = 10
+  timeout          = 10
 
   environment {
     variables = {

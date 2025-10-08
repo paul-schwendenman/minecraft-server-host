@@ -8,21 +8,22 @@ BASE_PATH = os.environ.get("BASE_PATH", "")
 
 
 def _list_prefixes(prefix):
-    """List subfolders directly under prefix; return [] if empty or missing."""
+    """Return unique first-level folders under prefix without crawling everything."""
     try:
         paginator = S3.get_paginator("list_objects_v2")
-        prefixes = []
-        for page in paginator.paginate(Bucket=BUCKET, Prefix=prefix, Delimiter="/"):
+        worlds = set()
+        for page in paginator.paginate(
+            Bucket=BUCKET,
+            Prefix=prefix,
+            Delimiter="/",  # <- critical for shallow listing
+        ):
             for p in page.get("CommonPrefixes", []):
-                prefixes.append(p["Prefix"])
-        return prefixes
-    except botocore.exceptions.ClientError as e:
-        # Handle bucket not found or permission error gracefully
-        print(f"[WARN] S3 list_objects failed: {e}")
-        return []
+                worlds.add(p["Prefix"])
+        return sorted(worlds)
     except Exception as e:
-        print(f"[ERROR] Unexpected exception listing prefixes: {e}")
+        print(f"[ERROR] listing prefixes: {e}")
         return []
+
 
 
 def _dimensions(world):
