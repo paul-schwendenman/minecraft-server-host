@@ -24,8 +24,9 @@ UI_DIST          := $(UI_DIR)/dist
 
 # --- AWS config (override with `make VAR=value`) ---
 AWS_REGION       ?= us-east-2
-CONTROL_FUNC     ?= minecraft-control
-DETAILS_FUNC     ?= minecraft-details
+CONTROL_FUNC     ?= minecraft-test-control
+DETAILS_FUNC     ?= minecraft-test-details
+WORLD_FUNC       ?= minecraft-test-worlds
 S3_BUCKET        ?= my-minecraft-ui
 CLOUDFRONT_DIST  ?= E123456ABCDEF
 
@@ -77,6 +78,13 @@ $(LAMBDAS): %:
 
 deploy: deploy-lambdas deploy-ui
 .PHONY: deploy
+
+deploy-worlds: worlds
+	aws lambda update-function-code \
+		--function-name $(WORLD_FUNC) \
+		--zip-file fileb://$(DIST_DIR)/worlds.zip \
+		--region $(AWS_REGION)
+
 
 deploy-lambdas:
 	@echo "🚀 Deploying Lambda functions..."
