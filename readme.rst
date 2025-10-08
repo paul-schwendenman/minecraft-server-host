@@ -61,3 +61,8 @@ Testing
     cd ui/
     pnpm build
     aws s3 sync ./dist/ s3://minecraft-test-webapp
+
+::
+
+    terraform apply -target=module.web_ui
+    terraform apply -target=module.api_lambda
