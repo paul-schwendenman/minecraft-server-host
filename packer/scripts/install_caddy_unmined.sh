@@ -75,22 +75,54 @@ if [[ ! -x "${UNMINED}" ]]; then
   exit 1
 fi
 
-# Derive a world name from the path (basename of parent dir)
+# World name is parent directory of 'world', e.g. /srv/minecraft-server/default/world
 WORLD_NAME=$(basename "$(dirname "$WORLD_PATH")")
+WORLD_BASE="/srv/minecraft-server/${WORLD_NAME}"
 MAP_DIR="${MAP_ROOT}/${WORLD_NAME}"
 
-echo "Rebuilding map for world '${WORLD_NAME}' -> ${MAP_DIR}"
+echo "Rebuilding maps for world '${WORLD_NAME}' → ${MAP_DIR}"
 mkdir -p "${MAP_DIR}"
 
-"${UNMINED}" web render \
-  --world="${WORLD_PATH}" \
-  --output="${MAP_DIR}" \
-  --zoomout=6 \
-  --zoomin=4 \
-  --shadows=3d \
-  --players
+# --- Render dimensions ---
+declare -A DIMS=(
+  ["world"]="overworld"
+  ["world_nether"]="nether"
+  ["world_the_end"]="the_end"
+)
 
-# --- Rebuild landing page ---
+for dir in "${!DIMS[@]}"; do
+  SRC="${WORLD_BASE}/${dir}"
+  DIM="${DIMS[$dir]}"
+  OUT="${MAP_DIR}/${DIM}"
+
+  if [[ -d "$SRC" ]]; then
+    echo "→ Rendering ${DIM} from ${SRC}"
+    mkdir -p "$OUT"
+    "${UNMINED}" web render \
+      --world="$SRC" \
+      --output="$OUT" \
+      --zoomout=6 \
+      --zoomin=4 \
+      --shadows=3d \
+      --players
+
+    # preview + manifest for S3 / UI
+    if [[ -f "$OUT/screenshot.png" ]]; then
+      convert "$OUT/screenshot.png" -resize 320x180 "$OUT/preview.png" || true
+    fi
+    cat >"$OUT/manifest.json" <<EOS
+{
+  "world": "${WORLD_NAME}",
+  "dimension": "${DIM}",
+  "last_rendered": "$(date -Iseconds)"
+}
+EOS
+  else
+    echo "Skipping missing dimension directory: ${SRC}"
+  fi
+done
+
+# --- Rebuild landing page (same as before) ---
 INDEX="${MAP_ROOT}/index.html"
 ACTIVE_WORLDS=$(systemctl list-units --state=running 'minecraft@*.service' \
     | awk -F'[@.]' '{print $2}')
