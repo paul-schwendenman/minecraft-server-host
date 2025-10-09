@@ -33,10 +33,15 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   # Origin 3: Maps S3 Bucket
   origin {
-    domain_name = "${var.map_bucket_name}.s3.amazonaws.com"
+    domain_name = var.map_bucket_domain_name
     origin_id   = "maps-origin"
 
-    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
+  custom_origin_config {
+    origin_protocol_policy = "http-only"
+    http_port              = 80
+    https_port             = 443
+    origin_ssl_protocols   = ["TLSv1.2"]
+  }
   }
 
 

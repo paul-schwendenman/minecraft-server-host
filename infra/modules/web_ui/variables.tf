@@ -40,3 +40,8 @@ variable "map_bucket_name" {
   description = "Name of the S3 bucket that stores rendered maps"
   type        = string
 }
+
+variable "map_bucket_domain_name" {
+  description = "The regional domain name of the map S3 bucket"
+  type        = string
+}

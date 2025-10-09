@@ -69,6 +69,7 @@ module "web_ui" {
   webapp_bucket_name        = module.s3_buckets.webapp_bucket_name
   webapp_bucket_domain_name = module.s3_buckets.webapp_bucket_domain_name
   map_bucket_name           = module.s3_buckets.map_bucket_name
+  map_bucket_domain_name    = module.s3_buckets.map_bucket_domain_name
 
   # optional DNS if you want a pretty domain
   # dns_name = "testui.minecraft.paulandsierra.com"
