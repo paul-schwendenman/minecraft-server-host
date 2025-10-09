@@ -1,15 +1,3 @@
-resource "aws_s3_bucket" "webapp" {
-  bucket        = "${var.name}-webapp"
-  force_destroy = true
-}
-
-resource "aws_s3_bucket_website_configuration" "webapp" {
-  bucket = aws_s3_bucket.webapp.id
-  index_document {
-    suffix = "index.html"
-  }
-}
-
 resource "aws_cloudfront_origin_access_control" "webapp" {
   name                              = "${var.name}-oac"
   description                       = "Access control for ${var.name} CloudFront to S3"
@@ -24,7 +12,7 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   # Origin 1: S3
   origin {
-    domain_name = aws_s3_bucket.webapp.bucket_regional_domain_name
+    domain_name = var.webapp_bucket_domain_name
     origin_id   = "webapp-origin"
 
     origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
@@ -162,7 +150,7 @@ resource "aws_cloudfront_distribution" "webapp" {
 }
 
 resource "aws_s3_bucket_policy" "webapp" {
-  bucket = aws_s3_bucket.webapp.id
+  bucket = var.webapp_bucket_name
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -174,7 +162,7 @@ resource "aws_s3_bucket_policy" "webapp" {
           Service = "cloudfront.amazonaws.com"
         },
         Action   = ["s3:GetObject"],
-        Resource = "${aws_s3_bucket.webapp.arn}/*",
+        Resource = "arn:aws:s3:::${var.webapp_bucket_name}/*",
         Condition = {
           StringEquals = {
             "AWS:SourceArn" = aws_cloudfront_distribution.webapp.arn

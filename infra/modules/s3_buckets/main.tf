@@ -2,6 +2,19 @@ locals {
   prefix = lower(var.name)
 }
 
+# Web app
+resource "aws_s3_bucket" "webapp" {
+  bucket        = "${var.name}-webapp"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_website_configuration" "webapp" {
+  bucket = aws_s3_bucket.webapp.id
+  index_document {
+    suffix = "index.html"
+  }
+}
+
 # World backups
 resource "aws_s3_bucket" "backups" {
   bucket        = "${local.prefix}-backups"
