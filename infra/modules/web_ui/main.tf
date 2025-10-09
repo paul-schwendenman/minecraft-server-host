@@ -1,3 +1,7 @@
+###############################################
+# CloudFront + S3 Setup for Web UI + Maps
+###############################################
+
 resource "aws_cloudfront_origin_access_control" "webapp" {
   name                              = "${var.name}-oac"
   description                       = "Access control for ${var.name} CloudFront to S3"
@@ -10,7 +14,11 @@ resource "aws_cloudfront_distribution" "webapp" {
   enabled             = true
   default_root_object = "index.html"
 
-  # Origin 1: S3
+  ##########################################
+  # ORIGINS
+  ##########################################
+
+  # Origin 1: Webapp (Svelte UI)
   origin {
     domain_name = var.webapp_bucket_domain_name
     origin_id   = "webapp-origin"
@@ -31,25 +39,26 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # Origin 3: Maps S3 Bucket
+  # Origin 3: Maps bucket (uNmINeD exports)
   origin {
     domain_name = var.map_bucket_domain_name
     origin_id   = "maps-origin"
 
-  custom_origin_config {
-    origin_protocol_policy = "http-only"
-    http_port              = 80
-    https_port             = 443
-    origin_ssl_protocols   = ["TLSv1.2"]
-  }
+    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
   }
 
+  ##########################################
+  # CACHE BEHAVIORS
+  ##########################################
 
-  default_cache_behavior {
-    target_origin_id       = "webapp-origin"
+  # 1. Maps: static map tiles and HTML
+  ordered_cache_behavior {
+    path_pattern           = "/maps/*"
+    target_origin_id       = "maps-origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
+    compress               = true
 
     forwarded_values {
       query_string = false
@@ -59,7 +68,7 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # Cache behavior for API calls
+  # 2. API calls
   ordered_cache_behavior {
     path_pattern           = "/api/*"
     target_origin_id       = "api-origin"
@@ -92,13 +101,11 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-
-  # Maps static content: /maps/<world>/<dimension>/*
-  ordered_cache_behavior {
-    path_pattern           = "/maps/*/*"
-    target_origin_id       = "maps-origin"
+  # 3. Default (UI SPA)
+  default_cache_behavior {
+    target_origin_id       = "webapp-origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
 
@@ -110,24 +117,9 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # Maps SPA routes: /maps and /maps/<world>
-  # Still handled by the Svelte UI (so routing works client-side)
-  ordered_cache_behavior {
-    path_pattern           = "/maps*"
-    target_origin_id       = "maps-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-  }
-
+  ##########################################
+  # SETTINGS
+  ##########################################
 
   restrictions {
     geo_restriction {
@@ -140,20 +132,25 @@ resource "aws_cloudfront_distribution" "webapp" {
     cloudfront_default_certificate = true
   }
 
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
-
+  # Let SPA handle 403/404 (single-page app routing)
   custom_error_response {
     error_code         = 403
     response_code      = 200
     response_page_path = "/index.html"
   }
 
+  custom_error_response {
+    error_code         = 404
+    response_code      = 200
+    response_page_path = "/index.html"
+  }
 }
 
+###############################################
+# S3 Bucket Policies
+###############################################
+
+# Webapp bucket (Svelte UI)
 resource "aws_s3_bucket_policy" "webapp" {
   bucket = var.webapp_bucket_name
 
@@ -178,6 +175,7 @@ resource "aws_s3_bucket_policy" "webapp" {
   })
 }
 
+# Maps bucket (Unmined exports)
 resource "aws_s3_bucket_policy" "maps" {
   bucket = var.map_bucket_name
 
@@ -202,7 +200,9 @@ resource "aws_s3_bucket_policy" "maps" {
   })
 }
 
-
+###############################################
+# DNS (optional)
+###############################################
 resource "aws_route53_record" "webapp_dns" {
   count   = var.dns_name != "" && var.zone_id != "" ? 1 : 0
   name    = var.dns_name
