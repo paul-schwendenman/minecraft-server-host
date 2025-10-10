@@ -1,6 +1,6 @@
 <script>
   import ServerDetails from "./ServerDetails.svelte";
-  import AsyncButton from "./AsyncButton.svelte";
+  import { AsyncButton } from "@minecraft/ui";
   import { status } from "../stores.js";
 
   const handleRefresh = () => {
@@ -20,7 +20,7 @@
   };
 </script>
 
-<div class="h-full flex flex-col justify-between flex-1 md:justify-start">
+<div class="flex h-full flex-1 flex-col justify-between md:justify-start">
   <div class="mb-4">
     <header>
       <h1>{$status.dns_record?.name}</h1>
@@ -36,14 +36,14 @@
       {/if}
     {/if}
   </div>
-  <div class="flex flex-wrap gap-1 flex-col sm:flex-row">
+  <div class="flex flex-col flex-wrap gap-1 sm:flex-row">
     {#if $status.instance?.state == "stopped"}
       <AsyncButton class="flex-1" action={handleStart}>Start</AsyncButton>
     {:else if $status.instance?.state == "running"}
       {#if $status.instance?.ip_address != $status.dns_record?.value}
-        <AsyncButton class="flex-2" action={handleSyncDNS}>
-          Update DNS
-        </AsyncButton>
+        <AsyncButton class="flex-2" action={handleSyncDNS}
+          >Update DNS</AsyncButton
+        >
       {/if}
       <AsyncButton class="flex-1" action={handleStop}>Stop</AsyncButton>
     {/if}
