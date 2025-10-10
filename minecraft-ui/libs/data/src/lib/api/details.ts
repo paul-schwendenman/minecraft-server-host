@@ -1,4 +1,5 @@
 import type { ServerDetailsResponse } from '../types/api.js';
+import { apiUrl } from './config.js';
 
 /**
  * Fetch detailed Minecraft server info, optionally for a given hostname.
@@ -8,7 +9,7 @@ import type { ServerDetailsResponse } from '../types/api.js';
  * @throws Error if the API call fails.
  */
 export async function getDetails(hostname?: string): Promise<ServerDetailsResponse> {
-    const url = new URL('/api/details', window.location.origin);
+    const url = new URL(apiUrl('details'), window.location.origin);
 
     if (hostname) {
         url.search = new URLSearchParams({ hostname }).toString();
