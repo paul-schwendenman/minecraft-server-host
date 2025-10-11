@@ -47,6 +47,7 @@
 		]
 	},
 	"dependencies": {
+		"@minecraft/data": "workspace:^",
 		"@minecraft/ui": "workspace:^"
 	}
 }

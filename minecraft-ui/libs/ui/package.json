@@ -75,5 +75,8 @@
 		"onlyBuiltDependencies": [
 			"esbuild"
 		]
+	},
+	"dependencies": {
+		"@minecraft/data": "workspace:^"
 	}
 }

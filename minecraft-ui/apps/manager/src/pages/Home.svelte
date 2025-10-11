@@ -1,6 +1,6 @@
 <script>
-  import ServerStatus from "../components/ServerStatus.svelte";
-  import { status } from "../stores.js";
+  import { ServerStatus } from "@minecraft/ui";
+  import { status } from "@minecraft/data";
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js");
