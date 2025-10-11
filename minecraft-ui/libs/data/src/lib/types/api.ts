@@ -6,7 +6,7 @@ export interface DnsRecord {
 
 export interface Instance {
     state: 'pending' | 'running' | 'stopping' | 'stopped' | 'terminated';
-    ip_address: string | null;
+    ip_address: string | undefined;
 }
 
 export interface ServerStatusResponse {
@@ -35,3 +35,5 @@ export interface ServerDetailsResponse {
     description: string;
     players: ServerPlayers;
 }
+
+export type Action = 'startInstance' | 'stopInstance' | 'syncDnsRecord'
