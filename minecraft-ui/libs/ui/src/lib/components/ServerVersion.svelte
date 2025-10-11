@@ -1,5 +1,5 @@
-<script>
-	export let version;
+<script lang="ts">
+	export let version: string;
 </script>
 
 {#if version}

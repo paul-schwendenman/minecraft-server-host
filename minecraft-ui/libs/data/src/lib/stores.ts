@@ -37,4 +37,4 @@ async function reducer(action: Action | null) {
 
 export const status = createStatus();
 
-export const details = derived(status, $status => $status?.instance?.state === "running" && getDetails($status.instance.ip_address));
+export const details = derived(status, $status => $status?.instance?.state === "running" ? getDetails($status.instance.ip_address) : null);

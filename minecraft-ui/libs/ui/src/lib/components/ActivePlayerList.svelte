@@ -1,11 +1,13 @@
-<script>
-  export let players = [];
+<script lang="ts">
+	import type { Player } from '@minecraft/data';
+
+	export let players: Player[] = [];
 </script>
 
 {#if players && players.length > 0}
-  <ul class="list-disc pl-8 mb-4 space-y-2">
-    {#each players as player}
-      <li>{player.name}</li>
-    {/each}
-  </ul>
+	<ul class="mb-4 list-disc space-y-2 pl-8">
+		{#each players as player}
+			<li>{player.name}</li>
+		{/each}
+	</ul>
 {/if}
