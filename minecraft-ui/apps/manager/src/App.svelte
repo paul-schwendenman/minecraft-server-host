@@ -1,12 +1,32 @@
 <script>
-  import Router from "svelte-spa-router";
-  export let routes;
+  import { ServerStatus } from "@minecraft/ui";
+  import { status } from "@minecraft/data";
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js");
+  }
+
+  let serverStatus = status.refresh();
+
+  function handleRefresh() {
+    serverStatus = status.refresh();
+  }
 </script>
 
-<main class="min-h-screen flex flex-col bg-gray-900 text-gray-100">
-  <nav class="flex justify-center space-x-6 p-4 text-sm text-gray-400">
-    <a href="/" class="hover:text-gray-200">Server</a>
-    <a href="#/maps" class="hover:text-gray-200">Maps</a>
-  </nav>
-  <Router {routes} />
-</main>
+<section
+  class="flex flex-col justify-between flex-1 h-full max-w-full p-8 sm:pt-16 sm:max-w-sm sm:mx-auto"
+>
+  {#await serverStatus}
+    <p>Loading...</p>
+  {:then _}
+    <ServerStatus />
+  {:catch error}
+    <p class="text-red-700">{error.message}</p>
+    <button on:click={handleRefresh} class="btn w-full sm:w-auto">
+      Retry
+    </button>
+  {/await}
+</section>
+
+<style global>
+</style>

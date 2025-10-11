@@ -1,2 +1,23 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script>
+	import { ServerStatus } from '@minecraft/ui';
+	import { status } from '@minecraft/data';
+
+	let serverStatus = status.refresh();
+
+	function handleRefresh() {
+		serverStatus = status.refresh();
+	}
+</script>
+
+<section
+	class="flex h-full max-w-full flex-1 flex-col justify-between p-8 sm:mx-auto sm:max-w-sm sm:pt-16"
+>
+	{#await serverStatus}
+		<p>Loading...</p>
+	{:then _}
+		<ServerStatus />
+	{:catch error}
+		<p class="text-red-700">{error.message}</p>
+		<button on:click={handleRefresh} class="btn w-full sm:w-auto"> Retry </button>
+	{/await}
+</section>
