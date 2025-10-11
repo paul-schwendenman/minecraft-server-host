@@ -1,3 +1,19 @@
+export interface DnsRecord {
+    name: string;
+    value: string;
+    type: 'A' | 'CNAME';
+}
+
+export interface Instance {
+    state: 'pending' | 'running' | 'stopping' | 'stopped' | 'terminated';
+    ip_address: string | null;
+}
+
+export interface ServerStatusResponse {
+    instance: Instance;
+    dns_record: DnsRecord;
+}
+
 export interface Player {
     id: string;
     name: string;
