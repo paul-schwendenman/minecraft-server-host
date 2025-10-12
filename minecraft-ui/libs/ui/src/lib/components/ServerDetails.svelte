@@ -9,7 +9,7 @@
 	<ServerVersion version={details?.version?.name ?? ''} />
 	<ActivePlayerMessage count={details?.players?.online ?? 0} />
 	<ActivePlayerList players={details?.players?.sample ?? []} />
-{:catch _}
+{:catch}
 	<p class="my-2 text-red-700">Failed to load details.</p>
 {/await}
 

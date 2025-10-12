@@ -1,5 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
 
 	export let params;
 	let world = null;
@@ -19,9 +20,9 @@
 	{:else}
 		<h1 class="mb-4 text-3xl font-bold capitalize">{world.world}</h1>
 		<ul class="space-y-2">
-			{#each world.dimensions as dim}
+			{#each world.dimensions as dim (dim.id)}
 				<li>
-					<a href={dim.map_url} class="text-blue-400 hover:underline">
+					<a href={resolve(dim.map_url)} class="text-blue-400 hover:underline">
 						{dim.id}
 					</a>
 				</li>

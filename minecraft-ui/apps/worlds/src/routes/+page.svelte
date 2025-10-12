@@ -14,7 +14,7 @@
 >
 	{#await serverStatus}
 		<p class="my-2">Loading...</p>
-	{:then _}
+	{:then}
 		<ServerStatus />
 	{:catch error}
 		<p class="my-2 text-red-700">{error.message}</p>

@@ -1,5 +1,7 @@
 <script>
 	import { onMount } from 'svelte';
+	import { resolve } from '$app/paths';
+
 	let worlds = [];
 	let error = null;
 	let loading = true;
@@ -39,9 +41,9 @@
 		<p class="text-gray-400">No worlds found.</p>
 	{:else}
 		<div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-			{#each worlds as world}
+			{#each worlds as world (world.name)}
 				<a
-					href={`/worlds/${world.name}`}
+					href={resolve(`/worlds/${world.name}`)}
 					class="group block transform overflow-hidden rounded-2xl bg-gray-800 shadow transition hover:-translate-y-1 hover:shadow-lg"
 				>
 					{#if world.preview_url}
