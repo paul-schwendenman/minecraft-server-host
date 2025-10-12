@@ -107,9 +107,19 @@ for dir in "${!DIMS[@]}"; do
       --players
 
     # preview + manifest for S3 / UI
-    if [[ -f "$OUT/screenshot.png" ]]; then
-      convert "$OUT/screenshot.png" -resize 320x180 "$OUT/preview.png" || true
+    #if [[ -f "$OUT/screenshot.png" ]]; then
+    #  convert "$OUT/screenshot.png" -resize 320x180 "$OUT/preview.png" || true
+    #fi
+    if [[ -f "$OUT/preview.png" ]]; then
+      "${UNMINED}" image render \
+        --world="$SRC" \
+        --area="r((-16,-16),(31,31))" \
+        --zoom=-4 \
+        --dimension=0 \
+        --shadows=3d \
+        --output="$OUT/preview.png"
     fi
+
     cat >"$OUT/manifest.json" <<EOS
 {
   "world": "${WORLD_NAME}",
