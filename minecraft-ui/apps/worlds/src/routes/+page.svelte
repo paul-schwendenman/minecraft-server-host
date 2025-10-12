@@ -13,11 +13,11 @@
 	class="flex h-full max-w-full flex-1 flex-col justify-between p-8 sm:mx-auto sm:max-w-sm sm:pt-16"
 >
 	{#await serverStatus}
-		<p>Loading...</p>
+		<p class="my-2">Loading...</p>
 	{:then _}
 		<ServerStatus />
 	{:catch error}
-		<p class="text-red-700">{error.message}</p>
+		<p class="my-2 text-red-700">{error.message}</p>
 		<button on:click={handleRefresh} class="btn w-full sm:w-auto"> Retry </button>
 	{/await}
 </section>

@@ -23,7 +23,7 @@
 <div class="flex h-full flex-1 flex-col justify-between md:justify-start">
 	<div class="mb-4">
 		<header>
-			<h1>{$status.dns_record?.name}</h1>
+			<h1 class="my-4 text-2xl font-semibold">{$status.dns_record?.name}</h1>
 		</header>
 		<p>
 			Server is {$status.instance?.state}.
