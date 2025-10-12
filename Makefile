@@ -19,8 +19,10 @@ UV_FLAGS         := --frozen --no-dev --no-editable
 LAMBDAS          := control details worlds
 
 # UI config
-UI_DIR           := ui
+UI_DIR           := minecraft-ui/apps/manager
 UI_DIST          := $(UI_DIR)/dist
+WORLDS_DIR       := minecraft-ui/apps/worlds
+WORLDS_DIST      := $(WORLDS_DIR)/build
 
 # --- AWS config (override with `make VAR=value`) ---
 AWS_REGION       ?= us-east-2
@@ -28,7 +30,7 @@ CONTROL_FUNC     ?= minecraft-test-control
 DETAILS_FUNC     ?= minecraft-test-details
 WORLD_FUNC       ?= minecraft-test-worlds
 S3_BUCKET        ?= minecraft-test-webapp
-CLOUDFRONT_DIST  ?= E123456ABCDEF
+CLOUDFRONT_DIST  ?= E35JG9QWEEVI98
 
 # ============================================================
 # Top-level targets
@@ -112,7 +114,19 @@ ifdef CLOUDFRONT_DIST
 		--paths '/*'
 endif
 	@echo "✅ UI deployed to https://$(S3_BUCKET).s3.$(AWS_REGION).amazonaws.com/"
-.PHONY: deploy-lambdas deploy-ui
+
+deploy-ui-worlds:
+	@echo "🌐 Deploying web UI to S3..."
+	aws s3 sync $(WORLDS_DIST)/ s3://$(S3_BUCKET)/ --delete --region $(AWS_REGION)
+ifdef CLOUDFRONT_DIST
+	@echo "💨 Invalidating CloudFront cache..."
+	aws cloudfront create-invalidation \
+		--distribution-id $(CLOUDFRONT_DIST) \
+		--paths '/*'
+endif
+	@echo "✅ UI deployed to https://$(S3_BUCKET).s3.$(AWS_REGION).amazonaws.com/"
+
+.PHONY: deploy-lambdas deploy-ui deploy-ui-worlds
 
 # ============================================================
 # Maintenance
