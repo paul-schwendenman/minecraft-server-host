@@ -1,7 +1,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
-import { mockServer } from './src/plugins/mock-server'
+import { mockServer } from './src/plugins/mock-server';
 
 export default defineConfig({
 	plugins: [mockServer(), tailwindcss(), sveltekit()],

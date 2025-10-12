@@ -9,17 +9,17 @@ import { apiUrl } from './config.js';
  * @throws Error if the API call fails.
  */
 export async function getDetails(hostname?: string): Promise<ServerDetailsResponse> {
-    const url = new URL(apiUrl('details'), window.location.origin);
+	const url = new URL(apiUrl('details'), window.location.origin);
 
-    if (hostname) {
-        url.search = new URLSearchParams({ hostname }).toString();
-    }
+	if (hostname) {
+		url.search = new URLSearchParams({ hostname }).toString();
+	}
 
-    const resp = await fetch(url.toString());
+	const resp = await fetch(url.toString());
 
-    if (!resp.ok) {
-        throw new Error(await resp.text());
-    }
+	if (!resp.ok) {
+		throw new Error(await resp.text());
+	}
 
-    return resp.json() as Promise<ServerDetailsResponse>;
+	return resp.json() as Promise<ServerDetailsResponse>;
 }

@@ -54,7 +54,7 @@
 					{/if}
 
 					<div class="p-4 text-left">
-						<h2 class="text-lg font-semibold capitalize text-white group-hover:text-blue-400">
+						<h2 class="text-lg font-semibold text-white capitalize group-hover:text-blue-400">
 							{world.name}
 						</h2>
 
