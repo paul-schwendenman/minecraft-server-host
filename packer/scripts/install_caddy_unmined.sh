@@ -156,23 +156,41 @@ jq -n \
   }' > "${MAP_DIR}/manifest.json"
 
 
-# --- Rebuild landing page (same as before) ---
+# --- Rebuild top-level index page ---
 INDEX="${MAP_ROOT}/index.html"
 ACTIVE_WORLDS=$(systemctl list-units --state=running 'minecraft@*.service' \
     | awk -F'[@.]' '{print $2}')
 
 {
-  echo "<html><head><title>Minecraft Worlds</title></head><body>"
-  echo "<h1>Available Worlds</h1><ul>"
-  for d in "${MAP_ROOT}"/*/; do
-    name=$(basename "$d")
-    if echo "$ACTIVE_WORLDS" | grep -qw "$name"; then
-      echo "<li><b><a href=\"./${name}/\">${name}</a> (active)</b></li>"
+  echo "<!DOCTYPE html><html><head><title>Minecraft Maps</title>"
+  echo "<style>body{font-family:sans-serif;margin:2rem;} ul{list-style:none;} li{margin-bottom:.5rem;} h2{margin-top:1.5rem;}</style>"
+  echo "</head><body>"
+  echo "<h1>Minecraft Worlds</h1>"
+
+  for world_dir in "${MAP_ROOT}"/*/; do
+    [[ -d "$world_dir" ]] || continue
+    world_name=$(basename "$world_dir")
+
+    if echo "$ACTIVE_WORLDS" | grep -qw "$world_name"; then
+      echo "<h2>${world_name} <small>(active)</small></h2>"
     else
-      echo "<li><a href=\"./${name}/\">${name}</a></li>"
+      echo "<h2>${world_name}</h2>"
     fi
+
+    echo "<ul>"
+
+    # list each dimension subdir
+    for dim_dir in "${world_dir}"*/; do
+      [[ -d "$dim_dir" ]] || continue
+      dim_name=$(basename "$dim_dir")
+      [[ "$dim_name" == "overworld" || "$dim_name" == "nether" || "$dim_name" == "end" ]] || continue
+      echo "<li>&rarr; <a href=\"./${world_name}/${dim_name}/\">${dim_name}</a></li>"
+    done
+
+    echo "</ul>"
   done
-  echo "</ul></body></html>"
+
+  echo "</body></html>"
 } > "$INDEX"
 
 echo "Landing page regenerated at ${INDEX}"
