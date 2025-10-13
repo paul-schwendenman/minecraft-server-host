@@ -54,8 +54,8 @@ def lambda_handler(event, context):
             for w in data:
                 enriched.append({
                     **w,
-                    "previewUrl": f"{BASE_URL}/{w.get('preview')}",
-                    "mapUrl": f"{BASE_URL}/worlds/{w['world']}/"
+                    "previewUrl": f"{BASE_URL}/{MAP_PREFIX}{w.get('preview')}",
+                    "mapUrl": f"{BASE_URL}/{MAP_PREFIX}{w['world']}/"
                 })
 
             return make_response(200, enriched)
@@ -63,17 +63,17 @@ def lambda_handler(event, context):
         # /api/worlds/{name}
         if path.startswith("/api/worlds/") and path.count("/") == 3:
             name = path.split("/")[3]
-            world = read_json_from_s3(f"{MAP_PREFIX}worlds/{name}/manifest.json")
+            world = read_json_from_s3(f"{MAP_PREFIX}{name}/manifest.json")
             if not world:
                 return make_response(404, {"error": f"World '{name}' not found"})
 
-            world["previewUrl"] = f"{BASE_URL}/worlds/{name}/preview.png"
+            world["previewUrl"] = f"{BASE_URL}/{name}/preview.png"
             dims = []
             for d in world.get("dimensions", []):
                 dims.append({
                     **d,
-                    "previewUrl": f"{BASE_URL}/worlds/{name}/{d['name']}/preview.png",
-                    "mapUrl": f"{BASE_URL}/worlds/{name}/{d['name']}/"
+                    "previewUrl": f"{BASE_URL}/{MAP_PREFIX}{name}/{d['name']}/preview.png",
+                    "mapUrl": f"{BASE_URL}/{MAP_PREFIX}{name}/{d['name']}/"
                 })
             world["dimensions"] = dims
 
@@ -83,13 +83,13 @@ def lambda_handler(event, context):
         parts = path.split("/")
         if len(parts) == 5 and parts[1:3] == ["api", "worlds"]:
             name, dim = parts[3], parts[4]
-            dim_data = read_json_from_s3(f"{MAP_PREFIX}worlds/{name}/{dim}/manifest.json")
+            dim_data = read_json_from_s3(f"{MAP_PREFIX}{name}/{dim}/manifest.json")
 
             if not dim_data:
                 return make_response(404, {"error": f"Dimension '{dim}' not found"})
 
-            dim_data["previewUrl"] = f"{BASE_URL}/worlds/{name}/{dim}/preview.png"
-            dim_data["mapUrl"] = f"{BASE_URL}/worlds/{name}/{dim}/"
+            dim_data["previewUrl"] = f"{BASE_URL}/{MAP_PREFIX}{name}/{dim}/preview.png"
+            dim_data["mapUrl"] = f"{BASE_URL}/{MAP_PREFIX}{name}/{dim}/"
             return make_response(200, dim_data)
 
         return make_response(404, {"error": "Not found"})
