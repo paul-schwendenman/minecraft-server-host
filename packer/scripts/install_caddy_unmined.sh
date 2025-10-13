@@ -125,10 +125,11 @@ for dir in "${!DIMS[@]}"; do
     "${UNMINED}" image render \
       --world="$SRC" \
       --dimension="${DIM_ID}" \
-      --area="r((-16,-16),(31,31))" \
+      --area="b((-16,-16),(31,31))" \
       --zoom=-4 \
       --shadows=3d \
       $TOPY_ARG \
+      --trim \
       --output="$OUT/preview.png"
 
     # Dimension manifest
