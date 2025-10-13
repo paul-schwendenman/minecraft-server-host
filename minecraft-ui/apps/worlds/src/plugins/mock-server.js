@@ -1,32 +1,26 @@
 const mockWorlds = [
 	{
-		name: 'default',
-		id: 'default',
-		map_url: '/maps/default/',
-		preview_url: '/maps/default/overworld/preview.png',
-		last_updated: '2025-10-08T02:59:47Z'
+		world: 'default',
+		previewUrl: '/mock/maps/default/preview.png',
+		mapUrl: '/mock/maps/default/',
+		dimensions: [
+			{ name: 'overworld', id: 0, previewUrl: '/mock/maps/default/overworld.png', mapUrl: '/mock/maps/default/overworld/' },
+			{ name: 'nether', id: -1, previewUrl: '/mock/maps/default/nether.png', mapUrl: '/mock/maps/default/nether/' },
+			{ name: 'end', id: 1, previewUrl: '/mock/maps/default/end.png', mapUrl: '/mock/maps/default/end/' }
+		]
 	},
 	{
-		name: 'creative_realm',
-		id: 'creative_realm',
-		map_url: '/maps/creative_realm/',
-		preview_url: '/maps/creative_realm/overworld/preview.png',
-		last_updated: '2025-09-21T19:33:12Z'
-	},
-	{
-		name: 'hardcore',
-		id: 'hardcore',
-		map_url: '/maps/hardcore/',
-		preview_url: '/maps/hardcore/overworld/preview.png',
-		last_updated: '2025-09-14T08:11:00Z'
+		world: 'creative',
+		previewUrl: '/mock/maps/creative/preview.png',
+		mapUrl: '/mock/maps/creative/',
+		dimensions: [{ name: 'overworld', id: 0, previewUrl: '/mock/maps/creative/overworld.png', mapUrl: '/mock/maps/creative/overworld/' }]
 	}
 ];
 
-const mockDimensions = (worldId) => [
-	{ id: 'overworld', map_url: `/maps/${worldId}/overworld/` },
-	{ id: 'nether', map_url: `/maps/${worldId}/nether/` },
-	{ id: 'the_end', map_url: `/maps/${worldId}/the_end/` }
-];
+// Helper for mock dimension details
+function mockDimensions(worldId) {
+	return mockWorlds.find((w) => w.world === worldId)?.dimensions || [];
+}
 
 export function mockServer() {
 	return {
@@ -147,16 +141,25 @@ export function mockServer() {
 				}
 
 				if (path === '/worlds') {
-					return send(res, { worlds: mockWorlds });
+					return send(res, mockWorlds);
 				}
 
-				const mapsMatch = path.match(/^\/worlds\/([^/]+)\/maps$/);
-				if (mapsMatch) {
-					const worldId = mapsMatch[1];
-					return send(res, {
-						world: worldId,
-						dimensions: mockDimensions(worldId)
-					});
+				// /worlds/{name}
+				const worldMatch = path.match(/^\/worlds\/([^/]+)$/);
+				if (worldMatch) {
+					const worldId = worldMatch[1];
+					const world = mockWorlds.find((w) => w.world === worldId);
+					if (!world) return send(res, { error: 'World not found' }, 404);
+					return send(res, world);
+				}
+
+				// /worlds/{name}/{dimension}
+				const dimMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
+				if (dimMatch) {
+					const [_, worldId, dim] = dimMatch;
+					const dimData = mockDimensions(worldId).find((d) => d.name === dim);
+					if (!dimData) return send(res, { error: 'Dimension not found' }, 404);
+					return send(res, dimData);
 				}
 
 				next();
