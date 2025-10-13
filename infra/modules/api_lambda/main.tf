@@ -233,9 +233,21 @@ resource "aws_apigatewayv2_route" "worlds_list" {
   target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
 }
 
-resource "aws_apigatewayv2_route" "worlds_api" {
+resource "aws_apigatewayv2_route" "worlds_detail" {
   api_id    = aws_apigatewayv2_api.http.id
-  route_key = "GET /api/worlds/{proxy+}"
+  route_key = "GET /api/worlds/{name}"
+  target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
+}
+
+resource "aws_apigatewayv2_route" "worlds_dimension" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/worlds/{name}/{dimension}"
+  target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
+}
+
+resource "aws_apigatewayv2_route" "worlds_api_cors" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "OPTIONS /api/worlds/{proxy+}"
   target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
 }
 
