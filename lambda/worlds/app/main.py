@@ -1,112 +1,97 @@
 import os
 import json
 import boto3
-from datetime import datetime, timezone
+from botocore.exceptions import ClientError
 
-S3 = boto3.client("s3")
-BUCKET = os.environ["MAPS_BUCKET"]
-PREFIX = os.environ.get("MAP_PREFIX", "maps/")
-CORS = os.environ.get("CORS_ORIGIN", "*")
-BASE_PATH = os.environ.get("BASE_PATH", "")
+s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"))
+BUCKET = os.environ["WORLD_BUCKET"]
+BASE_URL = os.environ.get("BASE_URL", f"https://{BUCKET}.s3.{os.environ.get('AWS_REGION')}.amazonaws.com")
+CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "*")
 
 
-def lambda_handler(event, _ctx):
-    headers = {
-        "Access-Control-Allow-Origin": CORS,
-        "Access-Control-Allow-Methods": "GET,OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    }
-
+def read_json_from_s3(key: str):
+    """Read a JSON file from S3 and parse it."""
     try:
-        method = event.get("requestContext", {}).get("http", {}).get("method")
-        path = event.get("rawPath", "")
-        if method == "OPTIONS":
-            return {"statusCode": 200, "headers": headers, "body": ""}
-
-        parts = [p for p in path.split("/") if p]
-
-        if len(parts) == 2:  # /api/worlds
-            body = {"worlds": list_worlds()}
-
-        elif len(parts) >= 3:
-            world = parts[2]
-            body = world_details(world)
-
+        resp = s3.get_object(Bucket=BUCKET, Key=key)
+        body = resp["Body"].read().decode("utf-8")
+        return json.loads(body)
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            print(f"Missing key: {key}")
         else:
-            body = {"error": "invalid path", "path": path, "parts": parts}
-
-        return {
-            "statusCode": 200,
-            "headers": headers,
-            "body": json.dumps(body),
-        }
-
-    except Exception as e:
-        print(f"[ERROR] {e}")
-        return {
-            "statusCode": 500,
-            "headers": headers,
-            "body": json.dumps({"message": "Internal Server Error", "error": str(e)}),
-        }
+            print(f"S3 error reading {key}: {e}")
+        return None
 
 
-# ---------------------------------------------------------------------
-# Helper functions
-# ---------------------------------------------------------------------
-
-def list_worlds():
-    """Return a list of worlds under maps/, with metadata for each."""
-    worlds = []
-    paginator = S3.get_paginator("list_objects_v2")
-
-    for page in paginator.paginate(Bucket=BUCKET, Prefix=PREFIX, Delimiter="/"):
-        for p in page.get("CommonPrefixes", []):
-            world_prefix = p["Prefix"]  # e.g. "maps/default/"
-            world_name = world_prefix[len(PREFIX):-1]
-            info = get_world_info(world_name)
-            worlds.append(info)
-    return worlds
-
-
-def get_world_info(world_name):
-    """Summarize a single world directory."""
-    map_url = f"{BASE_PATH}/maps/{world_name}/"
-    preview_url = f"{map_url}overworld/preview.png"
-    last_updated = get_last_modified(f"{PREFIX}{world_name}/overworld/index.html")
-
+def make_response(status: int, body: dict):
     return {
-        "name": world_name,
-        "id": world_name,
-        "map_url": map_url,
-        "preview_url": preview_url,
-        "last_updated": last_updated,
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": CORS_ORIGIN,
+            "Access-Control-Allow-Methods": "GET,OPTIONS",
+        },
+        "body": json.dumps(body, indent=2),
     }
 
 
-def world_details(world_name):
-    """Return details for /api/worlds/<world> or /api/worlds/<world>/maps."""
-    dims = []
-    paginator = S3.get_paginator("list_objects_v2")
-    dim_prefix = f"{PREFIX}{world_name}/"
+def handler(event, context):
+    path = event.get("rawPath") or event.get("path", "/")
+    method = event.get("requestContext", {}).get("http", {}).get("method", event.get("httpMethod", "GET"))
+
+    if method == "OPTIONS":
+        return make_response(200, {})
+
     try:
-        for page in paginator.paginate(Bucket=BUCKET, Prefix=dim_prefix, Delimiter="/"):
-            for p in page.get("CommonPrefixes", []):
-                dim_id = p["Prefix"].split("/")[-2]
-                dims.append({
-                    "id": dim_id,
-                    "map_url": f"{BASE_PATH}/maps/{world_name}/{dim_id}/"
+        # /api/worlds
+        if path == "/api/worlds":
+            data = read_json_from_s3("world_manifest.json")
+            if not data:
+                return make_response(404, {"error": "world_manifest.json not found"})
+
+            enriched = []
+            for w in data:
+                enriched.append({
+                    **w,
+                    "previewUrl": f"{BASE_URL}/{w.get('preview')}",
+                    "mapUrl": f"{BASE_URL}/worlds/{w['world']}/"
                 })
+
+            return make_response(200, enriched)
+
+        # /api/worlds/{name}
+        if path.startswith("/api/worlds/") and path.count("/") == 3:
+            name = path.split("/")[3]
+            world = read_json_from_s3(f"worlds/{name}/manifest.json")
+            if not world:
+                return make_response(404, {"error": f"World '{name}' not found"})
+
+            world["previewUrl"] = f"{BASE_URL}/worlds/{name}/preview.png"
+            dims = []
+            for d in world.get("dimensions", []):
+                dims.append({
+                    **d,
+                    "previewUrl": f"{BASE_URL}/worlds/{name}/{d['name']}/preview.png",
+                    "mapUrl": f"{BASE_URL}/worlds/{name}/{d['name']}/"
+                })
+            world["dimensions"] = dims
+
+            return make_response(200, world)
+
+        # /api/worlds/{name}/{dimension}
+        parts = path.split("/")
+        if len(parts) == 5 and parts[1:3] == ["api", "worlds"]:
+            name, dim = parts[3], parts[4]
+            dim_data = read_json_from_s3(f"worlds/{name}/{dim}/manifest.json")
+            if not dim_data:
+                return make_response(404, {"error": f"Dimension '{dim}' not found"})
+
+            dim_data["previewUrl"] = f"{BASE_URL}/worlds/{name}/{dim}/preview.png"
+            dim_data["mapUrl"] = f"{BASE_URL}/worlds/{name}/{dim}/"
+            return make_response(200, dim_data)
+
+        return make_response(404, {"error": "Not found"})
+
     except Exception as e:
-        print(f"[WARN] listing dimensions for {world_name}: {e}")
-
-    return {"world": world_name, "dimensions": dims}
-
-
-def get_last_modified(key):
-    """Return last modified timestamp of key, or None."""
-    try:
-        resp = S3.head_object(Bucket=BUCKET, Key=key)
-        ts = resp["LastModified"]
-        return ts.astimezone(timezone.utc).isoformat()
-    except S3.exceptions.ClientError:
-        return None
+        print("Handler error:", e)
+        return make_response(500, {"error": "Internal Server Error", "details": str(e)})
