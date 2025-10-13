@@ -162,6 +162,39 @@ jq -n \
     last_rendered: now
   }' > "${MAP_DIR}/manifest.json"
 
+# --- Aggregate world manifests into world_manifest.json ---
+AGG_FILE="${MAP_ROOT}/world_manifest.json"
+
+echo "Aggregating world manifests into ${AGG_FILE}"
+
+{
+  echo "["
+  first=true
+  for world_dir in "${MAP_ROOT}"/*/; do
+    [[ -d "$world_dir" && -f "${world_dir}/manifest.json" ]] || continue
+    if [ "$first" = true ]; then
+      first=false
+    else
+      echo ","
+    fi
+
+    world_name=$(basename "$world_dir")
+    manifest="${world_dir}/manifest.json"
+    preview_rel="${world_name}/preview.png"
+    preview_path=""
+    if [[ -f "${world_dir}/preview.png" ]]; then
+      preview_path="${preview_rel}"
+    fi
+
+    # Read manifest content (without outer braces)
+    manifest_json=$(jq -c . "$manifest" | sed 's/^{//;s/}$//')
+
+    echo "{${manifest_json},\"preview\":\"${preview_path}\"}"
+  done
+  echo "]"
+} > "${AGG_FILE}"
+
+echo "Generated ${AGG_FILE}"
 
 # --- Rebuild top-level index page ---
 INDEX="${MAP_ROOT}/index.html"
