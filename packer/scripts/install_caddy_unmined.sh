@@ -170,7 +170,19 @@ ACTIVE_WORLDS=$(systemctl list-units --state=running 'minecraft@*.service' \
 
 {
   echo "<!DOCTYPE html><html><head><title>Minecraft Maps</title>"
-  echo "<style>body{font-family:sans-serif;margin:2rem;} ul{list-style:none;} li{margin-bottom:.5rem;} h2{margin-top:1.5rem;}</style>"
+  echo "<style>
+    body{font-family:sans-serif;margin:2rem;background:#f9f9f9;}
+    h1{margin-bottom:1rem;}
+    h2{margin-top:2rem;margin-bottom:.5rem;}
+    small{color:#666;}
+    .world{margin-bottom:2rem;padding:1rem;background:#fff;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.1);}
+    .preview{max-width:320px;height:auto;border-radius:8px;box-shadow:0 1px 4px rgba(0,0,0,.15);}
+    .dim-grid{display:flex;flex-wrap:wrap;gap:1rem;margin-top:.5rem;}
+    .dim-card{background:#fafafa;padding:.5rem;border-radius:8px;text-align:center;width:160px;}
+    .dim-card img{max-width:150px;height:auto;border-radius:6px;display:block;margin:auto;}
+    a{text-decoration:none;color:#0366d6;}
+    a:hover{text-decoration:underline;}
+  </style>"
   echo "</head><body>"
   echo "<h1>Minecraft Worlds</h1>"
 
@@ -178,23 +190,36 @@ ACTIVE_WORLDS=$(systemctl list-units --state=running 'minecraft@*.service' \
     [[ -d "$world_dir" ]] || continue
     world_name=$(basename "$world_dir")
 
+    echo "<div class=\"world\">"
+
+    # header + preview
     if echo "$ACTIVE_WORLDS" | grep -qw "$world_name"; then
       echo "<h2>${world_name} <small>(active)</small></h2>"
     else
       echo "<h2>${world_name}</h2>"
     fi
 
-    echo "<ul>"
+    if [[ -f "${world_dir}/preview.png" ]]; then
+      echo "<a href=\"./${world_name}/\"><img class=\"preview\" src=\"./${world_name}/preview.png\" alt=\"${world_name} preview\"></a>"
+    fi
 
-    # list each dimension subdir
+    echo "<div class=\"dim-grid\">"
     for dim_dir in "${world_dir}"*/; do
       [[ -d "$dim_dir" ]] || continue
       dim_name=$(basename "$dim_dir")
       [[ "$dim_name" == "overworld" || "$dim_name" == "nether" || "$dim_name" == "end" ]] || continue
-      echo "<li>&rarr; <a href=\"./${world_name}/${dim_name}/\">${dim_name}</a></li>"
-    done
 
-    echo "</ul>"
+      dim_preview="${world_name}/${dim_name}/preview.png"
+      echo "<div class=\"dim-card\">"
+      if [[ -f "${MAP_ROOT}/${dim_preview}" ]]; then
+        echo "<a href=\"./${dim_preview%/preview.png}\"><img src=\"./${dim_preview}\" alt=\"${dim_name}\"></a>"
+      fi
+      echo "<div><a href=\"./${world_name}/${dim_name}/\">${dim_name}</a></div>"
+      echo "</div>"
+    done
+    echo "</div>"
+
+    echo "</div>"
   done
 
   echo "</body></html>"
