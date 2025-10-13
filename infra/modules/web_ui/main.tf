@@ -51,7 +51,23 @@ resource "aws_cloudfront_distribution" "webapp" {
   # CACHE BEHAVIORS
   ##########################################
 
-  # 1. Maps: static map tiles and HTML
+  # --- /api/* → API Gateway (Lambda)
+  ordered_cache_behavior {
+    path_pattern           = "/api/*"
+    target_origin_id       = "api-origin"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    cached_methods         = ["GET", "HEAD"]
+    compress               = true
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization"]
+      cookies { forward = "none" }
+    }
+  }
+
+  # --- /maps/* → Maps S3 bucket
   ordered_cache_behavior {
     path_pattern           = "/maps/*"
     target_origin_id       = "maps-origin"
@@ -68,40 +84,24 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # 2. API calls
+  # --- /worlds/* → Worlds S3 bucket (SvelteKit static pages)
   ordered_cache_behavior {
-    path_pattern           = "/api/*"
-    target_origin_id       = "api-origin"
+    path_pattern           = "/worlds/*"
+    target_origin_id       = "webapp-origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods         = ["GET", "HEAD"]
-
-    forwarded_values {
-      query_string = true
-      headers      = ["Authorization"]
-      cookies {
-        forward = "all"
-      }
-    }
-  }
-  ordered_cache_behavior {
-    path_pattern           = "/api/*/*"
-    target_origin_id       = "api-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
+    allowed_methods        = ["GET", "HEAD"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
 
     forwarded_values {
-      query_string = true
-      headers      = ["Authorization"]
+      query_string = false
       cookies {
-        forward = "all"
+        forward = "none"
       }
     }
   }
 
-  # 3. Default (UI SPA)
+  # --- Default / → UI S3 bucket (root landing + SPA)
   default_cache_behavior {
     target_origin_id       = "webapp-origin"
     viewer_protocol_policy = "redirect-to-https"
@@ -118,6 +118,22 @@ resource "aws_cloudfront_distribution" "webapp" {
   }
 
   ##########################################
+  # ERROR HANDLING (SPA fallback)
+  ##########################################
+
+  custom_error_response {
+    error_code         = 403
+    response_code      = 403
+    response_page_path = "/404.html"
+  }
+
+  custom_error_response {
+    error_code         = 404
+    response_code      = 404
+    response_page_path = "/404.html"
+  }
+
+  ##########################################
   # SETTINGS
   ##########################################
 
@@ -130,19 +146,6 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   viewer_certificate {
     cloudfront_default_certificate = true
-  }
-
-  # Let SPA handle 403/404 (single-page app routing)
-  custom_error_response {
-    error_code         = 403
-    response_code      = 200
-    response_page_path = "/index.html"
-  }
-
-  custom_error_response {
-    error_code         = 404
-    response_code      = 200
-    response_page_path = "/index.html"
   }
 }
 
