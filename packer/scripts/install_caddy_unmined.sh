@@ -105,6 +105,11 @@ for dir in "${!DIMS[@]}"; do
     echo "→ Rendering ${DIM_NAME} from ${SRC}"
     mkdir -p "$OUT"
 
+    TOPY_ARG=""
+    if [[ "$DIM_NAME" == "nether" ]]; then
+      TOPY_ARG="--topY=120"
+    fi
+
     "${UNMINED}" web render \
       --world="$SRC" \
       --dimension="${DIM_NAME}" \
@@ -112,6 +117,7 @@ for dir in "${!DIMS[@]}"; do
       --zoomout=6 \
       --zoomin=4 \
       --shadows=3d \
+      $TOPY_ARG \
       --players
 
     # Static preview image
@@ -122,6 +128,7 @@ for dir in "${!DIMS[@]}"; do
       --area="r((-16,-16),(31,31))" \
       --zoom=-4 \
       --shadows=3d \
+      $TOPY_ARG \
       --output="$OUT/preview.png"
 
     # Dimension manifest
