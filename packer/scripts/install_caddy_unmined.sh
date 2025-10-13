@@ -122,10 +122,27 @@ for dir in "${!DIMS[@]}"; do
 
     # Static preview image
     echo "→ Generating preview for ${DIM_NAME}"
+
+    # Get spawn position
+    SPAWN_X=$($HOME/.local/bin/nbt -r --path='Data.SpawnX' "$SRC/level.dat")
+    SPAWN_Z=$($HOME/.local/bin/nbt -r --path='Data.SpawnZ' "$SRC/level.dat")
+
+    # Half the side length of your preview area (in blocks)
+    RANGE=64   # total area will be 128x128
+
+    # Compute bounding box corners
+    X1=$((SPAWN_X - RANGE))
+    Z1=$((SPAWN_Z - RANGE))
+    X2=$((SPAWN_X + RANGE))
+    Z2=$((SPAWN_Z + RANGE))
+
+    AREA="b((${X1},${Z1}),(${X2},${Z2}))"
+    echo "→ Generating preview for ${DIM_ID} around spawn (${SPAWN_X}, ${SPAWN_Z})"
+
     "${UNMINED}" image render \
       --world="$SRC" \
       --dimension="${DIM_ID}" \
-      --area="b((-16,-16),(31,31))" \
+      --area="$AREA" \
       --zoom=-4 \
       --shadows=3d \
       $TOPY_ARG \
