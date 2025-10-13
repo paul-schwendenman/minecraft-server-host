@@ -233,6 +233,12 @@ resource "aws_apigatewayv2_route" "worlds_list" {
   target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
 }
 
+resource "aws_apigatewayv2_route" "worlds_api" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "GET /api/worlds/{proxy+}"
+  target    = "integrations/${aws_apigatewayv2_integration.worlds.id}"
+}
+
 resource "aws_apigatewayv2_route" "worlds_maps" {
   api_id    = aws_apigatewayv2_api.http.id
   route_key = "GET /api/worlds/{world}/maps"
