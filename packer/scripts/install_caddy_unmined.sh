@@ -143,7 +143,7 @@ for dir in "${!DIMS[@]}"; do
       --world="$SRC" \
       --dimension="${DIM_ID}" \
       --area="$AREA" \
-      --zoom=-4 \
+      --zoom=2 \
       --shadows=3d \
       $TOPY_ARG \
       --trim \
