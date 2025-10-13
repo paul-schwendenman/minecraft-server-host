@@ -87,43 +87,50 @@ mkdir -p "${MAP_DIR}"
 declare -A DIMS=(
   ["world"]="overworld"
   ["world_nether"]="nether"
-  ["world_the_end"]="the_end"
+  ["world_the_end"]="end"
+)
+declare -A DIM_IDS=(
+  ["overworld"]=0
+  ["nether"]=-1
+  ["end"]=1
 )
 
 for dir in "${!DIMS[@]}"; do
   SRC="${WORLD_BASE}/${dir}"
-  DIM="${DIMS[$dir]}"
-  OUT="${MAP_DIR}/${DIM}"
+  DIM_NAME="${DIMS[$dir]}"
+  DIM_ID="${DIM_IDS[$DIM_NAME]}"
+  OUT="${MAP_DIR}/${DIM_NAME}"
 
   if [[ -d "$SRC" ]]; then
-    echo "→ Rendering ${DIM} from ${SRC}"
+    echo "→ Rendering ${DIM_NAME} from ${SRC}"
     mkdir -p "$OUT"
+
     "${UNMINED}" web render \
       --world="$SRC" \
+      --dimension="${DIM_NAME}" \
       --output="$OUT" \
       --zoomout=6 \
       --zoomin=4 \
       --shadows=3d \
       --players
 
-    # preview + manifest for S3 / UI
-    #if [[ -f "$OUT/screenshot.png" ]]; then
-    #  convert "$OUT/screenshot.png" -resize 320x180 "$OUT/preview.png" || true
-    #fi
-    if [[ -f "$OUT/preview.png" ]]; then
-      "${UNMINED}" image render \
-        --world="$SRC" \
-        --area="r((-16,-16),(31,31))" \
-        --zoom=-4 \
-        --dimension=0 \
-        --shadows=3d \
-        --output="$OUT/preview.png"
-    fi
+    # Static preview image
+    echo "→ Generating preview for ${DIM_NAME}"
+    "${UNMINED}" image render \
+      --world="$SRC" \
+      --dimension="${DIM_ID}" \
+      --area="r((-16,-16),(31,31))" \
+      --zoom=-4 \
+      --shadows=3d \
+      --output="$OUT/preview.png"
 
+    # Dimension manifest
     cat >"$OUT/manifest.json" <<EOS
 {
   "world": "${WORLD_NAME}",
-  "dimension": "${DIM}",
+  "dimension": "${DIM_NAME}",
+  "dimension_id": ${DIM_ID},
+  "path": "${WORLD_NAME}/${DIM_NAME}",
   "last_rendered": "$(date -Iseconds)"
 }
 EOS
@@ -131,6 +138,23 @@ EOS
     echo "Skipping missing dimension directory: ${SRC}"
   fi
 done
+
+# --- Copy overworld preview to world root ---
+if [[ -f "${MAP_DIR}/overworld/preview.png" ]]; then
+  cp "${MAP_DIR}/overworld/preview.png" "${MAP_DIR}/preview.png"
+fi
+
+# --- World manifest ---
+jq -n \
+  --arg world "$WORLD_NAME" \
+  --argjson rendered "$(date -Iseconds)" \
+  --argjson dims "$(for d in "${!DIM_IDS[@]}"; do echo "\"$d\""; done | jq -s .)" \
+  '{
+    world: $world,
+    dimensions: $dims,
+    last_rendered: now
+  }' > "${MAP_DIR}/manifest.json"
+
 
 # --- Rebuild landing page (same as before) ---
 INDEX="${MAP_ROOT}/index.html"
