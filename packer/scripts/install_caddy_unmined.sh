@@ -152,15 +152,20 @@ if [[ -f "${MAP_DIR}/overworld/preview.png" ]]; then
 fi
 
 # --- World manifest ---
-jq -n \
-  --arg world "$WORLD_NAME" \
-  --argjson rendered "$(date -Iseconds)" \
-  --argjson dims "$(for d in "${!DIM_IDS[@]}"; do echo "\"$d\""; done | jq -s .)" \
-  '{
-    world: $world,
-    dimensions: $dims,
-    last_rendered: now
-  }' > "${MAP_DIR}/manifest.json"
+# --- Generate world manifest (for Lambda/API) ---
+cat >"${MAP_DIR}/manifest.json" <<EOS
+{
+  "world": "${WORLD_NAME}",
+  "dimensions": [
+    $(for dir in "${!DIMS[@]}"; do
+      name="${DIMS[$dir]}"
+      id="${DIM_IDS[$name]}"
+      echo "{\"name\": \"${name}\", \"id\": ${id}},"
+    done | sed '$ s/,$//')
+  ],
+  "last_rendered": "$(date -Iseconds)"
+}
+EOS
 
 # --- Aggregate world manifests into world_manifest.json ---
 AGG_FILE="${MAP_ROOT}/world_manifest.json"
