@@ -4,15 +4,16 @@ import boto3
 from botocore.exceptions import ClientError
 
 s3 = boto3.client("s3", region_name=os.environ.get("AWS_REGION"))
-BUCKET = os.environ["WORLD_BUCKET"]
-BASE_URL = os.environ.get("BASE_URL", f"https://{BUCKET}.s3.{os.environ.get('AWS_REGION')}.amazonaws.com")
+MAPS_BUCKET = os.environ["MAPS_BUCKET"]
+BASE_URL = os.environ.get("BASE_URL", f"https://{MAPS_BUCKET}.s3.{os.environ.get('AWS_REGION')}.amazonaws.com")
+MAP_PREFIX = os.environ.get("MAP_PREFIX", "maps/")
 CORS_ORIGIN = os.environ.get("CORS_ORIGIN", "*")
 
 
 def read_json_from_s3(key: str):
     """Read a JSON file from S3 and parse it."""
     try:
-        resp = s3.get_object(Bucket=BUCKET, Key=key)
+        resp = s3.get_object(Bucket=MAPS_BUCKET, Key=key)
         body = resp["Body"].read().decode("utf-8")
         return json.loads(body)
     except ClientError as e:
@@ -35,7 +36,7 @@ def make_response(status: int, body: dict):
     }
 
 
-def handler(event, context):
+def lambda_handler(event, context):
     path = event.get("rawPath") or event.get("path", "/")
     method = event.get("requestContext", {}).get("http", {}).get("method", event.get("httpMethod", "GET"))
 
@@ -45,7 +46,7 @@ def handler(event, context):
     try:
         # /api/worlds
         if path == "/api/worlds":
-            data = read_json_from_s3("world_manifest.json")
+            data = read_json_from_s3(f"{MAP_PREFIX}world_manifest.json")
             if not data:
                 return make_response(404, {"error": "world_manifest.json not found"})
 
@@ -62,7 +63,7 @@ def handler(event, context):
         # /api/worlds/{name}
         if path.startswith("/api/worlds/") and path.count("/") == 3:
             name = path.split("/")[3]
-            world = read_json_from_s3(f"worlds/{name}/manifest.json")
+            world = read_json_from_s3(f"{MAP_PREFIX}worlds/{name}/manifest.json")
             if not world:
                 return make_response(404, {"error": f"World '{name}' not found"})
 
@@ -82,7 +83,8 @@ def handler(event, context):
         parts = path.split("/")
         if len(parts) == 5 and parts[1:3] == ["api", "worlds"]:
             name, dim = parts[3], parts[4]
-            dim_data = read_json_from_s3(f"worlds/{name}/{dim}/manifest.json")
+            dim_data = read_json_from_s3(f"{MAP_PREFIX}worlds/{name}/{dim}/manifest.json")
+
             if not dim_data:
                 return make_response(404, {"error": f"Dimension '{dim}' not found"})
 
