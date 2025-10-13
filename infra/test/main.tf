@@ -36,7 +36,7 @@ module "ec2_role" {
 module "mc_stack" {
   source            = "../modules/mc_stack"
   name              = "minecraft-test"
-  ami_id            = "ami-064be4c686b251a55"
+  ami_id            = "ami-0bc49424818457c5c"
   instance_type     = "t3.small"
   vpc_id            = module.networking.vpc_id
   subnet_id         = module.networking.public_subnet_id
@@ -97,4 +97,8 @@ output "api_endpoint" {
 
 output "webapp_url" {
   value = module.web_ui.webapp_url
+}
+
+output "map_bucket_name" {
+  value = module.s3_buckets.map_bucket_name
 }
