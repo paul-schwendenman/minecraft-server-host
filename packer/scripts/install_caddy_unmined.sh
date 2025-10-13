@@ -5,6 +5,10 @@ MINECRAFT_GROUP="minecraft"
 UNMINED_DIR="/opt/unmined"
 MAP_DIR="/var/www/map"
 
+
+# -- Install nbt cli --
+sudo -u minecraft pip3 install --user nbtlib
+
 # --- uNmINeD CLI (grab latest linux-x64 dev build) ---
 if [[ ! -x "${UNMINED_DIR}/unmined-cli" ]]; then
   sudo rm -rf "${UNMINED_DIR}"

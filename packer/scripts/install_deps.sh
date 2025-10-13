@@ -12,7 +12,6 @@ sudo apt-get install -y -qq \
 
 # Python tool (optional; nice for local checks)
 pip3 install --user mcstatus nbtlib
-sudo -u minecraft pip3 install --user nbtlib
 
 # mcrcon (build from source—no external runtime deps)
 MCRCON_VERSION=0.7.2
