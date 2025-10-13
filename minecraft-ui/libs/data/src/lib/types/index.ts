@@ -1,2 +1,2 @@
-export * from './api.js';
-export * from './worlds.js';
+export type * from './api.js';
+export type * from './worlds.js';
