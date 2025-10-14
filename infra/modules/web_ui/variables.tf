@@ -45,8 +45,3 @@ variable "map_bucket_domain_name" {
   description = "The regional domain name of the map S3 bucket"
   type        = string
 }
-
-variable "map_bucket_s3_website" {
-  description = "The s3 website domain name of the map S3 bucket"
-  type = string
-}
