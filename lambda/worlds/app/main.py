@@ -67,7 +67,7 @@ def lambda_handler(event, context):
             if not world:
                 return make_response(404, {"error": f"World '{name}' not found"})
 
-            world["previewUrl"] = f"{BASE_URL}/{name}/preview.png"
+            world["previewUrl"] = f"{BASE_URL}/{MAP_PREFIX}{name}/preview.png"
             dims = []
             for d in world.get("dimensions", []):
                 dims.append({
