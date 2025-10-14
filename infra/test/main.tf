@@ -79,6 +79,15 @@ module "web_ui" {
   geo_whitelist = ["US", "CA", "MX"]
 }
 
+module "dns_records" {
+  source = "../modules/dns_records"
+
+  zone_id      = data.aws_route53_zone.prod.zone_id
+  dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
+  ipv4_address = module.mc_stack.public_ip
+  ipv6_address = module.mc_stack.ipv6_addresses[0]
+}
+
 output "server_public_ip" {
   value = module.mc_stack.public_ip
 }

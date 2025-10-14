@@ -147,7 +147,7 @@ resource "aws_lambda_function" "worlds" {
       MAPS_BUCKET = var.map_bucket_name
       CORS_ORIGIN = var.cors_origin
       MAP_PREFIX  = "maps/"
-      BASE_URL   = ""
+      BASE_URL    = ""
     }
   }
 }
