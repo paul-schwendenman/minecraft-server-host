@@ -41,10 +41,15 @@ resource "aws_cloudfront_distribution" "webapp" {
 
   # Origin 3: Maps bucket (uNmINeD exports)
   origin {
-    domain_name = var.map_bucket_domain_name
+    domain_name = var.map_bucket_s3_website
     origin_id   = "maps-origin"
 
-    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
+    custom_origin_config {
+      origin_protocol_policy = "http-only"
+      http_port              = 80
+      https_port             = 443
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
   }
 
   ##########################################
