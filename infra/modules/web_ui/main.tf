@@ -10,6 +10,14 @@ resource "aws_cloudfront_origin_access_control" "webapp" {
   signing_protocol                  = "sigv4"
 }
 
+resource "aws_cloudfront_function" "maps_index" {
+  name    = "maps-append-index"
+  runtime = "cloudfront-js-1.0"
+  comment = "Append index.html for directory-style requests under /maps/*"
+  publish = true
+  code    = file("${path.module}/cf-functions/maps-append-index.js")
+}
+
 resource "aws_cloudfront_distribution" "webapp" {
   enabled             = true
   default_root_object = "index.html"
@@ -75,6 +83,11 @@ resource "aws_cloudfront_distribution" "webapp" {
     allowed_methods        = ["GET", "HEAD", "OPTIONS"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.maps_index.arn
+    }
 
     forwarded_values {
       query_string = false
