@@ -8,15 +8,15 @@ variable "dns_name" {
   type        = string
 }
 
-variable "ipv4_address" {
-  description = "Single IPv4 address for the A record. Optional."
-  type        = string
+variable "ipv4_addresses" {
+  description = "IPv4 addresses for the A record. Optional."
+  type        = list(string)
   default     = null
 }
 
-variable "ipv6_address" {
-  description = "Single IPv6 address for the AAAA record. Optional."
-  type        = string
+variable "ipv6_addresses" {
+  description = "IPv6 addresses for the AAAA record. Optional."
+  type        = list(string)
   default     = null
 }
 

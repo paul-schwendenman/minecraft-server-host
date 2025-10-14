@@ -82,10 +82,10 @@ module "web_ui" {
 module "dns_records" {
   source = "../modules/dns_records"
 
-  zone_id      = data.aws_route53_zone.prod.zone_id
-  dns_name     = "testmc.${data.aws_route53_zone.prod.name}"
-  ipv4_address = module.mc_stack.public_ip
-  ipv6_address = module.mc_stack.ipv6_addresses[0]
+  zone_id        = data.aws_route53_zone.prod.zone_id
+  dns_name       = "testmc.${data.aws_route53_zone.prod.name}"
+  ipv4_addresses = module.mc_stack.public_ip != "" ? [module.mc_stack.public_ip] : null
+  ipv6_addresses = module.mc_stack.ipv6_addresses
 }
 
 output "server_public_ip" {
