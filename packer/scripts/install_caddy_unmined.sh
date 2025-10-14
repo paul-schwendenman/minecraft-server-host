@@ -99,6 +99,8 @@ declare -A DIM_IDS=(
   ["end"]=1
 )
 
+DIM_JSON="[]"
+
 for dir in "${!DIMS[@]}"; do
   SRC="${WORLD_BASE}/${dir}"
   DIM_NAME="${DIMS[$dir]}"
@@ -153,6 +155,9 @@ for dir in "${!DIMS[@]}"; do
       --trim \
       --output="$OUT/preview.png"
 
+    # Add to JSON array
+    DIM_JSON=$(echo "$DIM_JSON" | jq --arg name "$DIM_NAME" --argjson id "$DIM_ID" '. + [{"name":$name,"id":$id}]')
+
     # Dimension manifest
     cat >"$OUT/manifest.json" <<EOS
 {
@@ -175,19 +180,12 @@ fi
 
 # --- World manifest ---
 # --- Generate world manifest (for Lambda/API) ---
-cat >"${MAP_DIR}/manifest.json" <<EOS
-{
-  "world": "${WORLD_NAME}",
-  "dimensions": [
-    $(for dir in "${!DIMS[@]}"; do
-      name="${DIMS[$dir]}"
-      id="${DIM_IDS[$name]}"
-      echo "{\"name\": \"${name}\", \"id\": ${id}},"
-    done | sed '$ s/,$//')
-  ],
-  "last_rendered": "$(date -Iseconds)"
-}
-EOS
+jq -n \
+  --arg world "$WORLD_NAME" \
+  --argjson dims "$DIM_JSON" \
+  --arg rendered "$(date -Iseconds)" \
+  '{world:$world, dimensions:$dims, last_rendered:$rendered}' \
+  > "${MAP_DIR}/manifest.json"
 
 # --- Aggregate world manifests into world_manifest.json ---
 AGG_FILE="${MAP_ROOT}/world_manifest.json"
