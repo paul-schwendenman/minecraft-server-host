@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Breadcrumbs from './Breadcrumbs.svelte';
+	import Breadcrumbs from '$lib/Breadcrumbs.svelte';
 
 	export let breadcrumbs: { label: string; href?: string }[] = [];
 	export let title: string;
@@ -14,16 +14,15 @@
 		<Breadcrumbs items={breadcrumbs} />
 	{/if}
 
-	<div class="flex items-center justify-between gap-4">
+	<div class="mt-2 flex items-center justify-between gap-4">
 		<div class="flex items-center gap-3">
 			{#if preview}
 				<img
 					src={preview}
 					alt="Preview"
-					class="border-base-300 h-16 w-16 rounded-lg border object-cover"
+					class="border-base-300 h-14 w-14 rounded-lg border object-cover"
 				/>
 			{/if}
-
 			<div>
 				<h1 class="text-base-content text-2xl font-bold">{title}</h1>
 				{#if subtitle}
