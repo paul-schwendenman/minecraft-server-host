@@ -1,42 +1,25 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { listWorlds, type World } from '@minecraft/data';
 	import Header from '$lib/Header.svelte';
-
-	let worlds: World[] = [];
-	let error: string | null = null;
-	let loading = true;
-
-	onMount(async () => {
-		try {
-			worlds = await listWorlds();
-		} catch (err) {
-			error = err instanceof Error ? err.message : String(err);
-		} finally {
-			loading = false;
-		}
-	});
+	import Card from '$lib/Card.svelte';
+	export let data;
+	const { worlds } = data;
 </script>
 
-<Header title="Worlds" subtitle="Available Minecraft worlds" />
+<svelte:head>
+	<title>Minecraft Worlds</title>
+</svelte:head>
 
-{#if loading}
-	<p>Loading worlds...</p>
-{:else if error}
-	<p class="text-red-600">Error: {error}</p>
-{:else}
-	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-		{#each worlds as w}
-			<a
-				href={`/worlds/${w.world}`}
-				class="block overflow-hidden rounded-xl bg-white shadow hover:shadow-lg"
-			>
-				<img src={w.previewUrl} alt={w.world} class="h-56 w-full object-cover" />
-				<div class="p-3">
-					<h2 class="text-lg font-bold">{w.world}</h2>
-					<p class="text-sm text-gray-600">{w.dimensions.length} dimensions</p>
-				</div>
-			</a>
+<div class="space-y-6 p-4">
+	<Header title="Worlds" subtitle="Explore all Minecraft worlds" />
+
+	<section class="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
+		{#each worlds as world}
+			<Card
+				title={world.world}
+				subtitle={world?.version ? `Version ${world?.version}` : null}
+				image={world.previewUrl}
+				href={`/worlds/${world.world}`}
+			/>
 		{/each}
-	</div>
-{/if}
+	</section>
+</div>
