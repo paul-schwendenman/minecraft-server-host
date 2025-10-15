@@ -1,6 +1,8 @@
 import type { PageLoad } from './$types';
 import { getWorld, type WorldDetail } from '@minecraft/data';
 
+export const prerender = false;
+
 export const load: PageLoad = async ({ params, fetch }) => {
 	const { world_name: worldName } = params;
 
