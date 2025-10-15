@@ -6,7 +6,7 @@
 </script>
 
 <svelte:head>
-	<title>Minecraft Worlds</title>
+	<title>Maps | Minecraft Server Manager</title>
 </svelte:head>
 
 <div class="space-y-6 p-4">

@@ -9,6 +9,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>Minecraft Server Manager</title>
+</svelte:head>
+
 <section
 	class="flex h-full max-w-full flex-1 flex-col justify-between p-8 sm:mx-auto sm:max-w-sm sm:pt-16"
 >
