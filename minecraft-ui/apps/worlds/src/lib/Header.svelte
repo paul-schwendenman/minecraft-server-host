@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Breadcrumbs from './Breadcrumbs.svelte';
+
 	export let breadcrumbs: { label: string; href?: string }[] = [];
 	export let title: string;
 	export let subtitle: string | null = null;
@@ -8,20 +10,8 @@
 </script>
 
 <div class="bg-base-200/80 border-base-300 mb-6 rounded-xl border p-4 shadow backdrop-blur-sm">
-	<!-- Breadcrumbs -->
 	{#if breadcrumbs.length}
-		<nav class="text-base-content/70 mb-1 flex flex-wrap gap-1 text-sm">
-			{#each breadcrumbs as crumb, i}
-				{#if crumb.href}
-					<a href={crumb.href} class="hover:underline">{crumb.label}</a>
-				{:else}
-					<span>{crumb.label}</span>
-				{/if}
-				{#if i < breadcrumbs.length - 1}
-					<span class="text-gray-400">/</span>
-				{/if}
-			{/each}
-		</nav>
+		<Breadcrumbs items={breadcrumbs} />
 	{/if}
 
 	<div class="flex items-center justify-between gap-4">
