@@ -34,7 +34,7 @@
 		</div>
 	</nav>
 
-	<section class="mx-auto flex w-full max-w-5xl flex-1 flex-col p-4">
+	<section class="mx-auto flex w-full max-w-5xl flex-1 flex-col">
 		{@render children?.()}
 	</section>
 </main>
