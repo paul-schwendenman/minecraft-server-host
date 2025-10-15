@@ -24,6 +24,7 @@
 <Header
 	breadcrumbs={[{ label: 'Worlds', href: '/worlds' }, { label: world?.world ?? 'Unknown' }]}
 	title={world?.world ?? 'Unknown'}
+	preview={world?.previewUrl}
 	subtitle="Select a dimension to explore"
 />
 
@@ -33,10 +34,6 @@
 	<p class="text-red-600">Error: {error}</p>
 {:else if world}
 	<section class="p-4">
-		<h1 class="mb-4 text-2xl font-bold">{world.world}</h1>
-		<img src={world.previewUrl} alt={world.world} class="mb-6 w-full max-w-3xl rounded-xl shadow" />
-
-		<h2 class="mb-2 text-xl font-semibold">Dimensions</h2>
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
 			{#each world.dimensions as d}
 				<div class="rounded-lg bg-white p-3 shadow hover:shadow-lg">
