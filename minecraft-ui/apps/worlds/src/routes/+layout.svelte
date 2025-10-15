@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { resolve } from '$app/paths';
-	import { page } from '$app/stores';
+	// import { page } from '$app/stores';
+	import { page } from '$app/state';
 
 	let { children } = $props();
 </script>
@@ -15,14 +16,14 @@
 				<a
 					href={resolve('/')}
 					class="btn btn-ghost btn-sm"
-					class:btn-active={$page.url.pathname === '/'}
+					class:btn-active={page.url.pathname === '/'}
 				>
 					Server
 				</a>
 				<a
 					href={resolve('/worlds')}
 					class="btn btn-ghost btn-sm"
-					class:btn-active={$page.url.pathname.startsWith('/worlds')}
+					class:btn-active={page.url.pathname.startsWith('/worlds')}
 				>
 					Maps
 				</a>
