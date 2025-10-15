@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { getWorld, type WorldDetail } from '@minecraft/data';
+	import Header from '$lib/Header.svelte';
 
 	let world: WorldDetail | null = null;
 	let error: string | null = null;
@@ -19,6 +20,12 @@
 		}
 	});
 </script>
+
+<Header
+	breadcrumbs={[{ label: 'Worlds', href: '/worlds' }, { label: world?.world ?? 'Unknown' }]}
+	title={world?.world ?? 'Unknown'}
+	subtitle="Select a dimension to explore"
+/>
 
 {#if loading}
 	<p>Loading world...</p>

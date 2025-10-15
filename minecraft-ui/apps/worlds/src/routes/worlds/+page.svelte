@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { listWorlds, type World } from '@minecraft/data';
+	import Header from '$lib/Header.svelte';
 
 	let worlds: World[] = [];
 	let error: string | null = null;
@@ -16,6 +17,8 @@
 		}
 	});
 </script>
+
+<Header title="Worlds" subtitle="Available Minecraft worlds" />
 
 {#if loading}
 	<p>Loading worlds...</p>

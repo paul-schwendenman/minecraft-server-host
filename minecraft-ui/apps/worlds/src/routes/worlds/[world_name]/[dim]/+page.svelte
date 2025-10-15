@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { getWorldDimension, type Dimension } from '@minecraft/data';
+	import Header from '$lib/Header.svelte';
 
 	let dimension: Dimension | null = null;
 	let loading = true;
@@ -25,6 +26,18 @@
 		showInline = !showInline;
 	}
 </script>
+
+<Header
+	breadcrumbs={[
+		{ label: 'Worlds', href: '/worlds' },
+		{ label: world.world, href: `/worlds/${world.world}` },
+		{ label: dimension.name }
+	]}
+	title={`${world.name} – ${dimension?.name}`}
+	preview={dimension.previewUrl}
+	actionLabel="Open Full Map"
+	actionHref={dimension.mapUrl}
+/>
 
 {#if loading}
 	<p>Loading dimension...</p>
@@ -54,7 +67,12 @@
 
 		{#if showInline}
 			<div class="mt-4">
-				<iframe src={dimension.mapUrl} class="h-[80vh] w-full rounded-xl border shadow-inner" />
+				<iframe
+					src={dimension.mapUrl}
+					class="h-[80vh] w-full rounded-xl border shadow-inner"
+					title="Map"
+				>
+				</iframe>
 			</div>
 		{:else}
 			<div class="mt-4">
