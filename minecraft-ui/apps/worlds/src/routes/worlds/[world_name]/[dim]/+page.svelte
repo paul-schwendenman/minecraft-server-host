@@ -5,6 +5,10 @@
 	const { world, dimension, preview, mapUrl } = data;
 </script>
 
+<svelte:head>
+	<title>{world.name} – {dimension.name} | Maps | Minecraft Server Manager</title>
+</svelte:head>
+
 <Header
 	breadcrumbs={[
 		{ label: 'Worlds', href: '/worlds' },
