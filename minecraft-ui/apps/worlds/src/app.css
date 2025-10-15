@@ -1,2 +1,5 @@
 @import 'tailwindcss';
+@plugin "daisyui" {
+  themes: abyss --default, lemonade --preferslight;
+};
 @config "../tailwind.config.js";
