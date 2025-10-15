@@ -16,7 +16,11 @@
 	};
 </script>
 
-<button on:click={handleClick} class="btn btn-neutral {$$props.class}" disabled={pending}>
+<button
+	on:click={handleClick}
+	class="btn btn-neutral btn-lg sm:btn-md min-h-12 p-4 sm:px-4 sm:py-2 {$$props.class}"
+	disabled={pending}
+>
 	{#if !pending}
 		<slot></slot>
 	{:else}

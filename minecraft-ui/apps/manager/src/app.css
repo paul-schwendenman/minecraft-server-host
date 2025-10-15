@@ -7,7 +7,7 @@
 }
 
 .btn {
-    @apply m-px min-h-12 cursor-pointer rounded border  p-4 text-lg outline-none sm:px-4 sm:py-2 sm:text-base;
+    @apply m-px min-h-12 cursor-pointer rounded border p-4 text-lg outline-none sm:px-4 sm:py-2 sm:text-base;
 }
 
 .btn-neutral {
