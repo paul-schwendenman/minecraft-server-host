@@ -1,9 +1,9 @@
 <div class="flex items-center justify-center space-x-1">
 	<div
-		class="h-2.5 w-2.5 animate-bounce rounded-full bg-gray-700 [animation-delay:-0.32s] dark:bg-gray-100"
+		class="bg-neutral-content h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:-0.32s]"
 	></div>
 	<div
-		class="h-2.5 w-2.5 animate-bounce rounded-full bg-gray-700 [animation-delay:-0.16s] dark:bg-gray-100"
+		class="bg-neutral-content h-2.5 w-2.5 animate-bounce rounded-full [animation-delay:-0.16s]"
 	></div>
-	<div class="h-2.5 w-2.5 animate-bounce rounded-full bg-gray-700 dark:bg-gray-100"></div>
+	<div class="bg-neutral-content h-2.5 w-2.5 animate-bounce rounded-full"></div>
 </div>
