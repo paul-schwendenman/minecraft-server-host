@@ -3,3 +3,7 @@
   themes: abyss --default, lemonade --preferslight;
 };
 @config "../tailwind.config.js";
+
+.flex-2 {
+  flex: 2 2 0%;
+}
