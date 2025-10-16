@@ -1,0 +1,38 @@
+@plugin "daisyui/theme" {
+  name: "mc-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+
+  /* Dark base */
+  --color-base-100: oklch(15% 0.03 120); /* near black */
+  --color-base-200: oklch(20% 0.03 120);
+  --color-base-300: oklch(25% 0.04 120);
+  --color-base-content: oklch(90% 0.02 120);
+
+  /* Brand colors (same logo tones but tuned for dark) */
+  --color-primary: oklch(72.13% 0.146 137.97);
+  --color-primary-content: oklch(15% 0.03 150);
+
+  --color-secondary: oklch(75.03% 0.104 57.11);
+  --color-secondary-content: oklch(15% 0.04 60);
+
+  --color-accent: oklch(53.17% 0.070 57.66);
+  --color-accent-content: oklch(95% 0.02 60);
+
+  --color-neutral: oklch(25% 0.03 120);
+  --color-neutral-content: oklch(95% 0.02 120);
+
+  --color-info: oklch(70% 0.20 240);
+  --color-success: oklch(70% 0.25 150);
+  --color-warning: oklch(75% 0.25 90);
+  --color-error: oklch(65% 0.30 30);
+
+  /* Rounding + borders */
+  --radius-selector: 0.75rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

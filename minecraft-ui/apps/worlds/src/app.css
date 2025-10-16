@@ -1,6 +1,9 @@
 @import 'tailwindcss';
+@import './theme/mc-light.css';
+@import './theme/mc-dark.css';
+
 @plugin "daisyui" {
-  themes: abyss --default, lemonade --preferslight;
+  themes: mc-light --prefersdark mc-dark;
 };
 @config "../tailwind.config.js";
 
