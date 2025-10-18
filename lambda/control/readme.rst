@@ -22,3 +22,11 @@ Control lambda
 ::
 
     zip -r package.zip app
+
+
+
+
+Localstack commands::
+
+    uv run localstack start -d
+    uv run tflocal plan
