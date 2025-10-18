@@ -178,14 +178,43 @@ if [[ -f "${MAP_DIR}/overworld/preview.png" ]]; then
   cp "${MAP_DIR}/overworld/preview.png" "${MAP_DIR}/preview.png"
 fi
 
+# --- Extract metadata from overworld level.dat ---
+LEVEL_DAT="${WORLD_BASE}/world/level.dat"
+VERSION="unknown"
+LASTPLAYED=""
+DIFFICULTY=""
+
+if [[ -f "$LEVEL_DAT" ]]; then
+  VERSION=$($HOME/.local/bin/nbt -r --path='Data.Version.Name' "$LEVEL_DAT" 2>/dev/null || echo "unknown")
+  LASTPLAYED=$($HOME/.local/bin/nbt -r --path='Data.LastPlayed' "$LEVEL_DAT" 2>/dev/null || echo "")
+  DIFFICULTY=$($HOME/.local/bin/nbt -r --path='Data.Difficulty' "$LEVEL_DAT" 2>/dev/null || echo "")
+fi
+
+# convert LastPlayed from ms → seconds → ISO8601 (if present)
+if [[ -n "$LASTPLAYED" && "$LASTPLAYED" != "0" ]]; then
+  LASTPLAYED_ISO=$(date -u -d "@$((LASTPLAYED/1000))" +"%Y-%m-%dT%H:%M:%SZ")
+else
+  LASTPLAYED_ISO=""
+fi
+
+
 # --- World manifest ---
 # --- Generate world manifest (for Lambda/API) ---
 jq -n \
   --arg world "$WORLD_NAME" \
+  --arg version "$VERSION" \
   --argjson dims "$DIM_JSON" \
   --arg rendered "$(date -Iseconds)" \
-  '{world:$world, dimensions:$dims, last_rendered:$rendered}' \
-  > "${MAP_DIR}/manifest.json"
+  --arg last_played "$LASTPLAYED_ISO" \
+  --argjson difficulty "${DIFFICULTY:-null}" \
+  '{
+    world: $world,
+    version: $version,
+    difficulty: $difficulty,
+    last_played: ($last_played // ""),
+    dimensions: $dims,
+    last_rendered: $rendered
+  }' > "${MAP_DIR}/manifest.json"
 
 # --- Aggregate world manifests into world_manifest.json ---
 AGG_FILE="${MAP_ROOT}/world_manifest.json"
