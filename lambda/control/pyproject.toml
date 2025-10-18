@@ -8,8 +8,10 @@ dependencies = [
 ]
 [dependency-groups]
 dev = [
+    "awscli-local>=0.22.2",
     "boto3>=1.34",
     "fastapi[standard]>=0.115",
+    "localstack>=4.9.2",
     "terraform-local",
 ]
 
