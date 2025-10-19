@@ -182,21 +182,27 @@ fi
 LEVEL_DAT="${WORLD_BASE}/world/level.dat"
 VERSION="unknown"
 LASTPLAYED=""
-DIFFICULTY=""
 
 if [[ -f "$LEVEL_DAT" ]]; then
   VERSION=$($HOME/.local/bin/nbt -r --path='Data.Version.Name' "$LEVEL_DAT" 2>/dev/null || echo "unknown")
   LASTPLAYED=$($HOME/.local/bin/nbt -r --path='Data.LastPlayed' "$LEVEL_DAT" 2>/dev/null || echo "")
-  DIFFICULTY=$($HOME/.local/bin/nbt -r --path='Data.Difficulty' "$LEVEL_DAT" 2>/dev/null || echo "")
+fi
+
+# Extract difficulty as an integer or null
+DIFFICULTY_RAW=$($HOME/.local/bin/nbt -r --path='Data.Difficulty' "$LEVEL_DAT" 2>/dev/null || echo "")
+if [[ "$DIFFICULTY_RAW" =~ ^[0-9]+$ ]]; then
+  DIFFICULTY_JSON="$DIFFICULTY_RAW"
+else
+  DIFFICULTY_JSON="null"
 fi
 
 # convert LastPlayed from ms → seconds → ISO8601 (if present)
-if [[ -n "$LASTPLAYED" && "$LASTPLAYED" != "0" ]]; then
-  LASTPLAYED_ISO=$(date -u -d "@$((LASTPLAYED/1000))" +"%Y-%m-%dT%H:%M:%SZ")
+if [[ "$LASTPLAYED" =~ ^[0-9]+ ]]; then
+  LASTPLAYED_CLEAN="${BASH_REMATCH[0]}"
+  LASTPLAYED_ISO=$(date -u -d "@$((LASTPLAYED_CLEAN/1000))" +"%Y-%m-%dT%H:%M:%SZ")
 else
   LASTPLAYED_ISO=""
 fi
-
 
 # --- World manifest ---
 # --- Generate world manifest (for Lambda/API) ---
