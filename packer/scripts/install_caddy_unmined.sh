@@ -196,6 +196,14 @@ else
   DIFFICULTY_JSON="null"
 fi
 
+DIFF_NAME="Unknown"
+case "$DIFFICULTY_RAW" in
+  0) DIFF_NAME="Peaceful";;
+  1) DIFF_NAME="Easy";;
+  2) DIFF_NAME="Normal";;
+  3) DIFF_NAME="Hard";;
+esac
+
 # convert LastPlayed from ms → seconds → ISO8601 (if present)
 if [[ "$LASTPLAYED" =~ ^[0-9]+ ]]; then
   LASTPLAYED_CLEAN="${BASH_REMATCH[0]}"
@@ -212,11 +220,13 @@ jq -n \
   --argjson dims "$DIM_JSON" \
   --arg rendered "$(date -Iseconds)" \
   --arg last_played "$LASTPLAYED_ISO" \
-  --argjson difficulty "${DIFFICULTY:-null}" \
+  --argjson difficulty "$DIFFICULTY_JSON" \
+  --arg difficulty_name "$DIFF_NAME" \
   '{
     world: $world,
     version: $version,
     difficulty: $difficulty,
+    difficulty_name: $difficulty_name,
     last_played: ($last_played // ""),
     dimensions: $dims,
     last_rendered: $rendered
