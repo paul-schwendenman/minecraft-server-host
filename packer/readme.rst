@@ -102,3 +102,14 @@ Usage
 - Launch with Terraform (see parent project modules).
 - Use ``create-world.sh`` to create/manage worlds.
 - Maps are available via HTTP at ``http://<server>/map/``.
+
+
+Null Builder
+-------------
+
+Run provisioners via SSH:
+
+    packer build \
+      -var "test_host=testmc.minecraft.example.com" \
+      -var "test_private_key=~/.ssh/minecraft-packer.pem" \
+      ssh.pkr.hcl
