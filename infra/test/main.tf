@@ -34,15 +34,17 @@ module "ec2_role" {
 }
 
 module "mc_stack" {
-  source            = "../modules/mc_stack"
-  name              = "minecraft-test"
-  ami_id            = "ami-0bc49424818457c5c"
-  instance_type     = "t3.small"
-  vpc_id            = module.networking.vpc_id
-  subnet_id         = module.networking.public_subnet_id
-  key_name          = "minecraft-packer"
-  root_volume_size  = 8
-  ssh_cidr_blocks   = ["104.230.245.46/32"]
+  source           = "../modules/mc_stack"
+  name             = "minecraft-test"
+  ami_id           = "ami-0bc49424818457c5c"
+  instance_type    = "t3.small"
+  vpc_id           = module.networking.vpc_id
+  subnet_id        = module.networking.public_subnet_id
+  key_name         = "minecraft-packer"
+  root_volume_size = 8
+  ssh_cidr_blocks = [
+    "104.230.245.46/32",
+  ]
   world_version     = "1.21.8"
   availability_zone = "us-east-2b"
 
@@ -82,9 +84,9 @@ module "web_ui" {
 module "dns_records" {
   source = "../modules/dns_records"
 
-  zone_id        = data.aws_route53_zone.prod.zone_id
-  dns_name       = "testmc.${data.aws_route53_zone.prod.name}"
-  ipv4_addresses = module.mc_stack.public_ip != "" ? [module.mc_stack.public_ip] : null
+  zone_id  = data.aws_route53_zone.prod.zone_id
+  dns_name = "testmc.${data.aws_route53_zone.prod.name}"
+  # ipv4_addresses = module.mc_stack.public_ip != "" ? [module.mc_stack.public_ip] : null
   ipv6_addresses = module.mc_stack.ipv6_addresses
 }
 
