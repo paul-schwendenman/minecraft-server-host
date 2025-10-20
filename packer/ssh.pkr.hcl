@@ -30,15 +30,15 @@ build {
   name    = "minecraft-live-test"
   sources = ["source.null.minecraft"]
 
-#   provisioner "shell" { script = "scripts/install_deps.sh" }
-#   provisioner "shell" { script = "scripts/install_systemd.sh" }
+  # provisioner "shell" { script = "scripts/install_deps.sh" }
+  # provisioner "shell" { script = "scripts/install_systemd.sh" }
 
-#   provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
-  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
-#   provisioner "shell" { script = "scripts/install_create_world.sh" }
-#   provisioner "shell" { script = "scripts/install_map_backup.sh" }
-#   provisioner "shell" { script = "scripts/install_world_backup.sh" }
-#   provisioner "shell" { script = "scripts/install_map_refresh.sh" }
-#   provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
-#   provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+  # provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
+  # provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
+  # provisioner "shell" { script = "scripts/install_create_world.sh" }
+  # provisioner "shell" { script = "scripts/install_map_backup.sh" }
+  # provisioner "shell" { script = "scripts/install_world_backup.sh" }
+  # provisioner "shell" { script = "scripts/install_map_refresh.sh" }
+  # provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
+  # provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
 }
