@@ -12,6 +12,8 @@ dev = [
     "boto3>=1.34",
     "fastapi[standard]>=0.115",
     "localstack>=4.9.2",
+    "mcstatus>=12.0.5",
+    "nbtlib>=2.0.4",
     "terraform-local",
 ]
 
