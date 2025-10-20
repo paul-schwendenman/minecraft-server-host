@@ -42,6 +42,7 @@ module "mc_stack" {
   subnet_id        = module.networking.public_subnet_id
   key_name         = "minecraft-packer"
   root_volume_size = 8
+  data_volume_size = 16
   ssh_cidr_blocks = [
     "104.230.245.46/32",
   ]
