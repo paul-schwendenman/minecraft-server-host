@@ -62,6 +62,31 @@ sudo tee /usr/local/bin/rebuild-map.sh >/dev/null <<'EOF'
 set -euo pipefail
 
 WORLD_PATH="${1:-/srv/minecraft-server/world}"
+shift || true   # remove world path from args, leave any others
+
+# --- optional args: dimensions, zoom levels ---
+declare -a DIM_FILTER=()
+ZOOMOUT=6
+ZOOMIN=4
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    overworld|nether|end)
+      DIM_FILTER+=("$1")
+      ;;
+    --zoomout=*)
+      ZOOMOUT="${1#*=}"
+      ;;
+    --zoomin=*)
+      ZOOMIN="${1#*=}"
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+  shift
+done
 
 # If WORLD_PATH is a glob, expand it and recurse
 if [[ "$WORLD_PATH" == *"*"* ]]; then
@@ -99,6 +124,15 @@ DIM_JSON="[]"
 
 for DIM_ID in "${!DIMS[@]}"; do
   DIM_NAME="${DIMS[$DIM_ID]}"
+
+  if [[ ${#DIM_FILTER[@]} -gt 0 ]]; then
+    skip=true
+    for d in "${DIM_FILTER[@]}"; do
+      [[ "$DIM_NAME" == "$d" ]] && skip=false
+    done
+    $skip && continue
+  fi
+
   OUT="${MAP_DIR}/${DIM_NAME}"
 
   # Determine dimension directory (so we can check for data)
@@ -123,8 +157,8 @@ for DIM_ID in "${!DIMS[@]}"; do
     --world="$WORLD_PATH" \
     --dimension="${DIM_ID}" \
     --output="$OUT" \
-    --zoomout=6 \
-    --zoomin=4 \
+    --zoomout="$ZOOMOUT" \
+    --zoomin="$ZOOMIN" \
     --shadows=3d \
     $TOPY_ARG \
     --players
@@ -332,13 +366,13 @@ sudo chmod 0755 /usr/local/bin/rebuild-map.sh
 sudo mkdir -p /etc/systemd/system/minecraft.service.d
 sudo tee /etc/systemd/system/minecraft.service.d/override.conf >/dev/null <<'EOF'
 [Service]
-ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/world
+ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/world --zoomout=2 --zoomin=1
 EOF
 
 sudo mkdir -p /etc/systemd/system/minecraft@.service.d
 sudo tee /etc/systemd/system/minecraft@.service.d/override.conf >/dev/null <<'EOF'
 [Service]
-ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world
+ExecStopPost=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world --zoomout=2 --zoomin=1
 EOF
 
 sudo systemctl daemon-reexec
