@@ -23,7 +23,7 @@ TMPFILE=$(mktemp /tmp/worlds-XXXXXX.tar.gz)
 tar -czf "$TMPFILE" -C "$WORLD_DIR" .
 
 echo "Uploading worlds to s3://$BUCKET/worlds/"
-aws s3 cp "$TMPFILE" "s3://$BUCKET/worlds/worlds-\$(date +%F-%H%M).tar.gz"
+aws s3 cp "$TMPFILE" "s3://$BUCKET/worlds/worlds-$(date +%F-%H%M).tar.gz"
 
 rm -f "$TMPFILE"
 EOF
