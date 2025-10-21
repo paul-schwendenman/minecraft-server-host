@@ -150,7 +150,7 @@ for DIM_ID in "${!DIMS[@]}"; do
   mkdir -p "$OUT"
 
   TOPY_ARG=""
-  [[ "$DIM_NAME" == "nether" ]] && TOPY_ARG="--topY=120"
+  [[ "$DIM_NAME" == "nether" ]] && TOPY_ARG="--topY=68"
 
   # Render interactive web map
   "${UNMINED}" web render \
