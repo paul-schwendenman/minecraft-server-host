@@ -88,78 +88,77 @@ echo "Rebuilding maps for world '${WORLD_NAME}' → ${MAP_DIR}"
 mkdir -p "${MAP_DIR}"
 
 # --- Render dimensions ---
+# --- Render dimensions (modern layout: DIM-1, DIM1) ---
 declare -A DIMS=(
-  ["world"]="overworld"
-  ["world_nether"]="nether"
-  ["world_the_end"]="end"
-)
-declare -A DIM_IDS=(
-  ["overworld"]=0
-  ["nether"]=-1
-  ["end"]=1
+  [0]="overworld"
+  [-1]="nether"
+  [1]="end"
 )
 
 DIM_JSON="[]"
 
-for dir in "${!DIMS[@]}"; do
-  SRC="${WORLD_BASE}/${dir}"
-  DIM_NAME="${DIMS[$dir]}"
-  DIM_ID="${DIM_IDS[$DIM_NAME]}"
+for DIM_ID in "${!DIMS[@]}"; do
+  DIM_NAME="${DIMS[$DIM_ID]}"
   OUT="${MAP_DIR}/${DIM_NAME}"
 
-  if [[ -d "$SRC" ]]; then
-    echo "→ Rendering ${DIM_NAME} from ${SRC}"
-    mkdir -p "$OUT"
+  # Determine dimension directory (so we can check for data)
+  REGION_DIR="${WORLD_PATH}"
+  [[ $DIM_ID -eq -1 ]] && REGION_DIR="${WORLD_PATH}/DIM-1"
+  [[ $DIM_ID -eq 1  ]] && REGION_DIR="${WORLD_PATH}/DIM1"
 
-    TOPY_ARG=""
-    if [[ "$DIM_NAME" == "nether" ]]; then
-      TOPY_ARG="--topY=120"
-    fi
+  # Skip missing or empty dimensions
+  if [[ ! -d "${REGION_DIR}/region" || -z "$(ls -A "${REGION_DIR}/region" 2>/dev/null)" ]]; then
+    echo "⚠️  Skipping ${DIM_NAME} — no region data found in ${REGION_DIR}/region"
+    continue
+  fi
 
-    "${UNMINED}" web render \
-      --world="$SRC" \
-      --dimension="${DIM_NAME}" \
-      --output="$OUT" \
-      --zoomout=6 \
-      --zoomin=4 \
-      --shadows=3d \
-      $TOPY_ARG \
-      --players
+  echo "→ Rendering ${DIM_NAME} (dimension ${DIM_ID})"
+  mkdir -p "$OUT"
 
-    # Static preview image
-    echo "→ Generating preview for ${DIM_NAME}"
+  TOPY_ARG=""
+  [[ "$DIM_NAME" == "nether" ]] && TOPY_ARG="--topY=120"
 
-    # Get spawn position
-    SPAWN_X=$($HOME/.local/bin/nbt -r --path='Data.SpawnX' "$SRC/level.dat")
-    SPAWN_Z=$($HOME/.local/bin/nbt -r --path='Data.SpawnZ' "$SRC/level.dat")
+  # Render interactive web map
+  "${UNMINED}" web render \
+    --world="$WORLD_PATH" \
+    --dimension="${DIM_ID}" \
+    --output="$OUT" \
+    --zoomout=6 \
+    --zoomin=4 \
+    --shadows=3d \
+    $TOPY_ARG \
+    --players
 
-    # Half the side length of your preview area (in blocks)
-    RANGE=64   # total area will be 128x128
+  # --- Generate preview image ---
+  echo "→ Generating preview for ${DIM_NAME}"
 
-    # Compute bounding box corners
-    X1=$((SPAWN_X - RANGE))
-    Z1=$((SPAWN_Z - RANGE))
-    X2=$((SPAWN_X + RANGE))
-    Z2=$((SPAWN_Z + RANGE))
+  SPAWN_X=$($HOME/.local/bin/nbt -r --path='Data.SpawnX' "$WORLD_PATH/level.dat" 2>/dev/null || echo 0)
+  SPAWN_Z=$($HOME/.local/bin/nbt -r --path='Data.SpawnZ' "$WORLD_PATH/level.dat" 2>/dev/null || echo 0)
 
-    AREA="b((${X1},${Z1}),(${X2},${Z2}))"
-    echo "→ Generating preview for ${DIM_ID} around spawn (${SPAWN_X}, ${SPAWN_Z})"
+  RANGE=64
+  X1=$((SPAWN_X - RANGE))
+  Z1=$((SPAWN_Z - RANGE))
+  X2=$((SPAWN_X + RANGE))
+  Z2=$((SPAWN_Z + RANGE))
+  AREA="b((${X1},${Z1}),(${X2},${Z2}))"
 
-    "${UNMINED}" image render \
-      --world="$SRC" \
+  echo "→ Rendering preview for ${DIM_NAME} around spawn (${SPAWN_X}, ${SPAWN_Z})"
+  if ! "${UNMINED}" image render \
+      --world="$WORLD_PATH" \
       --dimension="${DIM_ID}" \
       --area="$AREA" \
       --zoom=2 \
       --shadows=3d \
       $TOPY_ARG \
       --trim \
-      --output="$OUT/preview.png"
+      --output="$OUT/preview.png"; then
+    echo "⚠️  Failed to render preview for ${DIM_NAME}, skipping preview image."
+  fi
 
-    # Add to JSON array
-    DIM_JSON=$(echo "$DIM_JSON" | jq --arg name "$DIM_NAME" --argjson id "$DIM_ID" '. + [{"name":$name,"id":$id}]')
+  # Append to JSON manifest
+  DIM_JSON=$(echo "$DIM_JSON" | jq --arg name "$DIM_NAME" --argjson id "$DIM_ID" '. + [{"name":$name,"id":$id}]')
 
-    # Dimension manifest
-    cat >"$OUT/manifest.json" <<EOS
+  cat >"$OUT/manifest.json" <<EOS
 {
   "world": "${WORLD_NAME}",
   "dimension": "${DIM_NAME}",
@@ -168,9 +167,6 @@ for dir in "${!DIMS[@]}"; do
   "last_rendered": "$(date -Iseconds)"
 }
 EOS
-  else
-    echo "Skipping missing dimension directory: ${SRC}"
-  fi
 done
 
 # --- Copy overworld preview to world root ---
