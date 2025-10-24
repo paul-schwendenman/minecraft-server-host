@@ -45,6 +45,16 @@ variable "minecraft_jars" {
       sha256  = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
     },
     {
+      version = "1.19"
+      url     = "https://piston-data.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar"
+      sha256  = "deefd056f0cf89c3d7fd48d03f56a8a73943586e8c061fdabd0fd92d32ced2b2"
+    },
+    {
+      version = "1.19.2"
+      url     = "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar"
+      sha256  = "b26727069ef5f61c704add9a378ac90e3d271fd7876c0bd3dcfbe9fd0bec4d96"
+    },
+    {
       version = "1.21.8"
       url     = "https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar"
       sha256  = "2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7"
@@ -53,6 +63,11 @@ variable "minecraft_jars" {
       version = "1.21.9"
       url     = "https://piston-data.mojang.com/v1/objects/11e54c2081420a4d49db3007e66c80a22579ff2a/server.jar"
       sha256  = "ebc5161abcd57523c14a04ce108f0b671da0d0d74a28926b19a7d139ebabaf31"
+    },
+    {
+      version = "1.21.10"
+      url     = "https://piston-data.mojang.com/v1/objects/95495a7f485eedd84ce928cef5e223b757d2f764/server.jar"
+      sha256  = "5bb64dc47379903e8f288bd6a4b276e889075c5c0f4c0b714e958d835c1874e7"
     }
   ]
 }
