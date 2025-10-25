@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for idle Minecraft server
+
+[Service]
+Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
+ExecStart=/usr/local/bin/autoshutdown.sh
+ProtectSystem=full
+ProtectHome=yes
+NoNewPrivileges=yes
