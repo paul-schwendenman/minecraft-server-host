@@ -1,40 +1,13 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-sudo tee /usr/local/bin/backup-maps.sh >/dev/null <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
+SRC_DIR="$(dirname "$0")/maps"
 
-WORLD="${1:-world}"
-MAP_DIR="/var/www/map/${WORLD}"
-BUCKET="${MC_MAP_BUCKET:-}"
+sudo install -Dm755 "${SRC_DIR}/backup-maps.sh" /usr/local/bin/backup-maps.sh
+sudo install -Dm644 "${SRC_DIR}/minecraft-map-backup@.service" /etc/systemd/system/minecraft-map-backup@.service
+sudo install -Dm644 "${SRC_DIR}/minecraft-map-backup@.timer" /etc/systemd/system/minecraft-map-backup@.timer
 
-if [[ -z "$BUCKET" ]]; then
-  echo "No MC_MAP_BUCKET set; skipping map backup"
-  exit 0
-fi
+sudo systemctl daemon-reload
 
-if ! command -v aws >/dev/null 2>&1; then
-  echo "AWS CLI not installed; skipping map backup"
-  exit 0
-fi
-
-if [[ -d "$MAP_DIR" ]]; then
-  echo "Backing up maps for $WORLD to s3://$BUCKET/maps/$WORLD/"
-
-### Replace aws sync
-# rclone sync /srv/minecraft-server/maps/ s3:minecraft-test-maps/maps \
-#   --s3-provider AWS \
-#   --s3-region us-east-2 \
-#   --fast-list \
-#   --checkers 16 \
-#   --transfers 8 \
-#   --progress
-
-#   --s3-acl public-read \
-
-  aws s3 sync "$MAP_DIR" "s3://$BUCKET/maps/$WORLD/" --delete
-fi
-EOF
-
-sudo chmod 0755 /usr/local/bin/backup-maps.sh
+# No enable here — backup is manual or opt-in timer
+# sudo systemctl enable --now minecraft-map-backup@world.timer
