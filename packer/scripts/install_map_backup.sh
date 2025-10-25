@@ -21,6 +21,18 @@ fi
 
 if [[ -d "$MAP_DIR" ]]; then
   echo "Backing up maps for $WORLD to s3://$BUCKET/maps/$WORLD/"
+
+### Replace aws sync
+# rclone sync /srv/minecraft-server/maps/ s3:minecraft-test-maps/maps \
+#   --s3-provider AWS \
+#   --s3-region us-east-2 \
+#   --fast-list \
+#   --checkers 16 \
+#   --transfers 8 \
+#   --progress
+
+#   --s3-acl public-read \
+
   aws s3 sync "$MAP_DIR" "s3://$BUCKET/maps/$WORLD/" --delete
 fi
 EOF
