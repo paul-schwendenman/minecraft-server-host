@@ -1,0 +1,28 @@
+[Unit]
+Description=Minecraft Server %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/srv/minecraft-server/%i
+User=minecraft
+Group=minecraft
+UMask=002
+EnvironmentFile=-/etc/minecraft.env
+
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+
+ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
+ExecReload=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} reload
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say SERVER SHUTTING DOWN. Saving map..."
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
+ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} stop
+
+Restart=on-failure
+RestartSec=20
+
+[Install]
+WantedBy=multi-user.target
