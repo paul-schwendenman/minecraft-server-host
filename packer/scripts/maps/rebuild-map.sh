@@ -10,6 +10,16 @@ MAP_FILTER=""
 FORCE=false
 MAPS_ROOT="/srv/minecraft-server/maps"
 UNMINED="/opt/unmined/unmined-cli"
+LOCK_FILE="/tmp/minecraft-map-build.lock"
+
+# Acquire lock (wait up to 600s = 10 min)
+exec 200>"$LOCK_FILE"
+if ! flock -w 600 200; then
+  echo "Another map rebuild is already running; skipping." >&2
+  exit 0
+fi
+
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 # --- Parse optional args ---
 shift || true
