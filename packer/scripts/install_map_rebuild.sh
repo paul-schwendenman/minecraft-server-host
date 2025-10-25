@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euxo pipefail
 
-SRC_DIR="/tmp/scripts/maps"
-DST_DIR="/srv/minecraft-server/scripts"
+SRC_DIR="$(dirname "$0")/maps"
 
-echo "=== Installing map refresh scripts ==="
+sudo install -Dm755 "${SRC_DIR}/rebuild-map.sh" /usr/local/bin/rebuild-map.sh
+sudo install -Dm755 "${SRC_DIR}/build-map-manifests.sh" /usr/local/bin/build-map-manifests.sh
 
-sudo mkdir -p "$DST_DIR"
-sudo cp "$SRC_DIR"/*.sh "$DST_DIR/"
-sudo chmod +x "$DST_DIR"/*.sh
+sudo install -Dm644 "${SRC_DIR}/minecraft-map-rebuild@.service" /etc/systemd/system/minecraft-map-rebuild@.service
+sudo install -Dm644 "${SRC_DIR}/minecraft-map-rebuild@.timer" /etc/systemd/system/minecraft-map-rebuild@.timer
 
-# Copy and enable systemd units
-sudo cp "$SRC_DIR"/*.service "$SRC_DIR"/*.timer /etc/systemd/system/
+# Hook into minecraft@.service (ExecStopPost)
+sudo mkdir -p /etc/systemd/system/minecraft@.service.d
+sudo install -Dm644 "${SRC_DIR}/minecraft-override.conf" /etc/systemd/system/minecraft@.service.d/override.conf
+
+sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable minecraft-map-rebuild@world1.timer || true
-
-echo "✅ Map refresh installed"
+sudo systemctl enable minecraft-map-rebuild@world.timer || true
