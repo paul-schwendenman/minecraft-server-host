@@ -24,27 +24,38 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# --- Acquire lock ---
-exec 200>"$LOCK_FILE"
-if $NONBLOCK; then
-  # Try immediately; skip if another rebuild is running
-  if ! flock -n 200; then
-    echo "⚠️  Another map rebuild is already running — skipping (non-blocking mode)." >&2
-    exit 0
-  fi
-else
-  # Wait up to 10 minutes for an existing rebuild to finish
-  if ! flock -w 600 200; then
-    echo "⚠️  Timeout waiting for map rebuild lock — skipping." >&2
-    exit 0
-  fi
+# --- Detect glob mode early ---
+IS_GLOB=false
+if [[ "$WORLD_PATH" == *"*"* ]]; then
+  IS_GLOB=true
 fi
-trap 'rm -f "$LOCK_FILE"' EXIT
+
+# --- Acquire lock only if we're the top-level process ---
+if [[ "${MAP_LOCK_HELD:-0}" != "1" ]]; then
+  exec 200>"$LOCK_FILE"
+
+  if $NONBLOCK; then
+    if ! flock -n 200; then
+      echo "⚠️  Another map rebuild is already running — skipping (non-blocking mode)." >&2
+      exit 0
+    fi
+  else
+    if ! flock -w 600 200; then
+      echo "⚠️  Timeout waiting for map rebuild lock — skipping." >&2
+      exit 0
+    fi
+  fi
+
+  trap 'rm -f "$LOCK_FILE"' EXIT
+  export MAP_LOCK_HELD=1
+fi
 
 # --- Handle wildcard globs ---
-if [[ "$WORLD_PATH" == *"*"* ]]; then
+if $IS_GLOB; then
   for w in $WORLD_PATH; do
-    [ -d "$w" ] && "$0" "$w" ${MAP_FILTER:+--map "$MAP_FILTER"} $($FORCE && echo "--force")
+    [ -d "$w" ] && MAP_LOCK_HELD=1 "$0" "$w" \
+      ${MAP_FILTER:+--map "$MAP_FILTER"} \
+      $($FORCE && echo "--force")
   done
   exit 0
 fi
