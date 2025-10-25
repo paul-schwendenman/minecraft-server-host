@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# rebuild-map.sh <world-path|glob> [--map <name>] [--force]
+# rebuild-map.sh <world-path|glob> [--map <name>] [--force] [--non-blocking]
 # Renders static maps for Minecraft worlds using uNmINeD
 # Respects per-world map-config.yml and skips up-to-date maps
 
@@ -8,18 +8,10 @@ set -euo pipefail
 WORLD_PATH="${1:-}"
 MAP_FILTER=""
 FORCE=false
+NONBLOCK=false
 MAPS_ROOT="/srv/minecraft-server/maps"
 UNMINED="/opt/unmined/unmined-cli"
 LOCK_FILE="/tmp/minecraft-map-build.lock"
-
-# Acquire lock (wait up to 600s = 10 min)
-exec 200>"$LOCK_FILE"
-if ! flock -w 600 200; then
-  echo "Another map rebuild is already running; skipping." >&2
-  exit 0
-fi
-
-trap 'rm -f "$LOCK_FILE"' EXIT
 
 # --- Parse optional args ---
 shift || true
@@ -27,9 +19,27 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --map) MAP_FILTER="$2"; shift 2 ;;
     --force) FORCE=true; shift ;;
+    --non-blocking) NONBLOCK=true; shift ;;
     *) echo "Unknown argument: $1" >&2; exit 1 ;;
   esac
 done
+
+# --- Acquire lock ---
+exec 200>"$LOCK_FILE"
+if $NONBLOCK; then
+  # Try immediately; skip if another rebuild is running
+  if ! flock -n 200; then
+    echo "⚠️  Another map rebuild is already running — skipping (non-blocking mode)." >&2
+    exit 0
+  fi
+else
+  # Wait up to 10 minutes for an existing rebuild to finish
+  if ! flock -w 600 200; then
+    echo "⚠️  Timeout waiting for map rebuild lock — skipping." >&2
+    exit 0
+  fi
+fi
+trap 'rm -f "$LOCK_FILE"' EXIT
 
 # --- Handle wildcard globs ---
 if [[ "$WORLD_PATH" == *"*"* ]]; then
