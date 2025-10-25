@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly full map backup
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00
+Persistent=true
+Unit=minecraft-map-backup.service
+
+[Install]
+WantedBy=timers.target
