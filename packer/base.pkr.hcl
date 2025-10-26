@@ -19,8 +19,25 @@ build {
   sources = ["source.amazon-ebs.ubuntu_base"]
 
   provisioner "shell" {
+    inline = ["mkdir -p /tmp/scripts"]
+  }
+
+  provisioner "file" {
+    source      = "scripts/"
+    destination = "/tmp/scripts/"
+  }
+
+  provisioner "shell" {
     script = "scripts/install_deps.sh"
   }
   provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
 
+  provisioner "shell" {
+    inline = [
+      "sudo systemctl daemon-reexec",
+      "sudo systemctl daemon-reload",
+      "sudo apt-get clean",
+      "sudo rm -rf /tmp/* /var/tmp/*"
+    ]
+  }
 }

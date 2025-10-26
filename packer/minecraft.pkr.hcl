@@ -101,6 +101,15 @@ build {
   # --------------------------------------------------------------------------
   # 1. Base Dependencies + Environment
   # --------------------------------------------------------------------------
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/scripts"]
+  }
+
+  provisioner "file" {
+    source      = "scripts/"
+    destination = "/tmp/scripts/"
+  }
+
   provisioner "shell" { script = "scripts/install_deps.sh" }
   provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
 
@@ -112,22 +121,6 @@ build {
       "sudo chmod 600 /etc/minecraft.env",
       "sudo chown root:root /etc/minecraft.env"
     ]
-  }
-
-  # --------------------------------------------------------------------------
-  # 2. Upload grouped subdirectories to /tmp/scripts
-  # --------------------------------------------------------------------------
-  provisioner "file" {
-    sources = [
-      "scripts/autoshutdown/",
-      "scripts/create-world/",
-      "scripts/health/",
-      "scripts/maps/",
-      "scripts/minecraft/",
-      "scripts/user-data/",
-      "scripts/worlds/"
-    ]
-    destination = "/tmp/scripts"
   }
 
   # --------------------------------------------------------------------------
