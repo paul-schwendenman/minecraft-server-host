@@ -30,6 +30,7 @@ build {
   provisioner "shell" {
     script = "scripts/install_deps.sh"
   }
+  provisioner "shell" { script = "scripts/create-minecraft-user.sh" }
   provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
 
   provisioner "shell" {
