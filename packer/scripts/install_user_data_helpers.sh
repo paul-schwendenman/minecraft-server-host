@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-SRC_DIR="$(dirname "$0")/user-data"
+SRC_DIR="/tmp/scripts/user-data"
 DEST_BIN="/usr/local/bin"
 
 sudo install -Dm755 "${SRC_DIR}/mount-ebs.sh" "${DEST_BIN}/mount-ebs.sh"

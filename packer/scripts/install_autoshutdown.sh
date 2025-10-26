@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-SRC_DIR="$(dirname "$0")/autoshutdown"
+SRC_DIR="/tmp/scripts/autoshutdown"
 DEST_BIN="/usr/local/bin"
 DEST_ETC="/etc/systemd/system"
 DEST_SUDOERS="/etc/sudoers.d"

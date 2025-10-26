@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-SRC_DIR="$(dirname "$0")/maps"
+SRC_DIR="/tmp/scripts/maps"
 
 # Core scripts
 sudo install -Dm755 "${SRC_DIR}/backup-maps.sh" /usr/local/bin/backup-maps.sh
