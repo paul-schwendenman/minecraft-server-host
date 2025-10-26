@@ -19,7 +19,7 @@ build {
   provisioner "shell" {
     inline = [
       "apt-get update -qq",
-      "apt-get install -y sudo curl wget unzip gnupg"
+      "apt-get install -y sudo curl wget unzip gnupg software-properties-common"
     ]
   }
 
