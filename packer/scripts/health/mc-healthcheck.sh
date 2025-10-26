@@ -73,4 +73,44 @@ else
     echo "  (no /etc/minecraft.env found, skipping RCON)"
 fi
 
+# 8. Backups -------------------------------------------------------------
+echo "[*] Checking backup timers..."
+for unit in minecraft-map-backup.timer minecraft-world-backup.timer; do
+  if systemctl list-unit-files | grep -q "$unit"; then
+    if systemctl is-enabled --quiet "$unit"; then
+      echo "  ✔ $unit enabled"
+    else
+      echo "  ⚠️ $unit present but not enabled"
+    fi
+  else
+    echo "  ✘ $unit missing"
+  fi
+done
+
+# 9. EBS Mount -----------------------------------------------------------
+echo "[*] Checking EBS mount (/srv/minecraft-server)..."
+if mountpoint -q /srv/minecraft-server; then
+  echo "  ✔ Mounted"
+else
+  echo "  ✘ Not mounted"
+fi
+
+# 10. CLI Tools ----------------------------------------------------------
+for bin in mcrcon aws java caddy; do
+  if command -v "$bin" >/dev/null 2>&1; then
+    echo "  ✔ $bin installed"
+  else
+    echo "  ✘ $bin missing"
+  fi
+done
+[[ -x /opt/unmined/unmined-cli ]] && echo "  ✔ uNmINeD installed" || echo "  ✘ uNmINeD missing"
+
+# 11. Disk usage ---------------------------------------------------------
+echo "[*] Checking disk usage..."
+df -h /srv/minecraft-server | awk 'NR==2 {print "  📦 "$5 " used on "$6}'
+
+# 12. Failed units -------------------------------------------------------
+echo "[*] Checking for failed Minecraft units..."
+systemctl --failed | grep minecraft || echo "  ✔ No failed units"
+
 echo "=== Health check complete ==="
