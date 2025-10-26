@@ -35,7 +35,7 @@ if ! command -v aws >/dev/null 2>&1; then
   # Fetch the CLI package and signature
   curl -s -O https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip
   curl -s -O https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip.sig
-  gpg --import /tmp/deps/awscliv2.pub
+  gpg --import /tmp/scripts/deps/awscliv2.pub
 
   # Verify the signature
   echo "[*] Verifying AWS CLI package signature..."
