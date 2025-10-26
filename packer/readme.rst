@@ -113,3 +113,18 @@ Run provisioners via SSH:
       -var "test_host=testmc.minecraft.example.com" \
       -var "test_private_key=~/.ssh/minecraft-packer.pem" \
       ssh.pkr.hcl
+
+docker Builder
+---------------
+
+::
+
+    packer build docker.pkr.hcl
+    docker run -it minecraft-local bash
+
+VirtualBox
+------------
+
+::
+
+    packer build virtual-box.pkr.hcl

@@ -72,6 +72,11 @@ variable "minecraft_jars" {
   ]
 }
 
+variable "base_ami" {
+  type    = string
+  default = "ami-0123456789abcdef0" # output from previous build
+}
+
 source "amazon-ebs" "minecraft" {
   region        = "us-east-2"
   instance_type = "t3a.medium"
@@ -84,6 +89,7 @@ source "amazon-ebs" "minecraft" {
     owners      = ["099720109477"] # Canonical
     most_recent = true
   }
+  # source_ami    = var.base_ami
   ssh_username = "ubuntu"
   ami_name     = "minecraft-ubuntu-{{timestamp}}"
 }
@@ -121,7 +127,7 @@ build {
       "scripts/user-data/",
       "scripts/worlds/"
     ]
-    destination = "/tmp/scripts/"
+    destination = "/tmp/scripts"
   }
 
   # --------------------------------------------------------------------------
