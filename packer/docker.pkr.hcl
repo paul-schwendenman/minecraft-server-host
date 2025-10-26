@@ -1,3 +1,12 @@
+packer {
+  required_plugins {
+    docker = {
+      source  = "github.com/hashicorp/docker"
+      version = "~> 1"
+    }
+  }
+}
+
 source "docker" "ubuntu_local" {
   image  = "ubuntu:22.04"
   commit = true
@@ -25,6 +34,6 @@ build {
 
   post-processor "docker-tag" {
     repository = "minecraft-local"
-    tag        = "latest"
+    tags       = ["latest"]
   }
 }
