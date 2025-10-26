@@ -92,27 +92,50 @@ build {
   name    = "minecraft-ami"
   sources = ["source.amazon-ebs.minecraft"]
 
+  # --------------------------------------------------------------------------
+  # 1. Base Dependencies + Environment
+  # --------------------------------------------------------------------------
   provisioner "shell" { script = "scripts/install_deps.sh" }
+  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
 
   provisioner "shell" {
     inline = [
-      # generate a random password during AMI build
       "RCON_PASS=$(openssl rand -hex 16)",
-
       "echo \"RCON_PASSWORD=$RCON_PASS\" | sudo tee /etc/minecraft.env",
       "echo \"RCON_PORT=25575\" | sudo tee -a /etc/minecraft.env",
-
-      "sudo chown root:root /etc/minecraft.env",
-      "sudo chmod 600 /etc/minecraft.env"
+      "sudo chmod 600 /etc/minecraft.env",
+      "sudo chown root:root /etc/minecraft.env"
     ]
   }
 
-  provisioner "shell" { script = "scripts/install_systemd.sh" }
-
-  provisioner "shell" {
-    inline = ["sudo mkdir -p /opt/minecraft/jars"]
+  # --------------------------------------------------------------------------
+  # 2. Upload grouped subdirectories to /tmp/scripts
+  # --------------------------------------------------------------------------
+  provisioner "file" {
+    source      = "scripts/*/"
+    destination = "/tmp/scripts/"
   }
 
+  # --------------------------------------------------------------------------
+  # 3. Minecraft Service + Core Helpers
+  # --------------------------------------------------------------------------
+  provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
+  provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
+
+  # --------------------------------------------------------------------------
+  # 4. Install modular script groups
+  # --------------------------------------------------------------------------
+  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
+  provisioner "shell" { script = "scripts/install_create_world.sh" }
+  provisioner "shell" { script = "scripts/install_map_rebuild.sh" }
+  provisioner "shell" { script = "scripts/install_map_refresh.sh" }
+  provisioner "shell" { script = "scripts/install_map_backup.sh" }
+  provisioner "shell" { script = "scripts/install_world_backup.sh" }
+  provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+
+  # --------------------------------------------------------------------------
+  # 5. Install Minecraft JARs
+  # --------------------------------------------------------------------------
   provisioner "shell" {
     inline = concat(
       [
@@ -123,7 +146,7 @@ build {
         for jar in var.minecraft_jars : <<EOC
 echo 'Installing Minecraft ${jar.version}'
 curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar
-echo "${jar.sha256}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar" | shasum -a256 -c -
+echo "${jar.sha256}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar" | sha256sum -c -
 EOC
       ],
       [
@@ -133,13 +156,15 @@ EOC
     )
   }
 
-
-  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
-  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
-  provisioner "shell" { script = "scripts/install_create_world.sh" }
-  provisioner "shell" { script = "scripts/install_map_backup.sh" }
-  provisioner "shell" { script = "scripts/install_world_backup.sh" }
-  provisioner "shell" { script = "scripts/install_map_refresh.sh" }
-  provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
-  provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+  # --------------------------------------------------------------------------
+  # 6. Final system prep
+  # --------------------------------------------------------------------------
+  provisioner "shell" {
+    inline = [
+      "sudo systemctl daemon-reexec",
+      "sudo systemctl daemon-reload",
+      "sudo apt-get clean",
+      "sudo rm -rf /tmp/* /var/tmp/*"
+    ]
+  }
 }
