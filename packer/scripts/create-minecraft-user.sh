@@ -17,3 +17,6 @@ fi
 sudo usermod -a -G "${MINECRAFT_GROUP}" "${MINECRAFT_USER}"
 sudo mkdir -p "${MINECRAFT_HOME}"
 sudo chown -R "${MINECRAFT_USER}:${MINECRAFT_GROUP}" "${MINECRAFT_HOME}"
+
+# -- Install nbt cli --
+sudo -u minecraft pip3 install --user nbtlib
