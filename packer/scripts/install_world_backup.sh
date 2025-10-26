@@ -1,31 +1,15 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-sudo tee /usr/local/bin/backup-worlds.sh >/dev/null <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
+SRC_DIR="$(dirname "$0")/worlds"
 
-WORLD_DIR="/srv/minecraft-server"
-BUCKET="${MC_WORLD_BUCKET:-}"
+sudo install -Dm755 "${SRC_DIR}/backup-worlds.sh" /usr/local/bin/backup-worlds.sh
 
-if [[ -z "$BUCKET" ]]; then
-  echo "No MC_WORLD_BUCKET set; skipping world backup"
-  exit 0
-fi
+sudo install -Dm644 "${SRC_DIR}/minecraft-world-backup@.service" /etc/systemd/system/minecraft-world-backup@.service
+sudo install -Dm644 "${SRC_DIR}/minecraft-world-backup@.timer" /etc/systemd/system/minecraft-world-backup@.timer
+sudo install -Dm644 "${SRC_DIR}/minecraft-world-backup.service" /etc/systemd/system/minecraft-world-backup.service
+sudo install -Dm644 "${SRC_DIR}/minecraft-world-backup.timer" /etc/systemd/system/minecraft-world-backup.timer
 
-if ! command -v aws >/dev/null 2>&1; then
-  echo "AWS CLI not installed; skipping world backup"
-  exit 0
-fi
-
-echo "Creating tarball of all worlds"
-TMPFILE=$(mktemp /tmp/worlds-XXXXXX.tar.gz)
-tar -czf "$TMPFILE" -C "$WORLD_DIR" .
-
-echo "Uploading worlds to s3://$BUCKET/worlds/"
-aws s3 cp "$TMPFILE" "s3://$BUCKET/worlds/worlds-$(date +%F-%H%M).tar.gz"
-
-rm -f "$TMPFILE"
-EOF
-
-sudo chmod 0755 /usr/local/bin/backup-worlds.sh
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+# leave timers disabled by default
