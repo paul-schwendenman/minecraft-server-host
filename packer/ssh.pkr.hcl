@@ -44,7 +44,7 @@ build {
   # provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
   # provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
 
-  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
+  # provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
   # provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
   # provisioner "shell" { script = "scripts/install_create_world.sh" }
   # provisioner "shell" { script = "scripts/install_map_rebuild.sh" }

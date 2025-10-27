@@ -48,3 +48,16 @@ if ! command -v aws >/dev/null 2>&1; then
   cd /
   rm -rf "$TMPDIR"
 fi
+
+# --- yq (Go binary, verified checksum) ---
+if ! command -v yq >/dev/null 2>&1; then
+  echo "[*] Installing yq (Go binary, verified checksum)"
+  YQ_VERSION="v4.48.1"
+  cd /tmp
+  wget -q "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" -O yq_linux_amd64
+  echo "99df6047f5b577a9d25f969f7c3823ada3488de2e2115b30a0abb10d9324fd9f  yq_linux_amd64" | sha256sum -c -
+
+  sudo mv yq_linux_amd64 /usr/local/bin/yq
+  sudo chmod 0755 /usr/local/bin/yq
+  sudo chown root:root /usr/local/bin/yq
+fi

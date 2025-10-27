@@ -8,7 +8,7 @@ WORLD_PATH="${1:-/srv/minecraft-server/world*}"
 MAP_ROOT="/srv/minecraft-server/maps"
 SERVER_ROOT="/srv/minecraft-server"
 UNMINED="/opt/unmined/unmined-cli"
-NBT="$HOME/.local/bin/nbt"
+NBT="/home/minecraft/.local/bin/nbt"
 
 # --- Handle wildcard ---
 if [[ "$WORLD_PATH" == *"*"* ]]; then
@@ -47,7 +47,14 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
   SPAWN_X=$($NBT -r --path='Data.SpawnX' "$LEVEL_DAT" 2>/dev/null || echo 0)
   SPAWN_Z=$($NBT -r --path='Data.SpawnZ' "$LEVEL_DAT" 2>/dev/null || echo 0)
   RANGE=64
-  AREA="b((${SPAWN_X - RANGE},${SPAWN_Z - RANGE}),(${SPAWN_X + RANGE},${SPAWN_Z + RANGE}))"
+
+  # perform arithmetic safely
+  X1=$((SPAWN_X - RANGE))
+  Z1=$((SPAWN_Z - RANGE))
+  X2=$((SPAWN_X + RANGE))
+  Z2=$((SPAWN_Z + RANGE))
+
+  AREA="b(($X1,$Z1),($X2,$Z2))"
   PREVIEW_PATH="$MAP_OUTPUT/preview.png"
 
   echo "   Rendering preview around spawn (${SPAWN_X}, ${SPAWN_Z})"

@@ -4,5 +4,5 @@ After=minecraft@%i.service
 
 [Service]
 Type=oneshot
-ExecStart=/srv/minecraft-server/scripts/rebuild-map.sh /srv/minecraft-server/%i
-ExecStartPost=/srv/minecraft-server/scripts/build-map-manifests.sh /srv/minecraft-server/%i
+ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
+ExecStartPost=/usr/local/bin/build-map-manifests.sh /srv/minecraft-server/%i

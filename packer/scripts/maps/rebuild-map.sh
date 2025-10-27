@@ -118,27 +118,34 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
   fi
 
   echo "🔁 Rendering map: $MAP_NAME (dim=$DIM zoom=$ZOUT→$ZIN)"
+
+  # Keep BASE_CMD truly minimal (shared args only)
   BASE_CMD=( "$UNMINED" web render
-    --world "$WORLD_PATH"
+    --world "${WORLD_PATH}/world"
     --dimension "$DIM"
     --output "$MAP_OUTPUT"
-    --zoomout "$ZOUT"
-    --zoomin "$ZIN"
     --imageformat "$DEFAULT_FMT"
     --chunkprocessors "$DEFAULT_CPUS"
     --log-level information
   )
 
+  # Append per-map zoom values freshly each time
+  MAP_CMD=("${BASE_CMD[@]}" --zoomout "$ZOUT" --zoomin "$ZIN")
+
+  # Optional per-map extras
   for key in topY bottomY gndxray night shadows; do
-    val=$(yq -r ".maps[$i].options.$key // empty" "$CONFIG_PATH")
-    [[ -n "$val" && "$val" != "null" ]] && BASE_CMD+=(--$key "$val")
+    val=$(yq -r ".maps[$i].options.$key // \"\"" "$CONFIG_PATH" 2>/dev/null)
+    if [[ -n "$val" && "$val" != "null" ]]; then
+      MAP_CMD+=(--$key "$val")
+    fi
   done
 
-  echo "  • Base: ${BASE_CMD[*]}"
-  "${BASE_CMD[@]}"
+  echo "  • Base: ${MAP_CMD[*]}"
+  "${MAP_CMD[@]}"
 
+  # --- now handle ranges ---
   RANGE_COUNT=$(yq e ".maps[$i].ranges | length" "$CONFIG_PATH" 2>/dev/null || echo 0)
-  if [[ $RANGE_COUNT -gt 0 ]]; then
+  if (( RANGE_COUNT > 0 )); then
     for (( j=0; j<$RANGE_COUNT; j++ )); do
       NAME=$(yq -r ".maps[$i].ranges[$j].name" "$CONFIG_PATH")
       CX=$(yq -r ".maps[$i].ranges[$j].center[0]" "$CONFIG_PATH")
@@ -147,13 +154,28 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
       ZOUT_R=$(yq -r ".maps[$i].ranges[$j].zoomout // $ZOUT" "$CONFIG_PATH")
       ZIN_R=$(yq -r ".maps[$i].ranges[$j].zoomin // $ZIN" "$CONFIG_PATH")
 
+      X1=$((CX - RADIUS))
+      Z1=$((CZ - RADIUS))
+      X2=$((CX + RADIUS))
+      Z2=$((CZ + RADIUS))
+
+      if (( X1 >= X2 || Z1 >= Z2 )); then
+        echo "⚠️  Skipping invalid range '$NAME' ($X1,$Z1,$X2,$Z2)" >&2
+        continue
+      fi
+
+      AREA_ARG="--area=b(($X1,$Z1),($X2,$Z2))"
+
       echo "    → Range: $NAME ($CX,$CZ r=$RADIUS zoom=$ZOUT_R→$ZIN_R)"
-      RANGE_CMD=("${BASE_CMD[@]}")
-      RANGE_CMD+=(--zoomout "$ZOUT_R" --zoomin "$ZIN_R" \
-                  --area "$((CX - RADIUS)),$((CZ - RADIUS)),$((CX + RADIUS)),$((CZ + RADIUS))")
+      RANGE_CMD=( "${BASE_CMD[@]}"
+        --zoomout "$ZOUT_R"
+        --zoomin "$ZIN_R"
+        "$AREA_ARG"
+      )
       "${RANGE_CMD[@]}"
     done
   fi
+
 
   # --- Update manifest with render time ---
   jq -n \
