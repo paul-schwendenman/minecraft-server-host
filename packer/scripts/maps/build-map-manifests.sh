@@ -18,9 +18,9 @@ if [[ "$WORLD_PATH" == *"*"* ]]; then
   exit 0
 fi
 
-WORLD_DIR="$WORLD_PATH"
+WORLD_DIR="$WORLD_PATH/world"
 WORLD_NAME=$(basename "$WORLD_DIR")
-CONFIG_PATH="$WORLD_DIR/map-config.yml"
+CONFIG_PATH="$WORLD_PATH/map-config.yml"
 MAPS_DIR="$MAP_ROOT/$WORLD_NAME"
 mkdir -p "$MAPS_DIR"
 
@@ -56,6 +56,18 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
 
   AREA="b(($X1,$Z1),($X2,$Z2))"
   PREVIEW_PATH="$MAP_OUTPUT/preview.png"
+
+  # --- Verify dimension data exists ---
+  DIM_DIR="$WORLD_DIR"
+  case "$DIMENSION" in
+    nether|-1) DIM_DIR="${WORLD_DIR}/DIM-1" ;;
+    end|1)     DIM_DIR="${WORLD_DIR}/DIM1" ;;
+  esac
+
+  if [[ ! -d "${DIM_DIR}/region" || -z "$(ls -A "${DIM_DIR}/region" 2>/dev/null)" ]]; then
+    echo "⚠️  Skipping preview for ${MAP_NAME} — no region data found in ${DIM_DIR}/region"
+    continue
+  fi
 
   echo "   Rendering preview around spawn (${SPAWN_X}, ${SPAWN_Z})"
   if ! "$UNMINED" image render \

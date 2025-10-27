@@ -8,4 +8,4 @@ User=minecraft
 EnvironmentFile=-/etc/minecraft.env
 ExecStartPre=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say Saving world before map rebuild..."
 ExecStartPre=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
-ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i/world
+ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
