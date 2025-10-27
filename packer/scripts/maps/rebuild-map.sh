@@ -117,6 +117,18 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
     continue
   fi
 
+  # --- Verify dimension exists ---
+  DIM_DIR="$WORLD_PATH"
+  case "$DIM" in
+    nether|-1) DIM_DIR="${WORLD_PATH}/DIM-1" ;;
+    end|1)     DIM_DIR="${WORLD_PATH}/DIM1" ;;
+  esac
+
+  if [[ ! -d "${DIM_DIR}/region" || -z "$(ls -A "${DIM_DIR}/region" 2>/dev/null)" ]]; then
+    echo "⚠️  Skipping map '${MAP_NAME}' — no region data found in ${DIM_DIR}/region"
+    continue
+  fi
+
   echo "🔁 Rendering map: $MAP_NAME (dim=$DIM zoom=$ZOUT→$ZIN)"
 
   # Keep BASE_CMD truly minimal (shared args only)
