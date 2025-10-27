@@ -30,6 +30,10 @@ build {
   name    = "minecraft-live-test"
   sources = ["source.null.minecraft"]
 
+  provisioner "shell" {
+    inline = ["mkdir -p /tmp/scripts"]
+  }
+
   provisioner "file" {
     source      = "scripts/"
     destination = "/tmp/scripts/"
@@ -40,7 +44,7 @@ build {
   # provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
   # provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
 
-  # provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
+  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
   # provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
   # provisioner "shell" { script = "scripts/install_create_world.sh" }
   # provisioner "shell" { script = "scripts/install_map_rebuild.sh" }
@@ -48,4 +52,13 @@ build {
   # provisioner "shell" { script = "scripts/install_map_backup.sh" }
   # provisioner "shell" { script = "scripts/install_world_backup.sh" }
   # provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+
+  provisioner "shell" {
+    inline = [
+      "sudo systemctl daemon-reexec",
+      "sudo systemctl daemon-reload",
+      "sudo apt-get clean",
+      "sudo rm -rf /tmp/* /var/tmp/*"
+    ]
+  }
 }
