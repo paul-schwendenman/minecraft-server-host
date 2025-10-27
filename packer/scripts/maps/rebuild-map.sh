@@ -88,7 +88,8 @@ if [[ "$MAP_COUNT" -eq 0 ]]; then
   exit 0
 fi
 
-WORLD_LEVEL="$WORLD_PATH/level.dat"
+WORLD_DIR="$WORLD_PATH/world"
+WORLD_LEVEL="$WORLD_DIR/level.dat"
 world_mtime=$(stat -c %Y "$WORLD_LEVEL" 2>/dev/null || echo 0)
 
 for (( i=0; i<$MAP_COUNT; i++ )); do
@@ -118,10 +119,10 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
   fi
 
   # --- Verify dimension exists ---
-  DIM_DIR="$WORLD_PATH"
+  DIM_DIR="$WORLD_DIR"
   case "$DIM" in
-    nether|-1) DIM_DIR="${WORLD_PATH}/DIM-1" ;;
-    end|1)     DIM_DIR="${WORLD_PATH}/DIM1" ;;
+    nether|-1) DIM_DIR="${WORLD_DIR}/DIM-1" ;;
+    end|1)     DIM_DIR="${WORLD_DIR}/DIM1" ;;
   esac
 
   if [[ ! -d "${DIM_DIR}/region" || -z "$(ls -A "${DIM_DIR}/region" 2>/dev/null)" ]]; then
@@ -133,7 +134,7 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
 
   # Keep BASE_CMD truly minimal (shared args only)
   BASE_CMD=( "$UNMINED" web render
-    --world "${WORLD_PATH}/world"
+    --world "${WORLD_DIR}"
     --dimension "$DIM"
     --output "$MAP_OUTPUT"
     --imageformat "$DEFAULT_FMT"
