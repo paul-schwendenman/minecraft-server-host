@@ -8,4 +8,4 @@ EnvironmentFile=-/etc/minecraft.env
 ExecStart=/usr/local/bin/autoshutdown.sh
 ProtectSystem=full
 ProtectHome=yes
-NoNewPrivileges=yes
+NoNewPrivileges=no
