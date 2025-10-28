@@ -10,8 +10,8 @@ sudo install -Dm644 "${SRC_DIR}/minecraft-map-rebuild@.service" /etc/systemd/sys
 sudo install -Dm644 "${SRC_DIR}/minecraft-map-rebuild@.timer" /etc/systemd/system/minecraft-map-rebuild@.timer
 
 # Hook into minecraft@.service (ExecStopPost)
-sudo mkdir -p /etc/systemd/system/minecraft@.service.d
-sudo install -Dm644 "${SRC_DIR}/minecraft-override.conf" /etc/systemd/system/minecraft@.service.d/override.conf
+# sudo mkdir -p /etc/systemd/system/minecraft@.service.d
+# sudo install -Dm644 "${SRC_DIR}/minecraft-override.conf" /etc/systemd/system/minecraft@.service.d/override.conf
 
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
