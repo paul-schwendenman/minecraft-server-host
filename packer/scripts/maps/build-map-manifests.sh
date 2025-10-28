@@ -19,7 +19,7 @@ if [[ "$WORLD_PATH" == *"*"* ]]; then
 fi
 
 WORLD_DIR="$WORLD_PATH/world"
-WORLD_NAME=$(basename "$WORLD_DIR")
+WORLD_NAME=$(basename "$WORLD_PATH")
 CONFIG_PATH="$WORLD_PATH/map-config.yml"
 MAPS_DIR="$MAP_ROOT/$WORLD_NAME"
 mkdir -p "$MAPS_DIR"
@@ -39,7 +39,6 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
   DIMENSION=$(yq -r ".maps[$i].dimension" "$CONFIG_PATH")
   OUT_SUB=$(yq -r ".maps[$i].output_subdir // \"$MAP_NAME\"" "$CONFIG_PATH")
   MAP_OUTPUT="$MAPS_DIR/$OUT_SUB"
-  mkdir -p "$MAP_OUTPUT"
 
   echo "→ Generating preview + manifest for $MAP_NAME ($DIMENSION)"
 
@@ -68,6 +67,7 @@ for (( i=0; i<$MAP_COUNT; i++ )); do
     echo "⚠️  Skipping preview for ${MAP_NAME} — no region data found in ${DIM_DIR}/region"
     continue
   fi
+  mkdir -p "$MAP_OUTPUT"
 
   echo "   Rendering preview around spawn (${SPAWN_X}, ${SPAWN_Z})"
   if ! "$UNMINED" image render \
