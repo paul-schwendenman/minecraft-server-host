@@ -14,6 +14,7 @@ PrivateTmp=true
 ProtectSystem=full
 ProtectHome=true
 NoNewPrivileges=true
+SuccessExitStatus=143
 
 ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
 ExecReload=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} reload
