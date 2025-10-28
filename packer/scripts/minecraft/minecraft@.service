@@ -17,10 +17,10 @@ NoNewPrivileges=true
 SuccessExitStatus=143
 
 ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
-ExecReload=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} reload
-ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say SERVER SHUTTING DOWN. Saving map..."
-ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
-ExecStop=/usr/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} stop
+ExecReload=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} reload
+ExecStop=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} "say SERVER SHUTTING DOWN. Saving map..."
+ExecStop=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} save-all
+ExecStop=/usr/local/bin/mcrcon -H 127.0.0.1 -P ${RCON_PORT} -p ${RCON_PASSWORD} stop
 
 Restart=on-failure
 RestartSec=20
