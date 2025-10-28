@@ -36,7 +36,7 @@ module "ec2_role" {
 module "mc_stack" {
   source           = "../modules/mc_stack"
   name             = "minecraft-test"
-  ami_id           = "ami-0bc49424818457c5c"
+  ami_id           = var.ami_id
   instance_type    = "t3.small"
   vpc_id           = module.networking.vpc_id
   subnet_id        = module.networking.public_subnet_id
