@@ -134,32 +134,29 @@ func Init(cfgFile string) error {
 		},
 	}
 	
-	// Fallback: check environment directly for RCON_* vars if not found via Viper
+	// Check environment variables directly (overrides Viper values)
 	// This supports both RCON_PASSWORD and MINECRAFT_RCON_PASSWORD
-	if globalConfig.Rcon.Password == "" {
-		if pwd := os.Getenv("RCON_PASSWORD"); pwd != "" {
-			globalConfig.Rcon.Password = pwd
-		} else if pwd := os.Getenv("MINECRAFT_RCON_PASSWORD"); pwd != "" {
-			globalConfig.Rcon.Password = pwd
-		}
+	// Priority: RCON_PASSWORD > MINECRAFT_RCON_PASSWORD > config file > defaults
+	if pwd := os.Getenv("RCON_PASSWORD"); pwd != "" {
+		globalConfig.Rcon.Password = pwd
+	} else if pwd := os.Getenv("MINECRAFT_RCON_PASSWORD"); pwd != "" {
+		globalConfig.Rcon.Password = pwd
 	}
-	// Similar fallbacks for other RCON settings
-	if globalConfig.Rcon.Host == DefaultRconHost {
-		if host := os.Getenv("RCON_HOST"); host != "" {
-			globalConfig.Rcon.Host = host
-		} else if host := os.Getenv("MINECRAFT_RCON_HOST"); host != "" {
-			globalConfig.Rcon.Host = host
-		}
+	
+	// Similar direct checks for other RCON settings
+	if host := os.Getenv("RCON_HOST"); host != "" {
+		globalConfig.Rcon.Host = host
+	} else if host := os.Getenv("MINECRAFT_RCON_HOST"); host != "" {
+		globalConfig.Rcon.Host = host
 	}
-	if globalConfig.Rcon.Port == DefaultRconPort {
-		if portStr := os.Getenv("RCON_PORT"); portStr != "" {
-			if port, err := strconv.Atoi(portStr); err == nil {
-				globalConfig.Rcon.Port = port
-			}
-		} else if portStr := os.Getenv("MINECRAFT_RCON_PORT"); portStr != "" {
-			if port, err := strconv.Atoi(portStr); err == nil {
-				globalConfig.Rcon.Port = port
-			}
+	
+	if portStr := os.Getenv("RCON_PORT"); portStr != "" {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			globalConfig.Rcon.Port = port
+		}
+	} else if portStr := os.Getenv("MINECRAFT_RCON_PORT"); portStr != "" {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			globalConfig.Rcon.Port = port
 		}
 	}
 
@@ -173,6 +170,7 @@ func Init(cfgFile string) error {
 }
 
 // Get returns the global configuration
+// It always reads from Viper to ensure flags override config
 func Get() *GlobalConfig {
 	if globalConfig == nil {
 		// Return defaults if not initialized
@@ -186,7 +184,27 @@ func Get() *GlobalConfig {
 			},
 		}
 	}
-	return globalConfig
+	
+	// Re-read from Viper to pick up any flags that were bound after Init()
+	// This allows CLI flags to override the initial config
+	cfg := &GlobalConfig{
+		WorldsDir: viper.GetString("worlds_dir"),
+		MapsDir:   viper.GetString("maps_dir"),
+		LockFile:  viper.GetString("lock_file"),
+		Rcon: RconConfig{
+			Host:     viper.GetString("rcon.host"),
+			Port:     viper.GetInt("rcon.port"),
+			Password: viper.GetString("rcon.password"),
+		},
+	}
+	
+	// Expand environment variables in paths and password
+	cfg.WorldsDir = expandEnv(cfg.WorldsDir)
+	cfg.MapsDir = expandEnv(cfg.MapsDir)
+	cfg.LockFile = expandEnv(cfg.LockFile)
+	cfg.Rcon.Password = expandEnv(cfg.Rcon.Password)
+	
+	return cfg
 }
 
 // LoadMapConfig loads a per-world map-config.yml file
