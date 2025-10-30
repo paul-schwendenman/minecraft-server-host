@@ -83,12 +83,15 @@ fi
 
 ### Phase 2: Replace Map Build Scripts
 
-#### 2.1 Update `rebuild-map.sh` wrapper (recommended: keep with locking)
-- **Recommended**: Keep wrapper script for:
-  - Lock file management (`flock` on `/tmp/minecraft-map-build.lock`)
-  - Glob support (`/srv/minecraft-server/world*`)
-  - Non-blocking mode support
-  - Backward compatibility
+#### 2.1 Remove `rebuild-map.sh` wrapper - NOT NEEDED
+- **Status**: ✅ **All features implemented in minecraftctl!**
+- **Action**: Remove wrapper script entirely
+- minecraftctl handles:
+  - ✅ Lock file management (built-in)
+  - ✅ Glob support (`world*` patterns)
+  - ✅ Non-blocking mode (`--non-blocking` flag)
+  - ✅ Path handling (uses world names directly)
+  - ✅ All map building functionality
   
   ```bash
   #!/usr/bin/env bash
@@ -151,8 +154,10 @@ fi
     $([ "$FORCE" = "true" ] && echo "--force")
   ```
 
-#### 2.1a Create `build-map-manifests-wrapper.sh` (needed for preview generation)
-Since `minecraftctl map manifest` doesn't generate previews automatically, create wrapper:
+#### 2.1a Create `build-map-manifests-wrapper.sh` (optional, for aggregate index)
+**Status**: Preview generation is now automatic in `minecraftctl map manifest`!
+
+Only needed if Enhancement 6 (aggregate index) not yet implemented:
 ```bash
 #!/usr/bin/env bash
 # Wrapper that generates previews and manifests using minecraftctl
@@ -167,21 +172,18 @@ if [[ ! -f "$CONFIG_PATH" ]]; then
   exit 0
 fi
 
-# Generate preview for each map using minecraftctl
-MAP_COUNT=$(yq e '.maps | length' "$CONFIG_PATH" 2>/dev/null || echo 0)
-for (( i=0; i<$MAP_COUNT; i++ )); do
-  MAP_NAME=$(yq -r ".maps[$i].name" "$CONFIG_PATH")
-  echo "Generating preview for $MAP_NAME..."
-  minecraftctl map preview "$WORLD_NAME" "$MAP_NAME" || echo "⚠️  Preview generation failed for $MAP_NAME"
-done
-
-# Build manifests (includes all manifest data)
+# Build manifests (previews generated automatically)
 minecraftctl map manifest "$WORLD_NAME"
+
+# Update aggregate index (until Enhancement 6 is implemented)
+# This generates world_manifest.json and index.html
+/usr/local/bin/build-aggregate-index.sh || true
 ```
 
 **Note**: This still requires `yq` for parsing the config. Alternative: enhance minecraftctl to generate previews during manifest step.
 
 #### 2.2 Update `minecraft-map-rebuild@.service`
+**Recommended**: Use minecraftctl directly (enhancements implemented):
 ```ini
 [Unit]
 Description=Rebuild Minecraft maps for %i
@@ -192,28 +194,12 @@ Type=oneshot
 User=minecraft
 Group=minecraft
 EnvironmentFile=-/etc/minecraft.env
-# Use wrapper script for locking support, or minecraftctl directly if locking added
-ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
-# Generate previews for each map, then build manifests
-ExecStartPost=/usr/local/bin/build-map-manifests-wrapper.sh /srv/minecraft-server/%i
+# minecraftctl handles locking internally, use --non-blocking for timers
+ExecStart=/usr/local/bin/minecraftctl map build %i --non-blocking
+# Manifest command generates previews automatically, update index too
+ExecStartPost=/usr/local/bin/minecraftctl map manifest %i --update-index
 ```
 
-**Alternative**: If removing wrappers, update to call minecraftctl directly:
-```ini
-[Unit]
-Description=Rebuild Minecraft maps for %i
-After=minecraft@%i.service
-
-[Service]
-Type=oneshot
-User=minecraft
-Group=minecraft
-EnvironmentFile=-/etc/minecraft.env
-ExecStart=/usr/local/bin/minecraftctl map build %i
-# Note: Preview generation must be handled separately per map
-# This requires a wrapper or enhancement to minecraftctl
-ExecStartPost=/usr/local/bin/build-map-manifests-wrapper.sh /srv/minecraft-server/%i
-```
 
 #### 2.3 Update `minecraft-map-refresh@.service`
 ```ini
@@ -229,10 +215,11 @@ EnvironmentFile=-/etc/minecraft.env
 ExecStartPre=/usr/local/bin/minecraftctl rcon send "say Saving world before map rebuild..."
 ExecStartPre=/usr/local/bin/minecraftctl rcon send "save-all"
 ExecStart=/usr/local/bin/minecraftctl map build %i
-ExecStartPost=/usr/local/bin/minecraftctl map manifest %i
+ExecStartPost=/usr/local/bin/minecraftctl map manifest %i --update-index
 ```
 
 #### 2.4 Update `minecraft-override-rebuild.conf`
+**Final Configuration** - Use minecraftctl directly:
 ```ini
 [Service]
 User=minecraft
@@ -241,8 +228,9 @@ UMask=002
 EnvironmentFile=-/etc/minecraft.env
 ProtectHome=no
 
-ExecStopPost=/usr/local/bin/minecraftctl map build %i
-ExecStopPost=/usr/local/bin/minecraftctl map manifest %i
+# Use --non-blocking to avoid blocking server shutdown
+ExecStopPost=/usr/local/bin/minecraftctl map build %i --non-blocking
+ExecStopPost=/usr/local/bin/minecraftctl map manifest %i --update-index
 ```
 
 ### Phase 3: Update Installation Scripts
@@ -263,11 +251,13 @@ ExecStopPost=/usr/local/bin/minecraftctl map manifest %i
 ### Phase 4: Update Health Check Script
 
 #### 4.1 Update `mc-healthcheck.sh`
-Replace RCON check section:
+**Final Update** - Replace RCON check with minecraftctl:
 ```bash
 # OLD:
 if echo "list" | mcrcon -H 127.0.0.1 -P "${RCON_PORT:-25575}" -p "${RCON_PASSWORD:-}" >/dev/null; then
     echo "  ✔ RCON responsive"
+else
+    echo "  ✘ RCON query failed"
 fi
 
 # NEW:
@@ -278,27 +268,34 @@ else
 fi
 ```
 
-Add minecraftctl to CLI tools check:
+**Note**: Remove `mcrcon` dependency check from health check (minecraftctl replaces it)
+
+Update CLI tools check (replace mcrcon with minecraftctl):
 ```bash
-# Add to CLI tools section
-if command -v minecraftctl >/dev/null 2>&1; then
-  echo "  ✔ minecraftctl installed"
-else
-  echo "  ✘ minecraftctl missing"
-fi
+# Update CLI tools section
+for bin in minecraftctl aws java caddy; do
+  if command -v "$bin" >/dev/null 2>&1; then
+    echo "  ✔ $bin installed"
+  else
+    echo "  ✘ $bin missing"
+  fi
+done
+[[ -x /opt/unmined/unmined-cli ]] && echo "  ✔ uNmINeD installed" || echo "  ✘ uNmINeD missing"
 ```
 
-### Phase 5: Remove Obsolete Scripts (Optional)
+### Phase 5: Remove Obsolete Scripts
 
-After migration is complete and tested:
+**Action**: Remove scripts that are fully replaced by minecraftctl:
 
-1. **Remove** (if no longer needed):
-   - `rebuild-map.sh` (replaced by minecraftctl)
-   - `build-map-manifests.sh` (replaced by minecraftctl)
+1. **Remove** (fully replaced):
+   - ✅ `rebuild-map.sh` - All functionality in `minecraftctl map build`
+   - ✅ `build-map-manifests.sh` - All functionality in `minecraftctl map manifest` + `map index`
 
-2. **Keep** (still needed):
-   - `backup-maps.sh` (S3 sync, not map building)
+2. **Keep** (still needed, not replaced):
+   - `backup-maps.sh` (S3 sync, not map building logic)
    - Other backup/world scripts (outside minecraftctl scope)
+
+**Note**: After removing scripts, update `install_map_rebuild.sh` and `install_map_refresh.sh` to no longer install the bash scripts.
 
 ## Implementation Checklist
 
@@ -365,27 +362,32 @@ After migration is complete and tested:
 
 ## Missing Functionality in minecraftctl
 
-### Current Gaps
-1. **Lock file management** (`/tmp/minecraft-map-build.lock`)
-   - Add to minecraftctl or create wrapper
-   
-2. **Glob support** (`/srv/minecraft-server/world*`)
-   - Can be handled in wrapper or systemd service
+### Current Gaps (Updated Status)
+See "Status Update" section below for current implementation status.
 
-3. **Preview generation** in manifest step
-   - `minecraftctl map manifest` should generate previews
-   - Verify this works as expected
+### Status Update - ALL FEATURES IMPLEMENTED! ✅
 
-### Recommendations
-1. **Enhance minecraftctl** to support:
-   - Lock file management
-   - Non-blocking mode
-   - Batch operations on multiple worlds
+**All enhancements completed!** See `docs/minecraftctl-enhancement-plan.md` for details.
 
-2. **Or create wrapper scripts** that:
-   - Handle locking
-   - Glob expansion
-   - Call minecraftctl with correct parameters
+**Implemented and Verified**:
+- ✅ Lock file management (Enhancement 1) - Built into `map build` command
+- ✅ Preview generation in manifest (Enhancement 3) - Automatic in `map manifest`
+- ✅ Non-blocking mode (Enhancement 4) - `--non-blocking` flag
+- ✅ Glob support bounds - `ExpandWorldPattern()` implemented
+- ✅ Aggregate manifest & HTML index (Enhancement 6) - `map index` command available
+- ✅ Batch operations (Enhancement 5) - Parallel processing with `--parallel` flag
+
+**Commands Available**:
+- `minecraftctl map build <world> [worlds...]` - Build maps with locking, globs, parallel support
+- `minecraftctl map manifest <world> [worlds...]` - Generate manifests with automatic previews
+- `minecraftctl map index` - Generate aggregate manifest and HTML index
+- `minecraftctl map manifest --update-index` - Generate manifests and update index in one command
+- `minecraftctl rcon status` - Check server status (replaces mcrcon)
+
+**Recommendation**:
+- **Use minecraftctl directly** - No wrapper scripts needed!
+- All features from original scripts are fully implemented
+- Systemd services can call minecraftctl directly
 
 ## Rollback Plan
 
