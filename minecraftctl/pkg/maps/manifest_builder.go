@@ -14,16 +14,27 @@ import (
 
 // ManifestBuilder builds manifests for maps and worlds
 type ManifestBuilder struct {
-	worldsDir string
-	mapsDir   string
+	worldsDir        string
+	mapsDir          string
+	generatePreviews bool
+	builder          *Builder // For preview generation
+}
+
+// ManifestOptions control manifest building behavior
+type ManifestOptions struct {
+	WorldName        string
+	GeneratePreviews bool // Generate previews during manifest creation
+	PreviewOnly      bool // Only generate previews, skip manifest
 }
 
 // NewManifestBuilder creates a new manifest builder
 func NewManifestBuilder() *ManifestBuilder {
 	cfg := config.Get()
 	return &ManifestBuilder{
-		worldsDir: cfg.WorldsDir,
-		mapsDir:   cfg.MapsDir,
+		worldsDir:        cfg.WorldsDir,
+		mapsDir:          cfg.MapsDir,
+		generatePreviews: true, // Default to generating previews
+		builder:          NewBuilder(),
 	}
 }
 
@@ -39,7 +50,11 @@ type WorldManifest struct {
 }
 
 // BuildManifests builds manifests for all maps in a world
-func (mb *ManifestBuilder) BuildManifests(worldName string) error {
+func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions) error {
+	if opts.WorldName != "" {
+		worldName = opts.WorldName
+	}
+
 	worldPath := filepath.Join(mb.worldsDir, worldName)
 	mapConfig, err := config.LoadMapConfig(worldPath)
 	if err != nil {
@@ -52,6 +67,28 @@ func (mb *ManifestBuilder) BuildManifests(worldName string) error {
 
 	// Build manifest for each map
 	for _, mapDef := range mapConfig.Maps {
+		// Generate preview if requested
+		if (opts.GeneratePreviews || opts.PreviewOnly) && !opts.PreviewOnly {
+			log.Info().Str("map", mapDef.Name).Msg("generating preview")
+			if err := mb.builder.GeneratePreview(worldName, mapDef.Name); err != nil {
+				log.Warn().Err(err).Str("map", mapDef.Name).Msg("failed to generate preview, continuing")
+				// Don't fail entire operation on preview error
+			}
+		} else if opts.PreviewOnly {
+			// Preview-only mode: generate preview without manifest
+			log.Info().Str("map", mapDef.Name).Msg("generating preview only")
+			if err := mb.builder.GeneratePreview(worldName, mapDef.Name); err != nil {
+				log.Warn().Err(err).Str("map", mapDef.Name).Msg("failed to generate preview")
+				// Continue with other maps
+			}
+			continue
+		}
+
+		// Skip manifest generation if preview-only
+		if opts.PreviewOnly {
+			continue
+		}
+
 		outputSubdir := mapDef.OutputSubdir
 		if outputSubdir == "" {
 			outputSubdir = mapDef.Name
@@ -76,6 +113,11 @@ func (mb *ManifestBuilder) BuildManifests(worldName string) error {
 			"name":      mapDef.Name,
 			"dimension": mapDef.Dimension,
 		})
+	}
+
+	// Skip world manifest if preview-only
+	if opts.PreviewOnly {
+		return nil
 	}
 
 	// Build world-level manifest

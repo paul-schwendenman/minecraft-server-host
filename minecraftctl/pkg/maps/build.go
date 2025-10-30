@@ -6,8 +6,10 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/paul/minecraftctl/pkg/config"
+	"github.com/paul/minecraftctl/pkg/lock"
 	"github.com/rs/zerolog/log"
 )
 
@@ -34,14 +36,47 @@ func NewBuilder() *Builder {
 
 // BuildOptions control map building behavior
 type BuildOptions struct {
-	WorldName string
-	MapName   string // If empty, build all maps
-	Force     bool
-	Clean     bool
+	WorldName   string
+	MapName     string        // If empty, build all maps
+	Force       bool
+	Clean       bool
+	LockFile    string        // Lock file path (empty = use config default)
+	LockTimeout time.Duration // Lock timeout (0 = block forever)
+	NoLock      bool          // Disable file locking
+	NonBlocking bool          // Exit immediately if lock is held
 }
 
 // Build builds maps for a world according to its map-config.yml
 func (b *Builder) Build(opts BuildOptions) error {
+	// Acquire lock if not disabled
+	var fileLock *lock.FileLock
+	if !opts.NoLock {
+		lockPath := opts.LockFile
+		if lockPath == "" {
+			lockPath = config.Get().LockFile
+		}
+
+		fileLock = lock.NewFileLock(lockPath)
+		lockOpts := lock.LockOptions{
+			Timeout:     opts.LockTimeout,
+			NonBlocking: opts.NonBlocking,
+		}
+
+		if err := fileLock.LockWithOptions(lockOpts); err != nil {
+			if opts.NonBlocking {
+				log.Info().Msg("Another map build is running, skipping (non-blocking)")
+				return nil
+			}
+			return fmt.Errorf("failed to acquire lock: %w", err)
+		}
+
+		defer func() {
+			if err := fileLock.Unlock(); err != nil {
+				log.Error().Err(err).Msg("failed to release lock")
+			}
+		}()
+	}
+
 	worldPath := filepath.Join(b.worldsDir, opts.WorldName)
 	mapConfig, err := config.LoadMapConfig(worldPath)
 	if err != nil {

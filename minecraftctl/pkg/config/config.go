@@ -11,6 +11,7 @@ import (
 const (
 	DefaultWorldsDir = "/srv/minecraft-server"
 	DefaultMapsDir   = "/srv/minecraft-server/maps"
+	DefaultLockFile  = "/tmp/minecraft-map-build.lock"
 	DefaultRconHost  = "127.0.0.1"
 	DefaultRconPort  = 25575
 )
@@ -19,6 +20,7 @@ const (
 type GlobalConfig struct {
 	WorldsDir string
 	MapsDir   string
+	LockFile  string
 	Rcon      RconConfig
 }
 
@@ -80,6 +82,7 @@ func Init(cfgFile string) error {
 	// Set defaults
 	viper.SetDefault("worlds_dir", DefaultWorldsDir)
 	viper.SetDefault("maps_dir", DefaultMapsDir)
+	viper.SetDefault("lock_file", DefaultLockFile)
 	viper.SetDefault("rcon.host", DefaultRconHost)
 	viper.SetDefault("rcon.port", DefaultRconPort)
 
@@ -106,6 +109,7 @@ func Init(cfgFile string) error {
 	globalConfig = &GlobalConfig{
 		WorldsDir: viper.GetString("worlds_dir"),
 		MapsDir:   viper.GetString("maps_dir"),
+		LockFile:  viper.GetString("lock_file"),
 		Rcon: RconConfig{
 			Host:     viper.GetString("rcon.host"),
 			Port:     viper.GetInt("rcon.port"),
@@ -116,6 +120,7 @@ func Init(cfgFile string) error {
 	// Expand environment variables in paths
 	globalConfig.WorldsDir = expandEnv(globalConfig.WorldsDir)
 	globalConfig.MapsDir = expandEnv(globalConfig.MapsDir)
+	globalConfig.LockFile = expandEnv(globalConfig.LockFile)
 
 	return nil
 }
@@ -127,6 +132,7 @@ func Get() *GlobalConfig {
 		return &GlobalConfig{
 			WorldsDir: DefaultWorldsDir,
 			MapsDir:   DefaultMapsDir,
+			LockFile:  DefaultLockFile,
 			Rcon: RconConfig{
 				Host: DefaultRconHost,
 				Port: DefaultRconPort,
