@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/paul/minecraftctl/pkg/config"
@@ -185,5 +187,121 @@ func difficultyName(diff int32) string {
 	default:
 		return "Unknown"
 	}
+}
+
+// BuildAggregateIndex generates the aggregate world manifest and HTML index page
+func (mb *ManifestBuilder) BuildAggregateIndex() error {
+	// Collect all world manifest.json files
+	var worldManifests []WorldManifest
+
+	entries, err := os.ReadDir(mb.mapsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read maps directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		worldName := entry.Name()
+		worldManifestPath := filepath.Join(mb.mapsDir, worldName, "manifest.json")
+
+		data, err := os.ReadFile(worldManifestPath)
+		if err != nil {
+			// Skip worlds without manifests
+			continue
+		}
+
+		var worldManifest WorldManifest
+		if err := json.Unmarshal(data, &worldManifest); err != nil {
+			log.Warn().Err(err).Str("world", worldName).Msg("failed to parse world manifest, skipping")
+			continue
+		}
+
+		worldManifests = append(worldManifests, worldManifest)
+	}
+
+	// Generate world_manifest.json (JSON array of all world manifests)
+	aggPath := filepath.Join(mb.mapsDir, "world_manifest.json")
+	aggData, err := json.MarshalIndent(worldManifests, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal aggregate manifest: %w", err)
+	}
+
+	if err := os.WriteFile(aggPath, aggData, 0644); err != nil {
+		return fmt.Errorf("failed to write aggregate manifest: %w", err)
+	}
+
+	log.Info().Str("path", aggPath).Int("worlds", len(worldManifests)).Msg("aggregate manifest created")
+
+	// Generate index.html
+	indexPath := filepath.Join(mb.mapsDir, "index.html")
+	if err := mb.writeHTMLIndex(indexPath); err != nil {
+		return fmt.Errorf("failed to write HTML index: %w", err)
+	}
+
+	log.Info().Str("path", indexPath).Msg("HTML index created")
+	return nil
+}
+
+// writeHTMLIndex generates the HTML index page
+func (mb *ManifestBuilder) writeHTMLIndex(path string) error {
+	var html strings.Builder
+
+	html.WriteString("<!DOCTYPE html><html><head><title>Minecraft Maps</title>\n")
+	html.WriteString("<style>body{font-family:sans-serif;margin:2rem;}h2{margin-top:1rem}</style>\n")
+	html.WriteString("</head><body><h1>Minecraft Worlds</h1>\n")
+
+	entries, err := os.ReadDir(mb.mapsDir)
+	if err != nil {
+		return fmt.Errorf("failed to read maps directory: %w", err)
+	}
+
+	// Sort entries for consistent output
+	worldDirs := make([]string, 0)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			worldDirs = append(worldDirs, entry.Name())
+		}
+	}
+
+	sort.Strings(worldDirs)
+
+	for _, worldName := range worldDirs {
+		worldDir := filepath.Join(mb.mapsDir, worldName)
+		
+		html.WriteString(fmt.Sprintf("<h2>%s</h2><ul>\n", worldName))
+
+		mapEntries, err := os.ReadDir(worldDir)
+		if err != nil {
+			log.Warn().Err(err).Str("world", worldName).Msg("failed to read world directory")
+			continue
+		}
+
+		// Sort map directories
+		mapDirs := make([]string, 0)
+		for _, mapEntry := range mapEntries {
+			if mapEntry.IsDir() {
+				mapDirs = append(mapDirs, mapEntry.Name())
+			}
+		}
+
+		sort.Strings(mapDirs)
+
+		for _, mapName := range mapDirs {
+			html.WriteString(fmt.Sprintf("<li><a href='./%s/%s/'>%s</a></li>\n", worldName, mapName, mapName))
+		}
+
+		html.WriteString("</ul>\n")
+	}
+
+	html.WriteString("</body></html>\n")
+
+	if err := os.WriteFile(path, []byte(html.String()), 0644); err != nil {
+		return fmt.Errorf("failed to write HTML index: %w", err)
+	}
+
+	return nil
 }
 

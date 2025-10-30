@@ -109,22 +109,47 @@ var mapManifestCmd = &cobra.Command{
 			return fmt.Errorf("no worlds found matching patterns")
 		}
 
+		updateIndex, _ := cmd.Flags().GetBool("update-index")
+		builder := maps.NewManifestBuilder()
+
+		var err error
 		if len(worldNames) == 1 && !parallel {
 			// Single world, process directly
-			builder := maps.NewManifestBuilder()
 			opts := maps.ManifestOptions{
 				WorldName:       worldNames[0],
 				GeneratePreviews: !noPreview,
 				PreviewOnly:      previewOnly,
 			}
-			return builder.BuildManifests(worldNames[0], opts)
+			err = builder.BuildManifests(worldNames[0], opts)
+		} else {
+			// Multiple worlds - batch processing
+			err = manifestBatch(worldNames, maps.ManifestOptions{
+				GeneratePreviews: !noPreview,
+				PreviewOnly:      previewOnly,
+			}, parallel, maxWorkers)
 		}
 
-		// Multiple worlds - batch processing
-		return manifestBatch(worldNames, maps.ManifestOptions{
-			GeneratePreviews: !noPreview,
-			PreviewOnly:      previewOnly,
-		}, parallel, maxWorkers)
+		if err != nil {
+			return err
+		}
+
+		// Update aggregate index if requested
+		if updateIndex {
+			return builder.BuildAggregateIndex()
+		}
+
+		return nil
+	},
+}
+
+var mapIndexCmd = &cobra.Command{
+	Use:   "index",
+	Short: "Generate aggregate manifest and HTML index page",
+	Long:  "Generates world_manifest.json and index.html in the maps directory",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		builder := maps.NewManifestBuilder()
+		return builder.BuildAggregateIndex()
 	},
 }
 
@@ -142,10 +167,12 @@ func init() {
 	mapManifestCmd.Flags().Bool("preview-only", false, "Only generate previews, skip manifest")
 	mapManifestCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
 	mapManifestCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
+	mapManifestCmd.Flags().Bool("update-index", false, "Update aggregate manifest and HTML index after manifest generation")
 
 	mapCmd.AddCommand(mapBuildCmd)
 	mapCmd.AddCommand(mapPreviewCmd)
 	mapCmd.AddCommand(mapManifestCmd)
+	mapCmd.AddCommand(mapIndexCmd)
 }
 
 // buildBatch processes multiple worlds in batch

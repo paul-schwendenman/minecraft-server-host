@@ -11,6 +11,7 @@ This document outlines enhancements to `minecraftctl` to add missing features id
 3. **Preview generation in manifest step** - Must be called separately
 4. **Non-blocking mode** - No graceful handling when lock is held
 5. **Batch operations** - Limited support for processing multiple worlds
+6. **Aggregate manifest & HTML index** - Missing global aggregate manifest and HTML index page generation
 
 ## Enhancement Specifications
 
@@ -357,6 +358,12 @@ minecraftctl map build world* --parallel --max-workers 4
    - Can be added later if needed
    - Estimated: 2-3 days
 
+6. ⚠️ **Enhancement 6: Aggregate Manifest & HTML Index**
+   - Generate `world_manifest.json` aggregating all world manifests
+   - Generate `index.html` for web browsing
+   - Can be added as separate command or flag
+   - Estimated: 1-2 days
+
 ---
 
 ## Detailed Implementation Guide
@@ -653,6 +660,51 @@ All enhancements maintain backward compatibility:
 
 4. **Lock Cleanup**: Should we remove lock file on cleanup, or leave it?
    - **Decision**: Leave file, just release lock (standard practice)
+
+---
+
+### Enhancement 6: Aggregate Manifest & HTML Index
+
+**Goal**: Generate aggregate manifest file and HTML index page matching script behavior.
+
+**Requirements**:
+- Generate `/srv/minecraft-server/maps/world_manifest.json` - JSON array of all world manifests
+- Generate `/srv/minecraft-server/maps/index.html` - Simple HTML listing of worlds and maps
+- Should be called after manifest generation (or as separate command)
+- Match existing script output format
+
+**Design**:
+```go
+// Add to ManifestBuilder or new command
+func (mb *ManifestBuilder) BuildAggregateIndex() error {
+    // Collect all world manifest.json files
+    // Aggregate into single JSON array
+    // Generate HTML index
+}
+```
+
+**Implementation Steps**:
+1. Add `BuildAggregateIndex()` method to `ManifestBuilder`
+2. Add new command `minecraftctl map index` or flag `--update-index` to manifest command
+3. Generate `world_manifest.json` combining all world manifests
+4. Generate `index.html` with simple HTML structure matching script output
+
+**Commands Affected**:
+- `minecraftctl map manifest --update-index` - Update index after manifest
+- `minecraftctl map index` - Standalone index update command
+
+**Files to Create/Modify**:
+- `pkg/maps/manifest_builder.go` (add BuildAggregateIndex)
+- `cmd/minecraftctl/map.go` (add index command/flag)
+
+**Example Usage**:
+```bash
+# Update index after manifest generation
+minecraftctl map manifest world1 --update-index
+
+# Update index standalone
+minecraftctl map index
+```
 
 ---
 
