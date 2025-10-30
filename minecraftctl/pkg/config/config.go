@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/spf13/viper"
 )
@@ -105,6 +106,22 @@ func Init(cfgFile string) error {
 		}
 	}
 
+	// Enable automatic environment variable reading
+	viper.AutomaticEnv()
+	
+	// Set env prefix for MINECRAFT_ prefixed vars
+	viper.SetEnvPrefix("MINECRAFT")
+	
+	// Bind environment variables - support both prefixed and non-prefixed variants
+	// For nested keys like "rcon.password", Viper will look for MINECRAFT_RCON_PASSWORD
+	// by default, but we also want to support RCON_PASSWORD directly
+	viper.BindEnv("rcon.password", "RCON_PASSWORD")
+	viper.BindEnv("rcon.host", "RCON_HOST")
+	viper.BindEnv("rcon.port", "RCON_PORT")
+	viper.BindEnv("worlds_dir", "WORLDS_DIR")
+	viper.BindEnv("maps_dir", "MAPS_DIR")
+	viper.BindEnv("lock_file", "LOCK_FILE")
+	
 	// Load global config
 	globalConfig = &GlobalConfig{
 		WorldsDir: viper.GetString("worlds_dir"),
@@ -116,11 +133,41 @@ func Init(cfgFile string) error {
 			Password: viper.GetString("rcon.password"),
 		},
 	}
+	
+	// Fallback: check environment directly for RCON_* vars if not found via Viper
+	// This supports both RCON_PASSWORD and MINECRAFT_RCON_PASSWORD
+	if globalConfig.Rcon.Password == "" {
+		if pwd := os.Getenv("RCON_PASSWORD"); pwd != "" {
+			globalConfig.Rcon.Password = pwd
+		} else if pwd := os.Getenv("MINECRAFT_RCON_PASSWORD"); pwd != "" {
+			globalConfig.Rcon.Password = pwd
+		}
+	}
+	// Similar fallbacks for other RCON settings
+	if globalConfig.Rcon.Host == DefaultRconHost {
+		if host := os.Getenv("RCON_HOST"); host != "" {
+			globalConfig.Rcon.Host = host
+		} else if host := os.Getenv("MINECRAFT_RCON_HOST"); host != "" {
+			globalConfig.Rcon.Host = host
+		}
+	}
+	if globalConfig.Rcon.Port == DefaultRconPort {
+		if portStr := os.Getenv("RCON_PORT"); portStr != "" {
+			if port, err := strconv.Atoi(portStr); err == nil {
+				globalConfig.Rcon.Port = port
+			}
+		} else if portStr := os.Getenv("MINECRAFT_RCON_PORT"); portStr != "" {
+			if port, err := strconv.Atoi(portStr); err == nil {
+				globalConfig.Rcon.Port = port
+			}
+		}
+	}
 
-	// Expand environment variables in paths
+	// Expand environment variables in paths and password
 	globalConfig.WorldsDir = expandEnv(globalConfig.WorldsDir)
 	globalConfig.MapsDir = expandEnv(globalConfig.MapsDir)
 	globalConfig.LockFile = expandEnv(globalConfig.LockFile)
+	globalConfig.Rcon.Password = expandEnv(globalConfig.Rcon.Password)
 
 	return nil
 }
