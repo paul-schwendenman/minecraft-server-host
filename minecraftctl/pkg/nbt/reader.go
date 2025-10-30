@@ -34,15 +34,18 @@ func ReadLevelDat(levelDatPath string) (*LevelInfo, error) {
 
 // LevelInfo represents the Data tag within level.dat
 type LevelInfo struct {
-	Version         Version `nbt:"Version"`
-	SpawnX          int32   `nbt:"SpawnX"`
-	SpawnY          int32   `nbt:"SpawnY"`
-	SpawnZ          int32   `nbt:"SpawnZ"`
-	LastPlayed      int64   `nbt:"LastPlayed"`
-	Difficulty      int32   `nbt:"Difficulty"`
-	GameType        int32   `nbt:"GameType"`
-	LevelName       string  `nbt:"LevelName"`
-	ServerBrand     string  `nbt:"ServerBrand,omitempty"`
+	// Version is the compound version tag (used in older versions, pre-1.18)
+	Version Version `nbt:"Version,omitempty"`
+	// DataVersion is the integer version tag (used in newer versions, 1.18+)
+	DataVersion int32  `nbt:"DataVersion,omitempty"`
+	SpawnX      int32  `nbt:"SpawnX"`
+	SpawnY      int32  `nbt:"SpawnY"`
+	SpawnZ      int32  `nbt:"SpawnZ"`
+	LastPlayed  int64  `nbt:"LastPlayed"`
+	Difficulty  int32  `nbt:"Difficulty"`
+	GameType    int32  `nbt:"GameType"`
+	LevelName   string `nbt:"LevelName"`
+	ServerBrand string `nbt:"ServerBrand,omitempty"`
 }
 
 // LevelData is the root tag wrapper
@@ -50,10 +53,23 @@ type LevelData struct {
 	Data LevelInfo `nbt:"Data"`
 }
 
-// Version represents the version info
+// Version represents the version info (compound format, pre-1.18)
 type Version struct {
 	ID     int32  `nbt:"Id"`
 	Name   string `nbt:"Name"`
 	Series string `nbt:"Series,omitempty"`
+}
+
+// GetVersionName returns the version name string, handling both old (compound) and new (integer) formats
+func (l *LevelInfo) GetVersionName() string {
+	// Old format: use the compound Version tag
+	if l.Version.Name != "" {
+		return l.Version.Name
+	}
+	// New format: DataVersion is just an integer, so we return a formatted string
+	if l.DataVersion != 0 {
+		return fmt.Sprintf("DataVersion %d", l.DataVersion)
+	}
+	return "Unknown"
 }
 

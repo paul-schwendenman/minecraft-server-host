@@ -139,7 +139,7 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 
 	worldManifest := WorldManifest{
 		World:          worldName,
-		Version:        levelInfo.Version.Name,
+		Version:        levelInfo.GetVersionName(),
 		Difficulty:     difficulty,
 		DifficultyName: difficultyName,
 		LastPlayed:     lastPlayed,

@@ -97,7 +97,7 @@ func GetWorldInfo(worldName string) (*WorldInfo, error) {
 	return &WorldInfo{
 		Name:         worldName,
 		Path:         worldPath,
-		Version:      levelInfo.Version.Name,
+		Version:      levelInfo.GetVersionName(),
 		SpawnX:       levelInfo.SpawnX,
 		SpawnY:       levelInfo.SpawnY,
 		SpawnZ:       levelInfo.SpawnZ,
