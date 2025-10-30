@@ -1,0 +1,39 @@
+# Default map configuration for uNmINeD
+# This is a sample map-config.yml for reference
+
+defaults:
+  zoomout: 2
+  zoomin: 1
+  imageformat: jpeg
+  chunkprocessors: 4
+
+maps:
+  - name: overworld
+    dimension: overworld
+    output_subdir: overworld
+    options:
+      shadows: 3d
+    ranges:
+      - name: spawn_area
+        center: [560, 160]
+        radius: 2048
+        zoomout: 4
+        zoomin: 2
+
+  - name: nether
+    dimension: nether
+    output_subdir: nether
+    options:
+      topY: 68
+      shadows: 2d
+      night: false
+
+  - name: caves
+    dimension: overworld
+    output_subdir: caves
+    options:
+      topY: 64
+      bottomY: -64
+      gndxray: true
+      shadows: false
+
