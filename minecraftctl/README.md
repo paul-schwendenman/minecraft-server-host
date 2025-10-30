@@ -94,6 +94,35 @@ minecraftctl rcon exec commands.txt
 
 Each world can have a `map-config.yml` file that defines how maps are rendered. See `docs/map-build-config.rst` in the parent project for details.
 
+## Cross-Compilation
+
+To build for Linux amd64 (for EC2 instances):
+
+```bash
+make build-linux-amd64
+```
+
+This creates `minecraftctl-linux-amd64` which can be copied to your Linux server:
+
+```bash
+# Copy to remote server
+scp minecraftctl-linux-amd64 user@your-server:/tmp/
+
+# On the server, install it
+sudo install -m 755 /tmp/minecraftctl-linux-amd64 /usr/local/bin/minecraftctl
+```
+
+To build for multiple platforms:
+
+```bash
+make build-all
+```
+
+This creates binaries in the `dist/` directory for:
+- Linux amd64
+- macOS amd64
+- macOS arm64
+
 ## Development
 
 ```bash
