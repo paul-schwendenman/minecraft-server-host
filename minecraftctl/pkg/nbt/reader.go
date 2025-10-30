@@ -1,6 +1,7 @@
 package nbt
 
 import (
+	"compress/gzip"
 	"fmt"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 )
 
 // ReadLevelDat reads basic information from a Minecraft world's level.dat file
+// level.dat files are gzip-compressed NBT files
 func ReadLevelDat(levelDatPath string) (*LevelInfo, error) {
 	file, err := os.Open(levelDatPath)
 	if err != nil {
@@ -15,8 +17,15 @@ func ReadLevelDat(levelDatPath string) (*LevelInfo, error) {
 	}
 	defer file.Close()
 
+	// level.dat files are gzip-compressed
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzReader.Close()
+
 	var data LevelData
-	if _, err := nbtlib.NewDecoder(file).Decode(&data); err != nil {
+	if _, err := nbtlib.NewDecoder(gzReader).Decode(&data); err != nil {
 		return nil, fmt.Errorf("failed to decode NBT: %w", err)
 	}
 
