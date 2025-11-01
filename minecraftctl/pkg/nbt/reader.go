@@ -34,9 +34,11 @@ func ReadLevelDat(levelDatPath string) (*LevelInfo, error) {
 
 // LevelInfo represents the Data tag within level.dat
 type LevelInfo struct {
-	// Version is the compound version tag (used in older versions, pre-1.18)
+	// Version is the compound version tag (used in newer versions, 1.18+)
 	Version Version `nbt:"Version,omitempty"`
-	// DataVersion is the integer version tag (used in newer versions, 1.18+)
+	// VersionInt is the integer version tag (legacy, lowercase "version")
+	VersionInt int32 `nbt:"version,omitempty"`
+	// DataVersion is the integer data version tag (used in newer versions, 1.18+)
 	DataVersion int32  `nbt:"DataVersion,omitempty"`
 	SpawnX      int32  `nbt:"SpawnX"`
 	SpawnY      int32  `nbt:"SpawnY"`
