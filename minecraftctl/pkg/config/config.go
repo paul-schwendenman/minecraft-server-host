@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -294,6 +296,300 @@ func SaveMapConfig(path string, mapConfig *MapConfig) error {
 	}
 
 	return nil
+}
+
+// capitalizeFieldName converts a field name from YAML (lowercase) to Go struct field name
+func capitalizeFieldName(name string) string {
+	if len(name) == 0 {
+		return name
+	}
+	return strings.ToUpper(name[:1]) + name[1:]
+}
+
+// GetConfigField retrieves a field value from MapConfig using dot notation path
+// Examples: "defaults.zoomout", "maps[0].name", "maps[0].options.shadows"
+func GetConfigField(path string, mapConfig *MapConfig) (interface{}, error) {
+	if mapConfig == nil {
+		return nil, fmt.Errorf("mapConfig cannot be nil")
+	}
+	if path == "" {
+		return mapConfig, nil
+	}
+
+	parts := strings.Split(path, ".")
+	current := reflect.ValueOf(mapConfig).Elem()
+
+	for i, part := range parts {
+		// Handle array indexing like maps[0]
+		if idx := strings.Index(part, "["); idx != -1 {
+			fieldName := part[:idx]
+			// Extract index
+			re := regexp.MustCompile(`\[(\d+)\]`)
+			matches := re.FindStringSubmatch(part)
+			if len(matches) < 2 {
+				return nil, fmt.Errorf("invalid array index in path: %s", part)
+			}
+			index, err := strconv.Atoi(matches[1])
+			if err != nil {
+				return nil, fmt.Errorf("invalid array index: %w", err)
+			}
+
+			// Get field
+			field := current.FieldByName(capitalizeFieldName(fieldName))
+			if !field.IsValid() {
+				return nil, fmt.Errorf("field not found: %s", fieldName)
+			}
+
+			// Navigate to array element
+			if field.Kind() != reflect.Slice {
+				return nil, fmt.Errorf("field is not a slice: %s", fieldName)
+			}
+			if index < 0 || index >= field.Len() {
+				return nil, fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
+			}
+			current = field.Index(index)
+		} else {
+			// Regular field access
+			field := current.FieldByName(capitalizeFieldName(part))
+			if !field.IsValid() {
+				return nil, fmt.Errorf("field not found: %s", part)
+			}
+			current = field
+		}
+
+		// Follow pointer if needed
+		if current.Kind() == reflect.Ptr {
+			if current.IsNil() {
+				return nil, fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
+			}
+			current = current.Elem()
+		}
+	}
+
+	return current.Interface(), nil
+}
+
+// SetConfigField sets a field value in MapConfig using dot notation path
+// Examples: "defaults.zoomout", "maps[0].options.shadows", "maps[0].ranges[0].radius"
+func SetConfigField(path string, value interface{}, mapConfig *MapConfig) error {
+	if mapConfig == nil {
+		return fmt.Errorf("mapConfig cannot be nil")
+	}
+	if path == "" {
+		return fmt.Errorf("path cannot be empty")
+	}
+
+	parts := strings.Split(path, ".")
+	current := reflect.ValueOf(mapConfig).Elem()
+	var lastPart string
+	var lastIndex int = -1
+
+	for i, part := range parts {
+		isLast := i == len(parts)-1
+
+		// Handle array indexing like maps[0]
+		if idx := strings.Index(part, "["); idx != -1 {
+			fieldName := part[:idx]
+			// Extract index
+			re := regexp.MustCompile(`\[(\d+)\]`)
+			matches := re.FindStringSubmatch(part)
+			if len(matches) < 2 {
+				return fmt.Errorf("invalid array index in path: %s", part)
+			}
+			index, err := strconv.Atoi(matches[1])
+			if err != nil {
+				return fmt.Errorf("invalid array index: %w", err)
+			}
+
+			// Get field
+			field := current.FieldByName(capitalizeFieldName(fieldName))
+			if !field.IsValid() {
+				return fmt.Errorf("field not found: %s", fieldName)
+			}
+
+			if !isLast {
+				// Navigate to array element
+				if field.Kind() != reflect.Slice {
+					return fmt.Errorf("field is not a slice: %s", fieldName)
+				}
+				if index < 0 || index >= field.Len() {
+					return fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
+				}
+				current = field.Index(index)
+				// Follow pointer if needed
+				if current.Kind() == reflect.Ptr {
+					if current.IsNil() {
+						return fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
+					}
+					current = current.Elem()
+				}
+			} else {
+				// This is the last part, we need to set a value in the array
+				if field.Kind() != reflect.Slice {
+					return fmt.Errorf("field is not a slice: %s", fieldName)
+				}
+				if index < 0 || index >= field.Len() {
+					return fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
+				}
+				elem := field.Index(index)
+				if elem.Kind() == reflect.Ptr {
+					if elem.IsNil() {
+						return fmt.Errorf("array element is nil at index %d", index)
+					}
+					elem = elem.Elem()
+				}
+				current = elem
+				lastPart = ""
+				lastIndex = index
+			}
+		} else {
+			if !isLast {
+				// Regular field access (not last part)
+				field := current.FieldByName(capitalizeFieldName(part))
+				if !field.IsValid() {
+					return fmt.Errorf("field not found: %s", part)
+				}
+				current = field
+				// Follow pointer if needed
+				if current.Kind() == reflect.Ptr {
+					if current.IsNil() {
+						return fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
+					}
+					current = current.Elem()
+				}
+			} else {
+				// Last part - we'll set this field
+				lastPart = part
+			}
+		}
+	}
+
+	// Set the value
+	if lastPart != "" {
+		field := current.FieldByName(capitalizeFieldName(lastPart))
+		if !field.IsValid() {
+			return fmt.Errorf("field not found: %s", lastPart)
+		}
+		if !field.CanSet() {
+			return fmt.Errorf("field cannot be set: %s", lastPart)
+		}
+
+		val := reflect.ValueOf(value)
+		// Convert value to appropriate type
+		if field.Kind() != val.Kind() {
+			// Try to convert
+			if val.CanConvert(field.Type()) {
+				val = val.Convert(field.Type())
+			} else {
+				return fmt.Errorf("cannot convert value type %v to field type %v", val.Type(), field.Type())
+			}
+		}
+
+		// Handle pointer fields
+		if field.Kind() == reflect.Ptr {
+			// Create a new pointer of the correct type
+			ptr := reflect.New(field.Type().Elem())
+			if val.CanConvert(field.Type().Elem()) {
+				ptr.Elem().Set(val.Convert(field.Type().Elem()))
+			} else {
+				return fmt.Errorf("cannot convert value type %v to pointer element type %v", val.Type(), field.Type().Elem())
+			}
+			field.Set(ptr)
+		} else {
+			field.Set(val)
+		}
+	} else if lastIndex >= 0 {
+		// Setting an entire array element - this would require more complex logic
+		// For now, we don't support setting entire array elements
+		return fmt.Errorf("setting entire array elements is not supported")
+	}
+
+	return nil
+}
+
+// ValidateMapConfig validates a MapConfig and returns a list of error messages
+func ValidateMapConfig(mapConfig *MapConfig) []string {
+	var errs []string
+
+	// Validate defaults
+	if mapConfig.Defaults.Zoomout < 0 {
+		errs = append(errs, "defaults.zoomout must be >= 0")
+	}
+	if mapConfig.Defaults.Zoomin < 0 {
+		errs = append(errs, "defaults.zoomin must be >= 0")
+	}
+	if mapConfig.Defaults.ImageFormat != "" {
+		validFormats := map[string]bool{"jpeg": true, "png": true, "webp": true}
+		if !validFormats[strings.ToLower(mapConfig.Defaults.ImageFormat)] {
+			errs = append(errs, fmt.Sprintf("defaults.imageformat must be one of: jpeg, png, webp (got: %s)", mapConfig.Defaults.ImageFormat))
+		}
+	}
+	if mapConfig.Defaults.ChunkProcessors < 1 {
+		errs = append(errs, "defaults.chunkprocessors must be >= 1")
+	}
+
+	// Validate maps
+	if len(mapConfig.Maps) == 0 {
+		errs = append(errs, "at least one map definition is required")
+	}
+
+	validDimensions := map[string]bool{"overworld": true, "nether": true, "end": true}
+	validShadowValues := map[string]bool{"true": true, "false": true, "2d": true, "3d": true, "3do": true}
+
+	for i, m := range mapConfig.Maps {
+		if m.Name == "" {
+			errs = append(errs, fmt.Sprintf("maps[%d].name is required", i))
+		}
+		if m.Dimension == "" {
+			errs = append(errs, fmt.Sprintf("maps[%d].dimension is required", i))
+		} else if !validDimensions[m.Dimension] {
+			errs = append(errs, fmt.Sprintf("maps[%d].dimension must be one of: overworld, nether, end (got: %s)", i, m.Dimension))
+		}
+
+		// Validate shadow value if set
+		if m.Options.Shadows != nil {
+			var shadowStr string
+			switch v := m.Options.Shadows.(type) {
+			case string:
+				shadowStr = v
+			case bool:
+				if v {
+					shadowStr = "true"
+				} else {
+					shadowStr = "false"
+				}
+			}
+			if shadowStr != "" && !validShadowValues[strings.ToLower(shadowStr)] {
+				errs = append(errs, fmt.Sprintf("maps[%d].options.shadows must be one of: true, false, 2d, 3d, 3do (got: %v)", i, m.Options.Shadows))
+			}
+		}
+
+		// Validate zoom levels
+		if m.Zoomout != nil && *m.Zoomout < 0 {
+			errs = append(errs, fmt.Sprintf("maps[%d].zoomout must be >= 0", i))
+		}
+		if m.Zoomin != nil && *m.Zoomin < 0 {
+			errs = append(errs, fmt.Sprintf("maps[%d].zoomin must be >= 0", i))
+		}
+
+		// Validate ranges
+		for j, r := range m.Ranges {
+			if r.Name == "" {
+				errs = append(errs, fmt.Sprintf("maps[%d].ranges[%d].name is required", i, j))
+			}
+			if r.Radius <= 0 {
+				errs = append(errs, fmt.Sprintf("maps[%d].ranges[%d].radius must be > 0", i, j))
+			}
+			if r.Zoomout != nil && *r.Zoomout < 0 {
+				errs = append(errs, fmt.Sprintf("maps[%d].ranges[%d].zoomout must be >= 0", i, j))
+			}
+			if r.Zoomin != nil && *r.Zoomin < 0 {
+				errs = append(errs, fmt.Sprintf("maps[%d].ranges[%d].zoomin must be >= 0", i, j))
+			}
+		}
+	}
+
+	return errs
 }
 
 // expandEnv expands environment variables in a string

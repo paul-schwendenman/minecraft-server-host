@@ -5,13 +5,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/maps"
 	"github.com/paul/minecraftctl/pkg/worlds"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 var mapCmd = &cobra.Command{
@@ -157,7 +160,13 @@ var mapIndexCmd = &cobra.Command{
 }
 
 var mapConfigCmd = &cobra.Command{
-	Use:   "config <world>",
+	Use:   "config",
+	Short: "Manage map configuration files",
+	Long:  "Commands for managing map-config.yml files for worlds",
+}
+
+var mapConfigGenerateCmd = &cobra.Command{
+	Use:   "generate <world>",
 	Short: "Generate a basic map-config.yml file for a world",
 	Long:  "Creates a map-config.yml file with default settings and a spawn area zoom region based on NBT spawn coordinates",
 	Args:  cobra.ExactArgs(1),
@@ -260,6 +269,186 @@ var mapConfigCmd = &cobra.Command{
 	},
 }
 
+var mapConfigGetCmd = &cobra.Command{
+	Use:   "get <world> [path]",
+	Short: "Get config value(s) from map-config.yml",
+	Long:  "Display config values. If path is specified, shows that field. Otherwise shows full config.",
+	Args:  cobra.RangeArgs(1, 2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+		var path string
+		if len(args) > 1 {
+			path = args[1]
+		}
+
+		format, _ := cmd.Flags().GetString("format")
+
+		// Get world info
+		worldInfo, err := worlds.GetWorldInfo(worldName)
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		// Load config
+		mapConfig, err := config.LoadMapConfig(worldInfo.Path)
+		if err != nil {
+			return fmt.Errorf("failed to load map-config.yml: %w", err)
+		}
+
+		// Get field value
+		value, err := config.GetConfigField(path, mapConfig)
+		if err != nil {
+			return fmt.Errorf("failed to get field: %w", err)
+		}
+
+		// Output based on format
+		switch format {
+		case "json":
+			// TODO: implement JSON output
+			// For now, just output YAML
+			fallthrough
+		case "yaml", "":
+			data, err := yaml.Marshal(value)
+			if err != nil {
+				return fmt.Errorf("failed to marshal value: %w", err)
+			}
+			fmt.Print(string(data))
+		default:
+			return fmt.Errorf("unsupported format: %s (supported: yaml, json)", format)
+		}
+
+		return nil
+	},
+}
+
+var mapConfigSetCmd = &cobra.Command{
+	Use:   "set <world> <path> <value>",
+	Short: "Set a config value in map-config.yml",
+	Long:  "Set a specific field value using dot notation path (e.g., defaults.zoomout)",
+	Args:  cobra.ExactArgs(3),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+		path := args[1]
+		valueStr := args[2]
+
+		// Get world info
+		worldInfo, err := worlds.GetWorldInfo(worldName)
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		// Load config
+		mapConfig, err := config.LoadMapConfig(worldInfo.Path)
+		if err != nil {
+			return fmt.Errorf("failed to load map-config.yml: %w", err)
+		}
+
+		// Parse value (try int, bool, then string)
+		var value interface{}
+		if intVal, err := strconv.Atoi(valueStr); err == nil {
+			value = intVal
+		} else if boolVal, err := strconv.ParseBool(valueStr); err == nil {
+			value = boolVal
+		} else {
+			value = valueStr
+		}
+
+		// Set value
+		if err := config.SetConfigField(path, value, mapConfig); err != nil {
+			return fmt.Errorf("failed to set field: %w", err)
+		}
+
+		// Save config
+		if err := config.SaveMapConfig(worldInfo.Path, mapConfig); err != nil {
+			return fmt.Errorf("failed to save map-config.yml: %w", err)
+		}
+
+		log.Info().Str("world", worldName).Str("path", path).Msg("config value updated")
+		return nil
+	},
+}
+
+var mapConfigValidateCmd = &cobra.Command{
+	Use:   "validate <world>",
+	Short: "Validate map-config.yml structure and values",
+	Long:  "Checks that the map-config.yml file is valid and all values are within acceptable ranges",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+
+		// Get world info
+		worldInfo, err := worlds.GetWorldInfo(worldName)
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		// Load config
+		mapConfig, err := config.LoadMapConfig(worldInfo.Path)
+		if err != nil {
+			return fmt.Errorf("failed to load map-config.yml: %w", err)
+		}
+
+		// Validate config
+		errs := config.ValidateMapConfig(mapConfig)
+		if len(errs) > 0 {
+			fmt.Fprintf(os.Stderr, "Validation failed with %d error(s):\n", len(errs))
+			for _, e := range errs {
+				fmt.Fprintf(os.Stderr, "  - %s\n", e)
+			}
+			return fmt.Errorf("validation failed")
+		}
+
+		fmt.Println("✓ map-config.yml is valid")
+		return nil
+	},
+}
+
+var mapConfigEditCmd = &cobra.Command{
+	Use:   "edit <world>",
+	Short: "Interactively edit map-config.yml",
+	Long:  "Opens an interactive menu-driven editor for map-config.yml",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+
+		// Get world info
+		worldInfo, err := worlds.GetWorldInfo(worldName)
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		// Load or create config
+		var mapConfig *config.MapConfig
+		mapConfig, err = config.LoadMapConfig(worldInfo.Path)
+		if err != nil {
+			// Config doesn't exist, create a basic one
+			fmt.Printf("No map-config.yml found. Creating a basic configuration...\n")
+			mapConfig = &config.MapConfig{
+				Defaults: config.MapDefaults{
+					Zoomout:         6,
+					Zoomin:          0,
+					ImageFormat:     "jpeg",
+					ChunkProcessors: 4,
+				},
+				Maps: []config.MapDefinition{
+					{
+						Name:         "overworld",
+						Dimension:    "overworld",
+						OutputSubdir: "overworld",
+					},
+				},
+			}
+		}
+
+		// Run interactive editor
+		if err := runInteractiveEditor(worldInfo.Path, mapConfig); err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	mapBuildCmd.Flags().String("map", "", "Build only a specific map (by name)")
 	mapBuildCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
@@ -276,15 +465,307 @@ func init() {
 	mapManifestCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
 	mapManifestCmd.Flags().Bool("update-index", false, "Update aggregate manifest and HTML index after manifest generation")
 
-	mapConfigCmd.Flags().Bool("force", false, "Overwrite existing config file")
-	mapConfigCmd.Flags().Int("radius", 2048, "Radius of the spawn area zoom region")
-	mapConfigCmd.Flags().String("output", "", "Output path for config file (default: <worldPath>/map-config.yml)")
+	mapConfigGenerateCmd.Flags().Bool("force", false, "Overwrite existing config file")
+	mapConfigGenerateCmd.Flags().Int("radius", 2048, "Radius of the spawn area zoom region")
+	mapConfigGenerateCmd.Flags().String("output", "", "Output path for config file (default: <worldPath>/map-config.yml)")
+
+	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
 	mapCmd.AddCommand(mapBuildCmd)
 	mapCmd.AddCommand(mapPreviewCmd)
 	mapCmd.AddCommand(mapManifestCmd)
 	mapCmd.AddCommand(mapIndexCmd)
+	
+	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
+	mapConfigCmd.AddCommand(mapConfigGetCmd)
+	mapConfigCmd.AddCommand(mapConfigSetCmd)
+	mapConfigCmd.AddCommand(mapConfigValidateCmd)
+	mapConfigCmd.AddCommand(mapConfigEditCmd)
 	mapCmd.AddCommand(mapConfigCmd)
+}
+
+// runInteractiveEditor runs the interactive configuration editor
+func runInteractiveEditor(worldPath string, mapConfig *config.MapConfig) error {
+	for {
+		var choice string
+		prompt := &survey.Select{
+			Message: "What would you like to edit?",
+			Options: []string{
+				"Edit defaults",
+				"Edit maps",
+				"Add new map",
+				"Delete map",
+				"Validate config",
+				"Save and exit",
+				"Exit without saving",
+			},
+		}
+		if err := survey.AskOne(prompt, &choice); err != nil {
+			return err
+		}
+
+		switch choice {
+		case "Edit defaults":
+			if err := editDefaults(mapConfig); err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		case "Edit maps":
+			if err := editMaps(mapConfig); err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		case "Add new map":
+			if err := addMap(mapConfig); err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		case "Delete map":
+			if err := deleteMap(mapConfig); err != nil {
+				fmt.Printf("Error: %v\n", err)
+			}
+		case "Validate config":
+			errs := config.ValidateMapConfig(mapConfig)
+			if len(errs) > 0 {
+				fmt.Printf("Validation failed with %d error(s):\n", len(errs))
+				for _, e := range errs {
+					fmt.Printf("  - %s\n", e)
+				}
+			} else {
+				fmt.Println("✓ Config is valid")
+			}
+		case "Save and exit":
+			if err := config.SaveMapConfig(worldPath, mapConfig); err != nil {
+				return fmt.Errorf("failed to save config: %w", err)
+			}
+			fmt.Println("✓ Config saved successfully")
+			return nil
+		case "Exit without saving":
+			fmt.Println("Exiting without saving...")
+			return nil
+		}
+	}
+}
+
+func editDefaults(mapConfig *config.MapConfig) error {
+	var zoomoutStr string
+	var zoominStr string
+	var imageFormat string
+	var chunkProcessorsStr string
+
+	zoomoutPrompt := &survey.Input{
+		Message: "Zoomout (default):",
+		Default: fmt.Sprintf("%d", mapConfig.Defaults.Zoomout),
+	}
+	if err := survey.AskOne(zoomoutPrompt, &zoomoutStr); err != nil {
+		return err
+	}
+	zoomout, err := strconv.Atoi(zoomoutStr)
+	if err != nil {
+		return fmt.Errorf("invalid zoomout value: %w", err)
+	}
+
+	zoominPrompt := &survey.Input{
+		Message: "Zoomin (default):",
+		Default: fmt.Sprintf("%d", mapConfig.Defaults.Zoomin),
+	}
+	if err := survey.AskOne(zoominPrompt, &zoominStr); err != nil {
+		return err
+	}
+	zoomin, err := strconv.Atoi(zoominStr)
+	if err != nil {
+		return fmt.Errorf("invalid zoomin value: %w", err)
+	}
+
+	imageFormatPrompt := &survey.Select{
+		Message: "Image format:",
+		Options: []string{"jpeg", "png", "webp"},
+		Default: mapConfig.Defaults.ImageFormat,
+	}
+	if err := survey.AskOne(imageFormatPrompt, &imageFormat); err != nil {
+		return err
+	}
+
+	chunkProcessorsPrompt := &survey.Input{
+		Message: "Chunk processors:",
+		Default: fmt.Sprintf("%d", mapConfig.Defaults.ChunkProcessors),
+	}
+	if err := survey.AskOne(chunkProcessorsPrompt, &chunkProcessorsStr); err != nil {
+		return err
+	}
+	chunkProcessors, err := strconv.Atoi(chunkProcessorsStr)
+	if err != nil {
+		return fmt.Errorf("invalid chunkProcessors value: %w", err)
+	}
+
+	mapConfig.Defaults.Zoomout = zoomout
+	mapConfig.Defaults.Zoomin = zoomin
+	mapConfig.Defaults.ImageFormat = imageFormat
+	mapConfig.Defaults.ChunkProcessors = chunkProcessors
+
+	fmt.Println("✓ Defaults updated")
+	return nil
+}
+
+func editMaps(mapConfig *config.MapConfig) error {
+	if len(mapConfig.Maps) == 0 {
+		fmt.Println("No maps defined. Add a map first.")
+		return nil
+	}
+
+	// Create map selection list
+	mapNames := make([]string, len(mapConfig.Maps))
+	for i, m := range mapConfig.Maps {
+		mapNames[i] = fmt.Sprintf("%s (%s)", m.Name, m.Dimension)
+	}
+
+	var selected string
+	prompt := &survey.Select{
+		Message: "Select map to edit:",
+		Options: mapNames,
+	}
+	if err := survey.AskOne(prompt, &selected); err != nil {
+		return err
+	}
+
+	// Find selected map
+	var mapIdx int
+	for i, m := range mapConfig.Maps {
+		if fmt.Sprintf("%s (%s)", m.Name, m.Dimension) == selected {
+			mapIdx = i
+			break
+		}
+	}
+
+	// Edit the map
+	return editMap(mapConfig, mapIdx)
+}
+
+func editMap(mapConfig *config.MapConfig, idx int) error {
+	if idx < 0 || idx >= len(mapConfig.Maps) {
+		return fmt.Errorf("invalid map index")
+	}
+
+	m := &mapConfig.Maps[idx]
+
+	// Edit name
+	var name string
+	namePrompt := &survey.Input{
+		Message: "Map name:",
+		Default: m.Name,
+	}
+	if err := survey.AskOne(namePrompt, &name); err != nil {
+		return err
+	}
+	m.Name = name
+
+	// Edit dimension
+	var dimension string
+	dimPrompt := &survey.Select{
+		Message: "Dimension:",
+		Options: []string{"overworld", "nether", "end"},
+		Default: m.Dimension,
+	}
+	if err := survey.AskOne(dimPrompt, &dimension); err != nil {
+		return err
+	}
+	m.Dimension = dimension
+
+	// Edit output subdir
+	var outputSubdir string
+	outputPrompt := &survey.Input{
+		Message: "Output subdir:",
+		Default: m.OutputSubdir,
+	}
+	if err := survey.AskOne(outputPrompt, &outputSubdir); err != nil {
+		return err
+	}
+	m.OutputSubdir = outputSubdir
+
+	fmt.Println("✓ Map updated")
+	return nil
+}
+
+func addMap(mapConfig *config.MapConfig) error {
+	var name string
+	var dimension string
+	var outputSubdir string
+
+	namePrompt := &survey.Input{
+		Message: "Map name:",
+	}
+	if err := survey.AskOne(namePrompt, &name); err != nil {
+		return err
+	}
+
+	dimPrompt := &survey.Select{
+		Message: "Dimension:",
+		Options: []string{"overworld", "nether", "end"},
+	}
+	if err := survey.AskOne(dimPrompt, &dimension); err != nil {
+		return err
+	}
+
+	outputPrompt := &survey.Input{
+		Message: "Output subdir:",
+		Default: name,
+	}
+	if err := survey.AskOne(outputPrompt, &outputSubdir); err != nil {
+		return err
+	}
+
+	mapConfig.Maps = append(mapConfig.Maps, config.MapDefinition{
+		Name:         name,
+		Dimension:    dimension,
+		OutputSubdir: outputSubdir,
+	})
+
+	fmt.Printf("✓ Map '%s' added\n", name)
+	return nil
+}
+
+func deleteMap(mapConfig *config.MapConfig) error {
+	if len(mapConfig.Maps) == 0 {
+		fmt.Println("No maps to delete.")
+		return nil
+	}
+
+	// Create map selection list
+	mapNames := make([]string, len(mapConfig.Maps))
+	for i, m := range mapConfig.Maps {
+		mapNames[i] = fmt.Sprintf("%s (%s)", m.Name, m.Dimension)
+	}
+
+	var selected string
+	prompt := &survey.Select{
+		Message: "Select map to delete:",
+		Options: mapNames,
+	}
+	if err := survey.AskOne(prompt, &selected); err != nil {
+		return err
+	}
+
+	// Confirm deletion
+	var confirm bool
+	confirmPrompt := &survey.Confirm{
+		Message: "Are you sure you want to delete this map?",
+		Default: false,
+	}
+	if err := survey.AskOne(confirmPrompt, &confirm); err != nil {
+		return err
+	}
+
+	if !confirm {
+		return nil
+	}
+
+	// Find and delete
+	for i, m := range mapConfig.Maps {
+		if fmt.Sprintf("%s (%s)", m.Name, m.Dimension) == selected {
+			mapConfig.Maps = append(mapConfig.Maps[:i], mapConfig.Maps[i+1:]...)
+			fmt.Printf("✓ Map '%s' deleted\n", m.Name)
+			return nil
+		}
+	}
+
+	return nil
 }
 
 // buildBatch processes multiple worlds in batch
