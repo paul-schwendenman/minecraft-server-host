@@ -5,8 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -260,8 +262,41 @@ func LoadMapConfig(worldPath string) (*MapConfig, error) {
 	return &mapConfig, nil
 }
 
+// SaveMapConfig saves a MapConfig to a YAML file
+// If the path ends with ".yml" or ".yaml", it's treated as a full file path.
+// Otherwise, it's treated as a directory and "map-config.yml" is appended.
+func SaveMapConfig(path string, mapConfig *MapConfig) error {
+	var configPath string
+	baseName := strings.ToLower(filepath.Base(path))
+	if strings.HasSuffix(baseName, ".yml") || strings.HasSuffix(baseName, ".yaml") {
+		// Path is already a full file path
+		configPath = path
+	} else {
+		// Path is a directory, append map-config.yml
+		configPath = filepath.Join(path, "map-config.yml")
+	}
+
+	// Create parent directory if needed
+	dir := filepath.Dir(configPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
+	}
+
+	// Marshal to YAML
+	data, err := yaml.Marshal(mapConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal map-config.yml: %w", err)
+	}
+
+	// Write file
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write map-config.yml: %w", err)
+	}
+
+	return nil
+}
+
 // expandEnv expands environment variables in a string
 func expandEnv(s string) string {
 	return os.ExpandEnv(s)
 }
-

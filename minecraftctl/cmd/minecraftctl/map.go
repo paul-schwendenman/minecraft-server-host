@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 
+	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/maps"
 	"github.com/paul/minecraftctl/pkg/worlds"
 	"github.com/rs/zerolog/log"
@@ -153,6 +156,110 @@ var mapIndexCmd = &cobra.Command{
 	},
 }
 
+var mapConfigCmd = &cobra.Command{
+	Use:   "config <world>",
+	Short: "Generate a basic map-config.yml file for a world",
+	Long:  "Creates a map-config.yml file with default settings and a spawn area zoom region based on NBT spawn coordinates",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+		force, _ := cmd.Flags().GetBool("force")
+		radius, _ := cmd.Flags().GetInt("radius")
+		output, _ := cmd.Flags().GetString("output")
+
+		// Get world info to retrieve spawn coordinates
+		worldInfo, err := worlds.GetWorldInfo(worldName)
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		// Determine output path
+		worldPath := worldInfo.Path
+		configPath := filepath.Join(worldPath, "map-config.yml")
+		if output != "" {
+			configPath = output
+		}
+
+		// Check if config already exists
+		if _, err := os.Stat(configPath); err == nil && !force {
+			return fmt.Errorf("map-config.yml already exists at %s (use --force to overwrite)", configPath)
+		}
+
+		// Create map config with defaults
+		zoomoutDefault := 6
+		zoominDefault := 0
+		zoominSpawn := 2
+		zoomoutSpawn := 0
+		topYNether := 68
+		shadows3d := "3d"
+		shadows2d := "2d"
+		nightFalse := false
+
+		mapConfig := &config.MapConfig{
+			Defaults: config.MapDefaults{
+				Zoomout:         zoomoutDefault,
+				Zoomin:          zoominDefault,
+				ImageFormat:     "jpeg",
+				ChunkProcessors: 4,
+			},
+			Maps: []config.MapDefinition{
+				{
+					Name:         "overworld",
+					Dimension:    "overworld",
+					OutputSubdir: "overworld",
+					Options: config.MapOptions{
+						Shadows: shadows3d,
+					},
+					Ranges: []config.MapRange{
+						{
+							Name:    "spawn_area",
+							Center:  [2]int{int(worldInfo.SpawnX), int(worldInfo.SpawnZ)},
+							Radius:  radius,
+							Zoomout: &zoomoutSpawn,
+							Zoomin:  &zoominSpawn,
+						},
+					},
+				},
+				{
+					Name:         "nether",
+					Dimension:    "nether",
+					OutputSubdir: "nether",
+					Options: config.MapOptions{
+						TopY:    &topYNether,
+						Shadows: shadows2d,
+						Night:   &nightFalse,
+					},
+				},
+				{
+					Name:         "end",
+					Dimension:    "end",
+					OutputSubdir: "end",
+					Options: config.MapOptions{
+						Shadows: shadows2d,
+						Night:   &nightFalse,
+					},
+				},
+			},
+		}
+
+		// Save the config
+		// SaveMapConfig can accept either a directory path or full file path
+		if err := config.SaveMapConfig(configPath, mapConfig); err != nil {
+			return fmt.Errorf("failed to save map-config.yml: %w", err)
+		}
+
+		log.Info().
+			Str("world", worldName).
+			Str("path", configPath).
+			Int32("spawnX", worldInfo.SpawnX).
+			Int32("spawnZ", worldInfo.SpawnZ).
+			Int("radius", radius).
+			Msg("map-config.yml created")
+
+		return nil
+	},
+}
+
 func init() {
 	mapBuildCmd.Flags().String("map", "", "Build only a specific map (by name)")
 	mapBuildCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
@@ -169,10 +276,15 @@ func init() {
 	mapManifestCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
 	mapManifestCmd.Flags().Bool("update-index", false, "Update aggregate manifest and HTML index after manifest generation")
 
+	mapConfigCmd.Flags().Bool("force", false, "Overwrite existing config file")
+	mapConfigCmd.Flags().Int("radius", 2048, "Radius of the spawn area zoom region")
+	mapConfigCmd.Flags().String("output", "", "Output path for config file (default: <worldPath>/map-config.yml)")
+
 	mapCmd.AddCommand(mapBuildCmd)
 	mapCmd.AddCommand(mapPreviewCmd)
 	mapCmd.AddCommand(mapManifestCmd)
 	mapCmd.AddCommand(mapIndexCmd)
+	mapCmd.AddCommand(mapConfigCmd)
 }
 
 // buildBatch processes multiple worlds in batch
