@@ -1,10 +1,13 @@
 package worlds
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -193,5 +196,173 @@ func ExpandWorldPattern(pattern string) ([]string, error) {
 	sort.Strings(result)
 
 	return result, nil
+}
+
+// CreateWorldOptions holds options for creating a new world
+type CreateWorldOptions struct {
+	Version      string
+	Seed         string
+	CreateMapConfig bool
+	EnableSystemd  bool
+}
+
+// CreateWorld creates a new Minecraft world directory with the necessary configuration files
+func CreateWorld(worldName string, opts CreateWorldOptions) error {
+	cfg := config.Get()
+	worldDir := filepath.Join(cfg.WorldsDir, worldName)
+	jarPath := fmt.Sprintf("/opt/minecraft/jars/minecraft_server_%s.jar", opts.Version)
+
+	// Check if world already exists
+	if _, err := os.Stat(worldDir); err == nil {
+		// Check if it's actually a world (has level.dat)
+		levelDatPath := filepath.Join(worldDir, "world", "level.dat")
+		if _, err := os.Stat(levelDatPath); err == nil {
+			return fmt.Errorf("world already exists: %s", worldName)
+		}
+	}
+
+	// Validate that jar exists
+	if _, err := os.Stat(jarPath); os.IsNotExist(err) {
+		return fmt.Errorf("Minecraft server jar not found: %s", jarPath)
+	}
+
+	// Create world directory
+	if err := os.MkdirAll(worldDir, 0755); err != nil {
+		return fmt.Errorf("failed to create world directory: %w", err)
+	}
+
+	// Link the server jar
+	serverJarPath := filepath.Join(worldDir, "server.jar")
+	// Remove existing symlink if it exists
+	if _, err := os.Lstat(serverJarPath); err == nil {
+		if err := os.Remove(serverJarPath); err != nil {
+			return fmt.Errorf("failed to remove existing server.jar: %w", err)
+		}
+	}
+	if err := os.Symlink(jarPath, serverJarPath); err != nil {
+		return fmt.Errorf("failed to create symlink to server jar: %w", err)
+	}
+
+	// Create eula.txt
+	eulaPath := filepath.Join(worldDir, "eula.txt")
+	if err := os.WriteFile(eulaPath, []byte("eula=true\n"), 0644); err != nil {
+		return fmt.Errorf("failed to create eula.txt: %w", err)
+	}
+
+	// Load RCON settings from /etc/minecraft.env
+	rconPort := cfg.Rcon.Port
+	rconPassword := cfg.Rcon.Password
+	if envFile, err := os.Open("/etc/minecraft.env"); err == nil {
+		defer envFile.Close()
+		scanner := bufio.NewScanner(envFile)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(line, "RCON_PORT=") {
+				portStr := strings.TrimPrefix(line, "RCON_PORT=")
+				if port, err := strconv.Atoi(portStr); err == nil {
+					rconPort = port
+				}
+			} else if strings.HasPrefix(line, "RCON_PASSWORD=") {
+				rconPassword = strings.TrimPrefix(line, "RCON_PASSWORD=")
+			}
+		}
+	} else {
+		log.Warn().Msg("/etc/minecraft.env not found, using config values for RCON")
+	}
+
+	// If RCON password is still empty, try to get it from config
+	if rconPassword == "" {
+		rconPassword = cfg.Rcon.Password
+	}
+
+	// Create server.properties
+	serverPropsPath := filepath.Join(worldDir, "server.properties")
+	if _, err := os.Stat(serverPropsPath); os.IsNotExist(err) {
+		var props strings.Builder
+		props.WriteString("enable-rcon=true\n")
+		props.WriteString(fmt.Sprintf("rcon.port=%d\n", rconPort))
+		props.WriteString(fmt.Sprintf("rcon.password=%s\n", rconPassword))
+		props.WriteString(fmt.Sprintf("motd=Welcome to %s\n", worldName))
+		props.WriteString("level-name=world\n")
+		if opts.Seed != "" {
+			props.WriteString(fmt.Sprintf("level-seed=%s\n", opts.Seed))
+		}
+
+		if err := os.WriteFile(serverPropsPath, []byte(props.String()), 0644); err != nil {
+			return fmt.Errorf("failed to create server.properties: %w", err)
+		}
+	}
+
+	// Create map-config.yml if requested
+	if opts.CreateMapConfig {
+		mapConfigPath := filepath.Join(worldDir, "map-config.yml")
+		if _, err := os.Stat(mapConfigPath); os.IsNotExist(err) {
+			mapConfig := `# Default map configuration for uNmINeD
+# Adjust zoom levels, dimensions, and regions as needed
+
+defaults:
+  zoomout: 2
+  zoomin: 1
+  imageformat: jpeg
+  chunkprocessors: 4
+
+maps:
+  - name: overworld
+    dimension: overworld
+    output_subdir: overworld
+    options:
+      shadows: 3d
+    ranges:
+      - name: spawn_area
+        center: [0, 0]
+        radius: 2048
+        zoomout: 2
+        zoomin: 4
+
+  - name: nether
+    dimension: nether
+    output_subdir: nether
+    options:
+      topY: 68
+      shadows: 2d
+      night: false
+    ranges:
+      - name: hub
+        center: [0, 0]
+        radius: 1024
+        zoomout: 3
+        zoomin: 2
+
+  - name: end
+    dimension: end
+    output_subdir: end
+    options:
+      shadows: 2d
+`
+
+			if err := os.WriteFile(mapConfigPath, []byte(mapConfig), 0644); err != nil {
+				return fmt.Errorf("failed to create map-config.yml: %w", err)
+			}
+		}
+	}
+
+	// Enable and start systemd service if requested
+	if opts.EnableSystemd {
+		serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
+		
+		// Enable service
+		enableCmd := exec.Command("systemctl", "enable", serviceName)
+		if err := enableCmd.Run(); err != nil {
+			return fmt.Errorf("failed to enable systemd service %s: %w", serviceName, err)
+		}
+
+		// Start service
+		startCmd := exec.Command("systemctl", "start", serviceName)
+		if err := startCmd.Run(); err != nil {
+			return fmt.Errorf("failed to start systemd service %s: %w", serviceName, err)
+		}
+	}
+
+	return nil
 }
 

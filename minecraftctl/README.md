@@ -4,7 +4,7 @@ A CLI tool for managing Minecraft worlds, maps, and RCON commands. Built with Go
 
 ## Features
 
-- **World Management**: List and inspect Minecraft worlds
+- **World Management**: List, inspect, and create Minecraft worlds
 - **Map Building**: Build static maps using uNmINeD based on per-world `map-config.yml` files
 - **RCON Integration**: Send commands to Minecraft servers via RCON
 - **Configurable**: Support for global config, environment variables, and per-world settings
@@ -63,6 +63,30 @@ minecraftctl world list
 ```bash
 minecraftctl world info <world-name>
 ```
+
+### Create World
+
+```bash
+# Create a new world with required version
+minecraftctl world create <world-name> --version <version>
+
+# Create a world with a seed
+minecraftctl world create <world-name> --version <version> --seed <seed>
+
+# Create a world without map-config.yml
+minecraftctl world create <world-name> --version <version> --no-map-config
+
+# Create a world without enabling systemd service
+minecraftctl world create <world-name> --version <version> --no-systemd
+
+# Example: Create a world with version 1.21.1 and seed
+minecraftctl world create vanilla-121 --version 1.21.1 --seed 8675309
+```
+
+**Note**: The `world create` command requires:
+- The Minecraft server jar to be installed at `/opt/minecraft/jars/minecraft_server_<version>.jar`
+- Proper permissions (may require `sudo` for systemd operations)
+- RCON configuration (from `/etc/minecraft.env` or config file)
 
 ### Build Maps
 

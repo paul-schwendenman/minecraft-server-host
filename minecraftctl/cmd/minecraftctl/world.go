@@ -77,8 +77,57 @@ var worldInfoCmd = &cobra.Command{
 	},
 }
 
+var (
+	createVersion      string
+	createSeed         string
+	createNoMapConfig  bool
+	createNoSystemd    bool
+)
+
+var worldCreateCmd = &cobra.Command{
+	Use:   "create <world-name>",
+	Short: "Create a new Minecraft world",
+	Long:  "Create a new Minecraft world directory with server configuration. Requires the Minecraft server jar to be installed at /opt/minecraft/jars/minecraft_server_<version>.jar",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+
+		if createVersion == "" {
+			return fmt.Errorf("--version is required")
+		}
+
+		opts := worlds.CreateWorldOptions{
+			Version:         createVersion,
+			Seed:            createSeed,
+			CreateMapConfig: !createNoMapConfig,
+			EnableSystemd:   !createNoSystemd,
+		}
+
+		if err := worlds.CreateWorld(worldName, opts); err != nil {
+			return err
+		}
+
+		fmt.Printf("World '%s' created successfully with jar version %s\n", worldName, createVersion)
+		if opts.CreateMapConfig {
+			fmt.Println("Default map-config.yml created")
+		}
+		if opts.EnableSystemd {
+			fmt.Printf("Systemd service minecraft@%s.service enabled and started\n", worldName)
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	worldCmd.AddCommand(worldListCmd)
 	worldCmd.AddCommand(worldInfoCmd)
+	worldCmd.AddCommand(worldCreateCmd)
+
+	worldCreateCmd.Flags().StringVar(&createVersion, "version", "", "Minecraft server version (e.g., 1.21.1)")
+	worldCreateCmd.MarkFlagRequired("version")
+	worldCreateCmd.Flags().StringVar(&createSeed, "seed", "", "World seed (optional)")
+	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
+	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling and starting systemd service")
 }
 
