@@ -42,8 +42,8 @@ jobs:
           echo "Version: ${VERSION}"
 
       - name: Build for Linux amd64
-        working-dir: ./minecraftctl
         run: |
+          cd ./minecraftctl
           VERSION="${{ steps.version.outputs.version }}"
           GOOS=linux GOARCH=amd64 go build \
             -ldflags "-X github.com/paul/minecraftctl/internal/version.Version=${VERSION}" \
@@ -51,8 +51,8 @@ jobs:
             ./cmd/minecraftctl
 
       - name: Build for macOS amd64
-        working-dir: ./minecraftctl
         run: |
+          cd ./minecraftctl
           VERSION="${{ steps.version.outputs.version }}"
           GOOS=darwin GOARCH=amd64 go build \
             -ldflags "-X github.com/paul/minecraftctl/internal/version.Version=${VERSION}" \
@@ -60,8 +60,8 @@ jobs:
             ./cmd/minecraftctl
 
       - name: Build for macOS arm64
-        working-dir: ./minecraftctl
         run: |
+          cd ./minecraftctl
           VERSION="${{ steps.version.outputs.version }}"
           GOOS=darwin GOARCH=arm64 go build \
             -ldflags "-X github.com/paul/minecraftctl/internal/version.Version=${VERSION}" \
@@ -69,13 +69,14 @@ jobs:
             ./cmd/minecraftctl
 
       - name: Generate checksums
-        working-dir: ./minecraftctl
         run: |
+          cd ./minecraftctl
           sha256sum minecraftctl-* > checksums.txt
 
       - name: Run tests
-        working-dir: ./minecraftctl
-        run: go test ./...
+        run: |
+          cd ./minecraftctl
+          go test ./...
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
