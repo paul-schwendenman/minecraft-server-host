@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/paul/minecraftctl/cmd/minecraftctl/root"
+	"github.com/paul/minecraftctl/pkg/jars"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -14,7 +15,7 @@ func init() {
 	rootCmd.AddCommand(worldCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(rconCmd)
-	rootCmd.AddCommand(jarCmd)
+	rootCmd.AddCommand(jars.JarCmd)
 }
 
 func main() {

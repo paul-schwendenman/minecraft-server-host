@@ -1,10 +1,9 @@
-packer {
-}
-
+packer {}
 
 variable "test_host" {
   description = "Public IP or DNS of the test server"
   type        = string
+  default     = "localhost"  # Default value for development
 }
 
 variable "test_user" {
