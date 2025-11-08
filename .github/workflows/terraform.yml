@@ -1,0 +1,54 @@
+name: Terraform Validation
+
+on:
+  pull_request:
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+
+      - name: Check Terraform formatting
+        run: |
+          echo "Checking Terraform formatting..."
+          terraform fmt -check -recursive infra/ || exit 1
+          echo "✅ Terraform files are properly formatted"
+
+      - name: Validate Terraform modules
+        run: |
+          echo "Validating Terraform modules..."
+          for module in infra/modules/*/; do
+            if [ -d "$module" ]; then
+              echo "Validating module: $module"
+              cd "$module"
+              terraform init -backend=false || exit 1
+              terraform validate || exit 1
+              cd - > /dev/null
+            fi
+          done
+          echo "✅ All modules validated"
+
+      - name: Validate Terraform environments
+        run: |
+          echo "Validating Terraform environments..."
+          for env in infra/minimal infra/test infra/prod; do
+            if [ -d "$env" ] && [ -f "$env/main.tf" ]; then
+              echo "Validating environment: $env"
+              cd "$env"
+              terraform init -backend=false || exit 1
+              terraform validate || exit 1
+              cd - > /dev/null
+            fi
+          done
+          echo "✅ All environments validated"
+

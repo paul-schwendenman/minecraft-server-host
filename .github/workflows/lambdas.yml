@@ -1,0 +1,85 @@
+name: Lambda Validation
+
+on:
+  pull_request:
+    paths:
+      - 'lambda/**'
+      - '.github/workflows/lambdas.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - lambda-name: control
+            python-version: '3.13'
+          - lambda-name: details
+            python-version: '3.12'
+          - lambda-name: worlds
+            python-version: '3.13'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Validate dependencies
+        working-directory: lambda/${{ matrix.lambda-name }}
+        run: |
+          echo "Validating dependencies for lambda/${{ matrix.lambda-name }}..."
+          uv sync || exit 1
+          echo "✅ Dependencies validated"
+
+      - name: Check Python syntax
+        working-directory: lambda/${{ matrix.lambda-name }}
+        run: |
+          echo "Checking Python syntax for lambda/${{ matrix.lambda-name }}..."
+          find app -name "*.py" -type f | while read -r file; do
+            echo "Checking $file..."
+            python -m py_compile "$file" || exit 1
+          done
+          echo "✅ All Python files have valid syntax"
+
+      - name: Validate imports
+        working-directory: lambda/${{ matrix.lambda-name }}
+        env:
+          # Common environment variables
+          AWS_REGION: us-east-1
+          CORS_ORIGIN: "*"
+          # Lambda-specific required variables
+          MAPS_BUCKET: test-bucket
+          BASE_URL: https://test.example.com
+          INSTANCE_ID: i-1234567890abcdef0
+          REGION: us-east-1
+        run: |
+          echo "Validating imports for lambda/${{ matrix.lambda-name }}..."
+          # Use uv run to execute Python with the installed dependencies
+          # Set dummy environment variables for validation
+          export AWS_REGION=${AWS_REGION:-us-east-1}
+          export CORS_ORIGIN=${CORS_ORIGIN:-"*"}
+          if [ "${{ matrix.lambda-name }}" = "worlds" ]; then
+            export MAPS_BUCKET=${MAPS_BUCKET:-test-bucket}
+            export BASE_URL=${BASE_URL:-https://test.example.com}
+          elif [ "${{ matrix.lambda-name }}" = "control" ]; then
+            export INSTANCE_ID=${INSTANCE_ID:-i-1234567890abcdef0}
+            export REGION=${REGION:-us-east-1}
+          fi
+          # Validate imports by attempting to import the module
+          # Add current directory to path so Python can find the app package
+          if [ -f "app/main.py" ]; then
+            uv run python -c "import sys; sys.path.insert(0, '.'); from app import main" || exit 1
+            echo "✅ Main module imports successfully"
+          elif [ -f "app/__init__.py" ]; then
+            uv run python -c "import sys; sys.path.insert(0, '.'); import app" || exit 1
+            echo "✅ Module imports successfully"
+          fi
+

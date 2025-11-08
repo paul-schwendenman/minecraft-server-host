@@ -1,0 +1,78 @@
+name: Packer Validation
+
+on:
+  pull_request:
+    paths:
+      - 'packer/**'
+      - '.github/workflows/packer.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+
+      - name: Install Packer plugins
+        working-directory: packer
+        run: |
+          echo "Installing required Packer plugins..."
+          # Initialize plugins from .pkr.hcl files that declare them to avoid duplicate errors
+          # minecraft.pkr.hcl has amazon plugin, docker.pkr.hcl has docker plugin
+          for file in minecraft.pkr.hcl docker.pkr.hcl; do
+            if [ -f "$file" ]; then
+              echo "Initializing plugins from $file..."
+              packer init "$file" || true
+            fi
+          done
+          # Handle virtual-box.hcl separately (it's .hcl not .pkr.hcl)
+          if [ -f "virtual-box.hcl" ]; then
+            echo "Initializing plugins from virtual-box.hcl..."
+            packer init virtual-box.hcl || true
+          fi
+          echo "✅ Plugins installed"
+
+      - name: Validate Packer files
+        working-directory: packer
+        env:
+          PACKER_TEST_HOST: ${{ secrets.PACKER_TEST_HOST }}
+          PACKER_TEST_PRIVATE_KEY: ${{ secrets.PACKER_TEST_PRIVATE_KEY }}
+        run: |
+          echo "Validating Packer configuration files..."
+
+          # First, handle ssh.pkr.hcl specially because it expects a private key file on disk.
+          if [ -f ssh.pkr.hcl ]; then
+            echo "Found ssh.pkr.hcl, preparing validation..."
+            if [ -n "${PACKER_TEST_HOST:-}" ] && [ -n "${PACKER_TEST_PRIVATE_KEY:-}" ]; then
+              echo "Writing private key to temporary file..."
+              KEY_FILE="/tmp/packer_test_key"
+              printf '%s' "${PACKER_TEST_PRIVATE_KEY}" > "$KEY_FILE"
+              chmod 600 "$KEY_FILE"
+              echo "Validating ssh.pkr.hcl with provided secrets..."
+              packer validate -var "test_host=${PACKER_TEST_HOST}" -var "test_private_key=${KEY_FILE}" ssh.pkr.hcl || exit 1
+              rm -f "$KEY_FILE"
+            else
+              echo "Skipping ssh.pkr.hcl validation because PACKER_TEST_HOST and/or PACKER_TEST_PRIVATE_KEY secrets are not set."
+            fi
+          fi
+
+          # Validate other .pkr.hcl files (excluding ssh.pkr.hcl which we've handled)
+          for file in *.pkr.hcl; do
+            if [ -f "$file" ] && [ "$file" != "ssh.pkr.hcl" ]; then
+              echo "Validating $file..."
+              packer validate "$file" || exit 1
+            fi
+          done
+
+          # Validate .hcl files (like virtual-box.hcl)
+          for file in *.hcl; do
+            if [ -f "$file" ] && [[ "$file" != *.pkr.hcl ]]; then
+              echo "Validating $file..."
+              packer validate "$file" || exit 1
+            fi
+          done
+
+          echo "✅ All Packer files (that could be validated) are valid"

@@ -1,0 +1,78 @@
+name: Web Apps & Libraries Validation
+
+on:
+  pull_request:
+    paths:
+      - 'minecraft-ui/**'
+      - '.github/workflows/web-apps.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.3.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'pnpm'
+          cache-dependency-path: 'minecraft-ui/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        working-directory: minecraft-ui
+        run: |
+          # Check if lockfile is up to date
+          if ! pnpm install --frozen-lockfile; then
+            echo "❌ pnpm-lock.yaml is out of date with package.json"
+            echo "Please run 'pnpm install' locally and commit the updated pnpm-lock.yaml file"
+            exit 1
+          fi
+          echo "✅ Dependencies installed"
+
+      - name: Check formatting
+        working-directory: minecraft-ui
+        run: |
+          echo "Checking code formatting..."
+          for dir in apps/* libs/*; do
+            if [ -d "$dir" ] && [ -f "$dir/package.json" ]; then
+              echo "Checking formatting in $dir..."
+              (cd "$dir" && pnpm exec prettier --check .) || exit 1
+            fi
+          done
+          echo "✅ Code is properly formatted"
+
+      - name: Run linting
+        working-directory: minecraft-ui
+        run: |
+          echo "Running linters..."
+          pnpm -r lint || exit 1
+          echo "✅ Linting passed"
+
+      - name: Run type checking
+        working-directory: minecraft-ui
+        run: |
+          echo "Running type checks..."
+          pnpm -r check || exit 1
+          echo "✅ Type checking passed"
+
+      - name: Run tests
+        working-directory: minecraft-ui
+        run: |
+          echo "Running tests..."
+          pnpm -r test || exit 1
+          echo "✅ All tests passed"
+
+      - name: Build projects
+        working-directory: minecraft-ui
+        run: |
+          echo "Building projects..."
+          pnpm -r build || exit 1
+          echo "✅ All builds successful"
+
