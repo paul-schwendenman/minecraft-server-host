@@ -1,20 +1,18 @@
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
-
 #app {
-    height: 100vh;
+  height: 100vh;
 }
 
 .btn {
-    @apply m-px min-h-12 cursor-pointer rounded border p-4 text-lg outline-none sm:px-4 sm:py-2 sm:text-base;
+  @apply m-px min-h-12 cursor-pointer rounded border p-4 text-lg outline-none sm:px-4 sm:py-2 sm:text-base;
 }
 
 .btn-neutral {
-    @apply border-gray-500 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100 dark:border-none;
+  @apply border-gray-500 bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-100 dark:border-none;
 }
 
 .bg-neutral-content {
-	@apply bg-gray-700 dark:bg-gray-100;
-
+  @apply bg-gray-700 dark:bg-gray-100;
 }

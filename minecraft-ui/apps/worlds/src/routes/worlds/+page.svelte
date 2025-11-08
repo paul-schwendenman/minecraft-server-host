@@ -13,7 +13,7 @@
 	<Header title="Worlds" subtitle="Explore all Minecraft worlds" />
 
 	<section class="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
-		{#each worlds as world}
+		{#each worlds as world (world.world)}
 			<Card
 				title={world.world}
 				subtitle={world?.version ? `Version ${world?.version}` : null}

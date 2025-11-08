@@ -4,10 +4,11 @@
 
 <nav class="breadcrumbs text-sm">
 	<ul>
-		{#each items as crumb, i}
+		{#each items as crumb (crumb.label)}
 			<li>
 				{#if crumb.href}
-					<a href={crumb.href}>{crumb.label}</a>
+					<!-- eslint-disable-next-line -->
+					<a href={crumb.href} data-sveltekit-prefetch>{crumb.label}</a>
 				{:else}
 					<span class="opacity-70">{crumb.label}</span>
 				{/if}

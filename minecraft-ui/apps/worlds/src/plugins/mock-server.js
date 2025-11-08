@@ -4,16 +4,38 @@ const mockWorlds = [
 		previewUrl: '/mock/maps/default/preview.png',
 		mapUrl: '/mock/maps/default/',
 		dimensions: [
-			{ name: 'overworld', id: 0, previewUrl: '/mock/maps/default/overworld.png', mapUrl: '/mock/maps/default/overworld/' },
-			{ name: 'nether', id: -1, previewUrl: '/mock/maps/default/nether.png', mapUrl: '/mock/maps/default/nether/' },
-			{ name: 'end', id: 1, previewUrl: '/mock/maps/default/end.png', mapUrl: '/mock/maps/default/end/' }
+			{
+				name: 'overworld',
+				id: 0,
+				previewUrl: '/mock/maps/default/overworld.png',
+				mapUrl: '/mock/maps/default/overworld/'
+			},
+			{
+				name: 'nether',
+				id: -1,
+				previewUrl: '/mock/maps/default/nether.png',
+				mapUrl: '/mock/maps/default/nether/'
+			},
+			{
+				name: 'end',
+				id: 1,
+				previewUrl: '/mock/maps/default/end.png',
+				mapUrl: '/mock/maps/default/end/'
+			}
 		]
 	},
 	{
 		world: 'creative',
 		previewUrl: '/mock/maps/creative/preview.png',
 		mapUrl: '/mock/maps/creative/',
-		dimensions: [{ name: 'overworld', id: 0, previewUrl: '/mock/maps/creative/overworld.png', mapUrl: '/mock/maps/creative/overworld/' }]
+		dimensions: [
+			{
+				name: 'overworld',
+				id: 0,
+				previewUrl: '/mock/maps/creative/overworld.png',
+				mapUrl: '/mock/maps/creative/overworld/'
+			}
+		]
 	}
 ];
 
@@ -156,7 +178,7 @@ export function mockServer() {
 				// /worlds/{name}/{dimension}
 				const dimMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
 				if (dimMatch) {
-					const [_, worldId, dim] = dimMatch;
+					const [, worldId, dim] = dimMatch;
 					const dimData = mockDimensions(worldId).find((d) => d.name === dim);
 					if (!dimData) return send(res, { error: 'Dimension not found' }, 404);
 					return send(res, dimData);

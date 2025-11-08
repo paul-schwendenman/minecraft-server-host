@@ -7,10 +7,10 @@
 	let { children } = $props();
 </script>
 
-<main class="bg-base-100 text-base-content flex min-h-screen flex-col">
-	<nav class="navbar bg-base-200 border-base-300 border-b shadow-sm">
+<main class="flex min-h-screen flex-col bg-base-100 text-base-content">
+	<nav class="navbar border-b border-base-300 bg-base-200 shadow-sm">
 		<div class="mx-auto flex w-full max-w-5xl items-center justify-between px-4">
-			<a href={resolve('/')} class="btn btn-ghost text-xl normal-case">
+			<a href={resolve('/')} class="btn text-xl normal-case btn-ghost">
 				<span class="hidden sm:inline">Minecraft Server Manager</span>
 				<span class="inline sm:hidden">MC Server Manager</span>
 			</a>

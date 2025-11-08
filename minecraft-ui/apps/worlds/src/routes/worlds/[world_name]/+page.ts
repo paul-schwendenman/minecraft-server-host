@@ -1,5 +1,5 @@
 import type { PageLoad } from './$types';
-import { getWorld, type WorldDetail } from '@minecraft/data';
+import { getWorld } from '@minecraft/data';
 
 export const prerender = false;
 

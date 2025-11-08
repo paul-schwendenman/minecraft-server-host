@@ -1,59 +1,59 @@
 export async function getStatus() {
-    const resp = await fetch('/api/status');
+  const resp = await fetch("/api/status");
 
-    if (resp.ok) {
-        return await resp.json();
-    } else {
-        throw Error(await resp.text())
-    }
+  if (resp.ok) {
+    return await resp.json();
+  } else {
+    throw Error(await resp.text());
+  }
 }
 
 export async function stopInstance() {
-    const resp = await fetch('/api/stop');
-    const text = await resp.text();
+  const resp = await fetch("/api/stop");
+  const text = await resp.text();
 
-    if (resp.ok) {
-        return text;
-    } else {
-        throw Error(text);
-    }
+  if (resp.ok) {
+    return text;
+  } else {
+    throw Error(text);
+  }
 }
 
 export async function startInstance() {
-    const resp = await fetch('/api/start');
-    const text = await resp.text();
+  const resp = await fetch("/api/start");
+  const text = await resp.text();
 
-    if (resp.ok) {
-        return text;
-    } else {
-        throw Error(text);
-    }
+  if (resp.ok) {
+    return text;
+  } else {
+    throw Error(text);
+  }
 }
 export async function syncDnsRecord() {
-    const resp = await fetch('/api/syncdns');
-    const text = await resp.text();
+  const resp = await fetch("/api/syncdns");
+  const text = await resp.text();
 
-    if (resp.ok) {
-        return text;
-    } else {
-        throw Error(text);
-    }
+  if (resp.ok) {
+    return text;
+  } else {
+    throw Error(text);
+  }
 }
 
 export async function getDetails(hostname) {
-    const url = new URL('/api/details');
+  const url = new URL("/api/details");
 
-    if (hostname) {
-        const params = { hostname };
+  if (hostname) {
+    const params = { hostname };
 
-        url.search = new URLSearchParams(params).toString();
-    }
+    url.search = new URLSearchParams(params).toString();
+  }
 
-    const resp = await fetch(url);
+  const resp = await fetch(url);
 
-    if (resp.ok) {
-        return await resp.json();
-    } else {
-        throw Error(await resp.text())
-    }
+  if (resp.ok) {
+    return await resp.json();
+  } else {
+    throw Error(await resp.text());
+  }
 }

@@ -9,7 +9,7 @@
 	export let actionHref: string | null = null;
 </script>
 
-<div class="bg-base-200/80 border-base-300 mb-6 rounded-xl border p-4 shadow backdrop-blur-sm">
+<div class="mb-6 rounded-xl border border-base-300 bg-base-200/80 p-4 shadow backdrop-blur-sm">
 	{#if breadcrumbs.length}
 		<Breadcrumbs items={breadcrumbs} />
 	{/if}
@@ -20,19 +20,20 @@
 				<img
 					src={preview}
 					alt="Preview"
-					class="border-base-300 h-14 w-14 rounded-lg border object-cover"
+					class="h-14 w-14 rounded-lg border border-base-300 object-cover"
 				/>
 			{/if}
 			<div>
-				<h1 class="text-base-content text-2xl font-bold">{title}</h1>
+				<h1 class="text-2xl font-bold text-base-content">{title}</h1>
 				{#if subtitle}
-					<p class="text-base-content/70 text-sm">{subtitle}</p>
+					<p class="text-sm text-base-content/70">{subtitle}</p>
 				{/if}
 			</div>
 		</div>
 
 		{#if actionLabel && actionHref}
-			<a href={actionHref} target="_blank" rel="noopener" class="btn btn-primary btn-sm">
+			<!-- eslint-disable-next-line -->
+			<a href={actionHref} target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
 				{actionLabel} ↗
 			</a>
 		{/if}

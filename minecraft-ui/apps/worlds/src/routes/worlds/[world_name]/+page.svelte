@@ -18,7 +18,7 @@
 	/>
 
 	<section class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-		{#each dimensions as dim}
+		{#each dimensions as dim (dim.id)}
 			<Card title={dim.name} image={dim.previewUrl} href={`/worlds/${world.world}/${dim.name}`} />
 		{/each}
 	</section>

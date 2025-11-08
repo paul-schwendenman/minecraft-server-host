@@ -14,7 +14,7 @@
 </svelte:head>
 
 <section
-	class="min-w-sm flex h-full max-w-full flex-1 flex-col justify-between p-8 sm:mx-auto sm:max-w-sm sm:pt-16"
+	class="flex h-full max-w-full min-w-sm flex-1 flex-col justify-between p-8 sm:mx-auto sm:max-w-sm sm:pt-16"
 >
 	{#await serverStatus}
 		<p class="my-2">Loading...</p>

@@ -8,7 +8,10 @@ import { apiUrl } from './config.js';
  * @returns JSON response with version, description, and player info.
  * @throws Error if the API call fails.
  */
-export async function getDetails(hostname?: string, fetchFn: typeof fetch = fetch): Promise<ServerDetailsResponse> {
+export async function getDetails(
+	hostname?: string,
+	fetchFn: typeof fetch = fetch
+): Promise<ServerDetailsResponse> {
 	const url = new URL(apiUrl('details'), window.location.origin);
 
 	if (hostname) {
