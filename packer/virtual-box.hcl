@@ -1,3 +1,12 @@
+packer {
+  required_plugins {
+    virtualbox = {
+      version = ">= 1.0.0"
+      source  = "github.com/hashicorp/virtualbox"
+    }
+  }
+}
+
 source "virtualbox-iso" "ubuntu_vm" {
   iso_url          = "https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso"
   iso_checksum     = "auto"
