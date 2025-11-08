@@ -4,22 +4,21 @@ set -euo pipefail
 MINECRAFT_HOME="/srv/minecraft-server"
 TOUCH_FILE="${MINECRAFT_HOME}/no_one_playing"
 
-# Load shared RCON settings
-if [[ -z "${RCON_PASSWORD:-}" || -z "${RCON_PORT:-}" ]]; then
-  if [[ -r /etc/minecraft.env ]]; then
-    source /etc/minecraft.env
-  else
-    echo "Error: RCON_PASSWORD/RCON_PORT not set and /etc/minecraft.env not readable" >&2
-    exit 1
-  fi
+# Load shared RCON settings for minecraftctl
+# minecraftctl reads RCON_PASSWORD, RCON_HOST, and RCON_PORT from environment variables
+if [[ -r /etc/minecraft.env ]]; then
+  source /etc/minecraft.env
+else
+  echo "Error: /etc/minecraft.env not readable" >&2
+  exit 1
 fi
 
-command -v mcrcon >/dev/null 2>&1 || {
-  echo "Error: mcrcon not found" >&2
+command -v minecraftctl >/dev/null 2>&1 || {
+  echo "Error: minecraftctl not found" >&2
   exit 1
 }
 
-OUTPUT=$(mcrcon -H 127.0.0.1 -P "$RCON_PORT" -p "$RCON_PASSWORD" list || true)
+OUTPUT=$(minecraftctl rcon send "list" || true)
 COUNT=$(echo "$OUTPUT" | awk -F' ' '/There are/ {print $3}' || echo "0")
 logger -t autoshutdown "RCON reports $COUNT players online"
 

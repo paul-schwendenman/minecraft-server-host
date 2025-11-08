@@ -13,18 +13,6 @@ sudo apt-get install -y -qq \
 # --- Python tools (optional) ---
 pip3 install --user --upgrade mcstatus nbtlib
 
-# --- mcrcon ---
-MCRCON_VERSION="0.7.2"
-if ! command -v mcrcon >/dev/null 2>&1; then
-  cd /tmp
-  wget -q "https://github.com/Tiiffi/mcrcon/archive/refs/tags/v${MCRCON_VERSION}.tar.gz" -O mcrcon.tar.gz
-  echo "1743b25a2d031b774e805f4011cb7d92010cb866e3b892f5dfc5b42080973270  mcrcon.tar.gz" | sha256sum -c -
-  tar -xzf mcrcon.tar.gz
-  cd "mcrcon-${MCRCON_VERSION}"
-  make
-  sudo make install
-fi
-
 # --- AWS CLI v2 ---
 if ! command -v aws >/dev/null 2>&1; then
   echo "[*] Installing AWS CLI v2 with GPG verification"

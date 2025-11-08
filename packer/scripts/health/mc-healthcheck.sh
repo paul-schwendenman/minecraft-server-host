@@ -59,15 +59,15 @@ ss -tulwn | grep -E '(:25565|:80|:443)' || echo "  ✘ Expected ports not open"
 # 7. RCON query ---------------------------------------------------------------
 if [[ -r /etc/minecraft.env ]]; then
     source /etc/minecraft.env
-    if command -v mcrcon >/dev/null 2>&1; then
+    if command -v minecraftctl >/dev/null 2>&1; then
         echo "[*] Querying RCON..."
-        if ! echo "list" | mcrcon -H 127.0.0.1 -P "${RCON_PORT:-25575}" -p "${RCON_PASSWORD:-}" >/dev/null; then
+        if ! minecraftctl rcon send "list" >/dev/null 2>&1; then
             echo "  ✘ RCON query failed"
         else
             echo "  ✔ RCON responsive"
         fi
     else
-        echo "  (mcrcon not installed)"
+        echo "  (minecraftctl not installed)"
     fi
 else
     echo "  (no /etc/minecraft.env found, skipping RCON)"
@@ -96,7 +96,7 @@ else
 fi
 
 # 10. CLI Tools ----------------------------------------------------------
-for bin in mcrcon aws java caddy; do
+for bin in minecraftctl aws java caddy; do
   if command -v "$bin" >/dev/null 2>&1; then
     echo "  ✔ $bin installed"
   else
