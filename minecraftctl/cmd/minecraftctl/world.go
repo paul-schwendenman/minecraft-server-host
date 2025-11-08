@@ -78,10 +78,10 @@ var worldInfoCmd = &cobra.Command{
 }
 
 var (
-	createVersion      string
-	createSeed         string
-	createNoMapConfig  bool
-	createNoSystemd    bool
+	createVersion     string
+	createSeed        string
+	createNoMapConfig bool
+	createNoSystemd   bool
 )
 
 var worldCreateCmd = &cobra.Command{
@@ -130,4 +130,3 @@ func init() {
 	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
 	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling and starting systemd service")
 }
-

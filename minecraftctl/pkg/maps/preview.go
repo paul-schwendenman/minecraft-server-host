@@ -103,4 +103,3 @@ func (b *Builder) GeneratePreview(worldName, mapName string) error {
 	log.Info().Str("preview", previewPath).Msg("preview generated")
 	return nil
 }
-

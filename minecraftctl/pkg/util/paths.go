@@ -29,4 +29,3 @@ func AbsPath(path string) (string, error) {
 	expanded := ExpandPath(path)
 	return filepath.Abs(expanded)
 }
-

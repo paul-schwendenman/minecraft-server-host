@@ -107,4 +107,3 @@ func init() {
 	rconCmd.AddCommand(rconSendCmd)
 	rconCmd.AddCommand(rconExecCmd)
 }
-

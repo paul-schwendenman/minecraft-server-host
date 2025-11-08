@@ -37,7 +37,7 @@ func NewBuilder() *Builder {
 // BuildOptions control map building behavior
 type BuildOptions struct {
 	WorldName   string
-	MapName     string        // If empty, build all maps
+	MapName     string // If empty, build all maps
 	Force       bool
 	Clean       bool
 	LockFile    string        // Lock file path (empty = use config default)
@@ -285,8 +285,7 @@ func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string 
 		}
 		if shadowArg != "" {
 			args = append(args, "--shadows", shadowArg)
-	    }
+		}
 	}
 	return args
 }
-

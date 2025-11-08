@@ -23,11 +23,11 @@ const (
 
 // JarInfo contains information about a Minecraft server JAR
 type JarInfo struct {
-	Version      string
-	Path         string
-	Size         int64
-	Checksum     string
-	InstalledAt  time.Time
+	Version     string
+	Path        string
+	Size        int64
+	Checksum    string
+	InstalledAt time.Time
 }
 
 // ListJars returns a list of all installed JARs in the jars directory
@@ -287,4 +287,3 @@ func computeSHA256(filePath string) (string, error) {
 
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
-

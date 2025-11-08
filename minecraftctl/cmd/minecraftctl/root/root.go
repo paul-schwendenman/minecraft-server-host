@@ -12,15 +12,15 @@ import (
 )
 
 var (
-	cfgFile    string
-	verbose    bool
-	worldsDir  string
-	mapsDir    string
-	jarsDir    string
-	rconHost   string
-	rconPort   int
-	rconPass   string
-	rootCmd    *cobra.Command
+	cfgFile   string
+	verbose   bool
+	worldsDir string
+	mapsDir   string
+	jarsDir   string
+	rconHost  string
+	rconPort  int
+	rconPass  string
+	rootCmd   *cobra.Command
 )
 
 func init() {
@@ -95,4 +95,3 @@ func newRootCmd() *cobra.Command {
 
 	return cmd
 }
-

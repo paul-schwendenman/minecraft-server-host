@@ -40,8 +40,8 @@ type RconConfig struct {
 
 // MapConfig represents a per-world map-config.yml file
 type MapConfig struct {
-	Defaults MapDefaults            `yaml:"defaults" mapstructure:"defaults"`
-	Maps     []MapDefinition        `yaml:"maps" mapstructure:"maps"`
+	Defaults MapDefaults     `yaml:"defaults" mapstructure:"defaults"`
+	Maps     []MapDefinition `yaml:"maps" mapstructure:"maps"`
 }
 
 // MapDefaults holds default settings for all maps
@@ -54,23 +54,23 @@ type MapDefaults struct {
 
 // MapDefinition defines a single map to render
 type MapDefinition struct {
-	Name        string        `yaml:"name" mapstructure:"name"`
-	Dimension   string        `yaml:"dimension" mapstructure:"dimension"`
-	OutputSubdir string       `yaml:"output_subdir" mapstructure:"output_subdir"`
-	Zoomout     *int          `yaml:"zoomout,omitempty" mapstructure:"zoomout"`
-	Zoomin      *int          `yaml:"zoomin,omitempty" mapstructure:"zoomin"`
-	Options     MapOptions    `yaml:"options,omitempty" mapstructure:"options"`
-	Ranges      []MapRange    `yaml:"ranges,omitempty" mapstructure:"ranges"`
+	Name         string     `yaml:"name" mapstructure:"name"`
+	Dimension    string     `yaml:"dimension" mapstructure:"dimension"`
+	OutputSubdir string     `yaml:"output_subdir" mapstructure:"output_subdir"`
+	Zoomout      *int       `yaml:"zoomout,omitempty" mapstructure:"zoomout"`
+	Zoomin       *int       `yaml:"zoomin,omitempty" mapstructure:"zoomin"`
+	Options      MapOptions `yaml:"options,omitempty" mapstructure:"options"`
+	Ranges       []MapRange `yaml:"ranges,omitempty" mapstructure:"ranges"`
 }
 
 // MapOptions holds optional rendering options
 type MapOptions struct {
-	TopY     *int    `yaml:"topY,omitempty" mapstructure:"topY"`
-	BottomY  *int    `yaml:"bottomY,omitempty" mapstructure:"bottomY"`
-	GndXray  *bool   `yaml:"gndxray,omitempty" mapstructure:"gndxray"`
-	Shadows  interface{} `yaml:"shadows,omitempty" mapstructure:"shadows"` // can be bool or string
-	Night    *bool   `yaml:"night,omitempty" mapstructure:"night"`
-	Players  *bool   `yaml:"players,omitempty" mapstructure:"players"`
+	TopY    *int        `yaml:"topY,omitempty" mapstructure:"topY"`
+	BottomY *int        `yaml:"bottomY,omitempty" mapstructure:"bottomY"`
+	GndXray *bool       `yaml:"gndxray,omitempty" mapstructure:"gndxray"`
+	Shadows interface{} `yaml:"shadows,omitempty" mapstructure:"shadows"` // can be bool or string
+	Night   *bool       `yaml:"night,omitempty" mapstructure:"night"`
+	Players *bool       `yaml:"players,omitempty" mapstructure:"players"`
 }
 
 // MapRange defines a focused render area
@@ -115,10 +115,10 @@ func Init(cfgFile string) error {
 
 	// Enable automatic environment variable reading
 	viper.AutomaticEnv()
-	
+
 	// Set env prefix for MINECRAFT_ prefixed vars
 	viper.SetEnvPrefix("MINECRAFT")
-	
+
 	// Bind environment variables - support both prefixed and non-prefixed variants
 	// For nested keys like "rcon.password", Viper will look for MINECRAFT_RCON_PASSWORD
 	// by default, but we also want to support RCON_PASSWORD directly
@@ -129,7 +129,7 @@ func Init(cfgFile string) error {
 	viper.BindEnv("maps_dir", "MAPS_DIR")
 	viper.BindEnv("jars_dir", "MINECRAFT_JARS_DIR")
 	viper.BindEnv("lock_file", "LOCK_FILE")
-	
+
 	// Load global config
 	globalConfig = &GlobalConfig{
 		WorldsDir: viper.GetString("worlds_dir"),
@@ -142,7 +142,7 @@ func Init(cfgFile string) error {
 			Password: viper.GetString("rcon.password"),
 		},
 	}
-	
+
 	// Check environment variables directly (overrides Viper values)
 	// This supports both RCON_PASSWORD and MINECRAFT_RCON_PASSWORD
 	// Priority: RCON_PASSWORD > MINECRAFT_RCON_PASSWORD > config file > defaults
@@ -151,14 +151,14 @@ func Init(cfgFile string) error {
 	} else if pwd := os.Getenv("MINECRAFT_RCON_PASSWORD"); pwd != "" {
 		globalConfig.Rcon.Password = pwd
 	}
-	
+
 	// Similar direct checks for other RCON settings
 	if host := os.Getenv("RCON_HOST"); host != "" {
 		globalConfig.Rcon.Host = host
 	} else if host := os.Getenv("MINECRAFT_RCON_HOST"); host != "" {
 		globalConfig.Rcon.Host = host
 	}
-	
+
 	if portStr := os.Getenv("RCON_PORT"); portStr != "" {
 		if port, err := strconv.Atoi(portStr); err == nil {
 			globalConfig.Rcon.Port = port
@@ -195,7 +195,7 @@ func Get() *GlobalConfig {
 			},
 		}
 	}
-	
+
 	// Re-read from Viper to pick up any flags that were bound after Init()
 	// This allows CLI flags to override the initial config
 	cfg := &GlobalConfig{
@@ -209,21 +209,21 @@ func Get() *GlobalConfig {
 			Password: viper.GetString("rcon.password"),
 		},
 	}
-	
+
 	// Expand environment variables in paths and password
 	cfg.WorldsDir = expandEnv(cfg.WorldsDir)
 	cfg.MapsDir = expandEnv(cfg.MapsDir)
 	cfg.JarsDir = expandEnv(cfg.JarsDir)
 	cfg.LockFile = expandEnv(cfg.LockFile)
 	cfg.Rcon.Password = expandEnv(cfg.Rcon.Password)
-	
+
 	return cfg
 }
 
 // LoadMapConfig loads a per-world map-config.yml file
 func LoadMapConfig(worldPath string) (*MapConfig, error) {
 	configPath := filepath.Join(worldPath, "map-config.yml")
-	
+
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("map-config.yml not found at %s", configPath)
 	}

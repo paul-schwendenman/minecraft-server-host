@@ -74,4 +74,3 @@ func (l *LevelInfo) GetVersionName() string {
 	}
 	return "Unknown"
 }
-

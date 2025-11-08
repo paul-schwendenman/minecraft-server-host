@@ -42,13 +42,13 @@ func NewManifestBuilder() *ManifestBuilder {
 
 // WorldManifest represents a world-level manifest
 type WorldManifest struct {
-	World          string                   `json:"world"`
-	Version        string                   `json:"version"`
-	Difficulty     int32                    `json:"difficulty"`
-	DifficultyName string                   `json:"difficulty_name"`
-	LastPlayed     string                   `json:"last_played"`
-	Maps           []map[string]string      `json:"maps"`
-	LastRendered   string                   `json:"last_rendered"`
+	World          string              `json:"world"`
+	Version        string              `json:"version"`
+	Difficulty     int32               `json:"difficulty"`
+	DifficultyName string              `json:"difficulty_name"`
+	LastPlayed     string              `json:"last_played"`
+	Maps           []map[string]string `json:"maps"`
+	LastRendered   string              `json:"last_rendered"`
 }
 
 // BuildManifests builds manifests for all maps in a world
@@ -270,7 +270,7 @@ func (mb *ManifestBuilder) writeHTMLIndex(path string) error {
 
 	for _, worldName := range worldDirs {
 		worldDir := filepath.Join(mb.mapsDir, worldName)
-		
+
 		html.WriteString(fmt.Sprintf("<h2>%s</h2><ul>\n", worldName))
 
 		mapEntries, err := os.ReadDir(worldDir)
@@ -304,4 +304,3 @@ func (mb *ManifestBuilder) writeHTMLIndex(path string) error {
 
 	return nil
 }
-

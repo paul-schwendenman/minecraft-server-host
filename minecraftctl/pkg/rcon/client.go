@@ -55,4 +55,3 @@ func (c *Client) Status() (string, error) {
 	// Try to list players as a status check
 	return c.Send("list")
 }
-

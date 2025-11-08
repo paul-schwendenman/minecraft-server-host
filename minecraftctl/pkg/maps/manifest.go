@@ -57,4 +57,3 @@ func (b *Builder) updateManifest(mapOutput, worldName, mapName, dimension string
 
 	return nil
 }
-

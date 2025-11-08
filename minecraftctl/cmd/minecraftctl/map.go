@@ -122,7 +122,7 @@ var mapManifestCmd = &cobra.Command{
 		if len(worldNames) == 1 && !parallel {
 			// Single world, process directly
 			opts := maps.ManifestOptions{
-				WorldName:       worldNames[0],
+				WorldName:        worldNames[0],
 				GeneratePreviews: !noPreview,
 				PreviewOnly:      previewOnly,
 			}
@@ -475,7 +475,7 @@ func init() {
 	mapCmd.AddCommand(mapPreviewCmd)
 	mapCmd.AddCommand(mapManifestCmd)
 	mapCmd.AddCommand(mapIndexCmd)
-	
+
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)
 	mapConfigCmd.AddCommand(mapConfigSetCmd)
@@ -803,7 +803,7 @@ func buildBatch(worldNames []string, baseOpts maps.BuildOptions, parallel bool, 
 		wg.Add(1)
 		go func(idx int, name string) {
 			defer wg.Done()
-			semaphore <- struct{}{} // Acquire
+			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
 			builder := maps.NewBuilder()
@@ -859,7 +859,7 @@ func manifestBatch(worldNames []string, baseOpts maps.ManifestOptions, parallel 
 		wg.Add(1)
 		go func(idx int, name string) {
 			defer wg.Done()
-			semaphore <- struct{}{} // Acquire
+			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
 			builder := maps.NewManifestBuilder()
@@ -879,4 +879,3 @@ func manifestBatch(worldNames []string, baseOpts maps.ManifestOptions, parallel 
 	}
 	return nil
 }
-

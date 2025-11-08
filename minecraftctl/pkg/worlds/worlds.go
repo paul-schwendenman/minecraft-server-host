@@ -200,10 +200,10 @@ func ExpandWorldPattern(pattern string) ([]string, error) {
 
 // CreateWorldOptions holds options for creating a new world
 type CreateWorldOptions struct {
-	Version      string
-	Seed         string
+	Version         string
+	Seed            string
 	CreateMapConfig bool
-	EnableSystemd  bool
+	EnableSystemd   bool
 }
 
 // CreateWorld creates a new Minecraft world directory with the necessary configuration files
@@ -349,7 +349,7 @@ maps:
 	// Enable and start systemd service if requested
 	if opts.EnableSystemd {
 		serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-		
+
 		// Enable service
 		enableCmd := exec.Command("systemctl", "enable", serviceName)
 		if err := enableCmd.Run(); err != nil {
@@ -365,4 +365,3 @@ maps:
 
 	return nil
 }
-

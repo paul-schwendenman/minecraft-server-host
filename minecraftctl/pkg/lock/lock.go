@@ -101,4 +101,3 @@ func (fl *FileLock) Unlock() error {
 	}
 	return closeErr
 }
-
