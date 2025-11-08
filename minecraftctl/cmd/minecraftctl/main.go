@@ -14,6 +14,7 @@ func init() {
 	rootCmd.AddCommand(worldCmd)
 	rootCmd.AddCommand(mapCmd)
 	rootCmd.AddCommand(rconCmd)
+	rootCmd.AddCommand(jarCmd)
 }
 
 func main() {

@@ -16,6 +16,7 @@ import (
 const (
 	DefaultWorldsDir = "/srv/minecraft-server"
 	DefaultMapsDir   = "/srv/minecraft-server/maps"
+	DefaultJarsDir   = "/opt/minecraft/jars"
 	DefaultLockFile  = "/tmp/minecraft-map-build.lock"
 	DefaultRconHost  = "127.0.0.1"
 	DefaultRconPort  = 25575
@@ -25,6 +26,7 @@ const (
 type GlobalConfig struct {
 	WorldsDir string
 	MapsDir   string
+	JarsDir   string
 	LockFile  string
 	Rcon      RconConfig
 }
@@ -87,6 +89,7 @@ func Init(cfgFile string) error {
 	// Set defaults
 	viper.SetDefault("worlds_dir", DefaultWorldsDir)
 	viper.SetDefault("maps_dir", DefaultMapsDir)
+	viper.SetDefault("jars_dir", DefaultJarsDir)
 	viper.SetDefault("lock_file", DefaultLockFile)
 	viper.SetDefault("rcon.host", DefaultRconHost)
 	viper.SetDefault("rcon.port", DefaultRconPort)
@@ -124,12 +127,14 @@ func Init(cfgFile string) error {
 	viper.BindEnv("rcon.port", "RCON_PORT")
 	viper.BindEnv("worlds_dir", "WORLDS_DIR")
 	viper.BindEnv("maps_dir", "MAPS_DIR")
+	viper.BindEnv("jars_dir", "MINECRAFT_JARS_DIR")
 	viper.BindEnv("lock_file", "LOCK_FILE")
 	
 	// Load global config
 	globalConfig = &GlobalConfig{
 		WorldsDir: viper.GetString("worlds_dir"),
 		MapsDir:   viper.GetString("maps_dir"),
+		JarsDir:   viper.GetString("jars_dir"),
 		LockFile:  viper.GetString("lock_file"),
 		Rcon: RconConfig{
 			Host:     viper.GetString("rcon.host"),
@@ -167,6 +172,7 @@ func Init(cfgFile string) error {
 	// Expand environment variables in paths and password
 	globalConfig.WorldsDir = expandEnv(globalConfig.WorldsDir)
 	globalConfig.MapsDir = expandEnv(globalConfig.MapsDir)
+	globalConfig.JarsDir = expandEnv(globalConfig.JarsDir)
 	globalConfig.LockFile = expandEnv(globalConfig.LockFile)
 	globalConfig.Rcon.Password = expandEnv(globalConfig.Rcon.Password)
 
@@ -181,6 +187,7 @@ func Get() *GlobalConfig {
 		return &GlobalConfig{
 			WorldsDir: DefaultWorldsDir,
 			MapsDir:   DefaultMapsDir,
+			JarsDir:   DefaultJarsDir,
 			LockFile:  DefaultLockFile,
 			Rcon: RconConfig{
 				Host: DefaultRconHost,
@@ -194,6 +201,7 @@ func Get() *GlobalConfig {
 	cfg := &GlobalConfig{
 		WorldsDir: viper.GetString("worlds_dir"),
 		MapsDir:   viper.GetString("maps_dir"),
+		JarsDir:   viper.GetString("jars_dir"),
 		LockFile:  viper.GetString("lock_file"),
 		Rcon: RconConfig{
 			Host:     viper.GetString("rcon.host"),
@@ -205,6 +213,7 @@ func Get() *GlobalConfig {
 	// Expand environment variables in paths and password
 	cfg.WorldsDir = expandEnv(cfg.WorldsDir)
 	cfg.MapsDir = expandEnv(cfg.MapsDir)
+	cfg.JarsDir = expandEnv(cfg.JarsDir)
 	cfg.LockFile = expandEnv(cfg.LockFile)
 	cfg.Rcon.Password = expandEnv(cfg.Rcon.Password)
 	

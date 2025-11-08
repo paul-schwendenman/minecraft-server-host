@@ -154,12 +154,22 @@ build {
         for jar in var.minecraft_jars : <<EOC
 echo 'Installing Minecraft ${jar.version}'
 curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar
-echo "${jar.sha256}  /opt/minecraft/jars/minecraft_server_${jar.version}.jar" | sha256sum -c -
 EOC
       ],
       [
+        # Create checksums.txt file in sha256sum format
+        "cat > /opt/minecraft/jars/checksums.txt << 'CHECKSUMS_EOF'",
+      ],
+      [
+        for jar in var.minecraft_jars : "${jar.sha256}  minecraft_server_${jar.version}.jar"
+      ],
+      [
+        "CHECKSUMS_EOF",
+        # Verify all JARs using checksums.txt
+        "cd /opt/minecraft/jars && sha256sum -c checksums.txt",
         "sudo chown -R root:root /opt/minecraft/jars",
-        "sudo chmod 755 /opt/minecraft/jars"
+        "sudo chmod 755 /opt/minecraft/jars",
+        "sudo chmod 644 /opt/minecraft/jars/checksums.txt"
       ]
     )
   }

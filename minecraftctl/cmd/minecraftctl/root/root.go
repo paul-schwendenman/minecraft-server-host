@@ -16,6 +16,7 @@ var (
 	verbose    bool
 	worldsDir  string
 	mapsDir    string
+	jarsDir    string
 	rconHost   string
 	rconPort   int
 	rconPass   string
@@ -58,6 +59,7 @@ func newRootCmd() *cobra.Command {
 			// Bind flags to viper
 			viper.BindPFlag("worlds_dir", cmd.Flags().Lookup("worlds-dir"))
 			viper.BindPFlag("maps_dir", cmd.Flags().Lookup("maps-dir"))
+			viper.BindPFlag("jars_dir", cmd.Flags().Lookup("jars-dir"))
 			viper.BindPFlag("rcon.host", cmd.Flags().Lookup("rcon-host"))
 			viper.BindPFlag("rcon.port", cmd.Flags().Lookup("rcon-port"))
 			viper.BindPFlag("rcon.password", cmd.Flags().Lookup("rcon-password"))
@@ -71,6 +73,7 @@ func newRootCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/minecraftctl.yml or ~/.config/minecraftctl.yml)")
 	cmd.PersistentFlags().StringVar(&worldsDir, "worlds-dir", "", "directory containing Minecraft worlds")
 	cmd.PersistentFlags().StringVar(&mapsDir, "maps-dir", "", "directory for map output")
+	cmd.PersistentFlags().StringVar(&jarsDir, "jars-dir", "", "directory containing Minecraft server JARs (default: /opt/minecraft/jars)")
 	cmd.PersistentFlags().StringVar(&rconHost, "rcon-host", "", "RCON host (default: 127.0.0.1)")
 	cmd.PersistentFlags().IntVar(&rconPort, "rcon-port", 0, "RCON port")
 	cmd.PersistentFlags().StringVar(&rconPass, "rcon-password", "", "RCON password")

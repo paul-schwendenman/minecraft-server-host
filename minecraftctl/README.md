@@ -7,6 +7,7 @@ A CLI tool for managing Minecraft worlds, maps, and RCON commands. Built with Go
 - **World Management**: List, inspect, and create Minecraft worlds
 - **Map Building**: Build static maps using uNmINeD based on per-world `map-config.yml` files
 - **RCON Integration**: Send commands to Minecraft servers via RCON
+- **JAR Management**: Download, list, and verify Minecraft server JAR files with checksum support
 - **Configurable**: Support for global config, environment variables, and per-world settings
 
 ## Installation
@@ -35,6 +36,7 @@ Configuration can be provided via:
 
 - `MINECRAFT_WORLDS_DIR` - Directory containing Minecraft worlds (default: `/srv/minecraft-server`)
 - `MINECRAFT_MAPS_DIR` - Directory for map output (default: `/srv/minecraft-server/maps`)
+- `MINECRAFT_JARS_DIR` - Directory containing Minecraft server JARs (default: `/opt/minecraft/jars`)
 - `MINECRAFT_RCON_HOST` - RCON host (default: `127.0.0.1`)
 - `MINECRAFT_RCON_PORT` - RCON port (default: `25575`)
 - `MINECRAFT_RCON_PASSWORD` - RCON password
@@ -44,6 +46,7 @@ Configuration can be provided via:
 ```yaml
 worlds_dir: /srv/minecraft-server
 maps_dir: /srv/minecraft-server/maps
+jars_dir: /opt/minecraft/jars
 rcon:
   host: 127.0.0.1
   port: 25575
@@ -113,6 +116,31 @@ minecraftctl rcon send "say Hello World"
 # Execute commands from file
 minecraftctl rcon exec commands.txt
 ```
+
+### JAR Management
+
+```bash
+# List installed JARs
+minecraftctl jar list
+
+# Download a JAR (with checksum verification)
+minecraftctl jar download 1.21.11 --url https://piston-data.mojang.com/v1/objects/.../server.jar --sha256 <checksum>
+
+# Download a JAR (checksum from checksums.txt if available)
+minecraftctl jar download 1.21.11 --url https://piston-data.mojang.com/v1/objects/.../server.jar
+
+# Verify a JAR's checksum
+minecraftctl jar verify 1.21.11
+
+# Show JAR details
+minecraftctl jar info 1.21.11
+```
+
+**Note**: The `jar download` command:
+- Downloads JARs to `/opt/minecraft/jars/` (or `MINECRAFT_JARS_DIR`)
+- Verifies checksums against provided `--sha256` flag or `checksums.txt` file
+- Updates `checksums.txt` after successful download
+- Uses `sha256sum`-compatible format for checksums
 
 ## Map Configuration
 
