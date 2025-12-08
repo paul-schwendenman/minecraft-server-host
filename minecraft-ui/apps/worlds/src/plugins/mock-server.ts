@@ -1,3 +1,5 @@
+import type { ServerStatusResponse } from "@minecraft/data";
+
 const mockWorlds = [
 	{
 		world: 'default',
@@ -40,34 +42,34 @@ const mockWorlds = [
 ];
 
 // Helper for mock dimension details
-function mockDimensions(worldId) {
+function mockDimensions(worldId: string) {
 	return mockWorlds.find((w) => w.world === worldId)?.dimensions || [];
 }
 
 export function mockServer() {
 	return {
 		name: 'mock-server',
-		configureServer(server) {
+		configureServer(server: any) {
 			console.log('[mock-server] plugin active');
 
 			// ---------- Helpers ----------
-			const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+			const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 			const ipv4 = {
-				random(subnet, mask) {
+				random(subnet: string, mask: number) {
 					const rand = Math.floor(Math.random() * Math.pow(2, 32 - mask)) + 1;
 					return this.lon2ip(this.ip2lon(subnet) | rand);
 				},
-				ip2lon(addr) {
+				ip2lon(addr: string) {
 					return addr.split('.').reduce((a, o) => (a << 8) + +o, 0) >>> 0;
 				},
-				lon2ip(lon) {
+				lon2ip(lon: number) {
 					return [lon >>> 24, (lon >> 16) & 255, (lon >> 8) & 255, lon & 255].join('.');
 				}
 			};
 
 			// ---------- State ----------
 			let errorThreshold = 0.9;
-			const state = {
+			const state: ServerStatusResponse = {
 				instance: { state: 'stopped', ip_address: null },
 				dns_record: { name: 'minecraft.example.com.', value: '10.0.0.1', type: 'A' }
 			};
@@ -101,13 +103,16 @@ export function mockServer() {
 				}
 			};
 
-			const send = (res, obj) => {
+			const send = (res: any, obj: any, statusCode?: number) => {
 				res.setHeader('Content-Type', 'application/json');
+				if (statusCode) {
+					res.statusCode = statusCode;
+				}
 				res.end(JSON.stringify(obj));
 			};
 
 			// ---------- Routes ----------
-			server.middlewares.use(async (req, res, next) => {
+			server.middlewares.use(async (req: any, res: any, next: any) => {
 				if (!req.url.startsWith('/api/')) return next();
 
 				console.log('[mock]', req.method, req.url);
@@ -118,7 +123,7 @@ export function mockServer() {
 					await sleep(250);
 					setTimeout(() => {
 						state.instance.state = 'running';
-						state.instance.ip_address = ipv4.random('10.0.0.0', 8);
+						state.instance.ip_address = ipv4.random('10.0.0.0', 8) as string;
 					}, 1000);
 					return send(res, { message: 'Success' });
 				}
@@ -135,7 +140,7 @@ export function mockServer() {
 				}
 
 				if (path === '/syncdns') {
-					state.dns_record.value = state.instance.ip_address;
+					state.dns_record.value = state.instance.ip_address ?? '';
 					await sleep(250);
 					setTimeout(() => (errorThreshold = 0.2), 1000);
 					return send(res, { message: 'Success' });

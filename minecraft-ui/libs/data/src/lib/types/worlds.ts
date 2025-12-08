@@ -10,6 +10,7 @@ export interface World {
 	previewUrl: string;
 	mapUrl: string;
 	dimensions: Dimension[];
+	version: string;
 }
 
 export interface WorldDetail extends World {

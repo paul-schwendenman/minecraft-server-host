@@ -1,4 +1,4 @@
-import type { World, WorldDetail, Dimension } from '$lib/types';
+import type { World, WorldDetail, Dimension } from '../types/index.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
