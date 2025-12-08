@@ -1,4 +1,6 @@
-import type { ServerStatusResponse } from "@minecraft/data";
+import type { ServerStatusResponse } from '@minecraft/data';
+import type { ViteDevServer } from 'vite';
+import type { IncomingMessage, ServerResponse } from 'http';
 
 const mockWorlds = [
 	{
@@ -49,7 +51,7 @@ function mockDimensions(worldId: string) {
 export function mockServer() {
 	return {
 		name: 'mock-server',
-		configureServer(server: any) {
+		configureServer(server: ViteDevServer) {
 			console.log('[mock-server] plugin active');
 
 			// ---------- Helpers ----------
@@ -70,7 +72,7 @@ export function mockServer() {
 			// ---------- State ----------
 			let errorThreshold = 0.9;
 			const state: ServerStatusResponse = {
-				instance: { state: 'stopped', ip_address: null },
+				instance: { state: 'stopped', ip_address: undefined },
 				dns_record: { name: 'minecraft.example.com.', value: '10.0.0.1', type: 'A' }
 			};
 
@@ -103,7 +105,7 @@ export function mockServer() {
 				}
 			};
 
-			const send = (res: any, obj: any, statusCode?: number) => {
+			const send = (res: ServerResponse, obj: unknown, statusCode?: number) => {
 				res.setHeader('Content-Type', 'application/json');
 				if (statusCode) {
 					res.statusCode = statusCode;
@@ -112,85 +114,91 @@ export function mockServer() {
 			};
 
 			// ---------- Routes ----------
-			server.middlewares.use(async (req: any, res: any, next: any) => {
-				if (!req.url.startsWith('/api/')) return next();
+			server.middlewares.use(
+				async (
+					req: IncomingMessage & { url?: string; method?: string },
+					res: ServerResponse,
+					next: (err?: unknown) => void
+				) => {
+					if (!req.url?.startsWith('/api/')) return next();
 
-				console.log('[mock]', req.method, req.url);
-				const path = req.url.replace(/^\/api/, '').split('?')[0];
+					console.log('[mock]', req.method, req.url);
+					const path = req.url.replace(/^\/api/, '').split('?')[0];
 
-				if (path === '/start') {
-					state.instance.state = 'pending';
-					await sleep(250);
-					setTimeout(() => {
-						state.instance.state = 'running';
-						state.instance.ip_address = ipv4.random('10.0.0.0', 8) as string;
-					}, 1000);
-					return send(res, { message: 'Success' });
-				}
-
-				if (path === '/stop') {
-					state.instance.state = 'stopping';
-					await sleep(500);
-					setTimeout(() => {
-						state.instance.state = 'stopped';
-						state.instance.ip_address = null;
-					}, 5000);
-					errorThreshold = 0.9;
-					return send(res, { message: 'Success' });
-				}
-
-				if (path === '/syncdns') {
-					state.dns_record.value = state.instance.ip_address ?? '';
-					await sleep(250);
-					setTimeout(() => (errorThreshold = 0.2), 1000);
-					return send(res, { message: 'Success' });
-				}
-
-				if (path === '/status') {
-					await sleep(100);
-					return send(res, state);
-				}
-
-				if (path.startsWith('/details')) {
-					const url = new URL(req.url, 'http://localhost');
-					const hostname = url.searchParams.get('hostname');
-					if (!hostname) {
-						res.statusCode = 400;
-						return res.end();
+					if (path === '/start') {
+						state.instance.state = 'pending';
+						await sleep(250);
+						setTimeout(() => {
+							state.instance.state = 'running';
+							state.instance.ip_address = ipv4.random('10.0.0.0', 8) as string;
+						}, 1000);
+						return send(res, { message: 'Success' });
 					}
-					if (Math.random() < errorThreshold) {
-						res.statusCode = [500, 503, 504][Math.floor(Math.random() * 3)];
-						return res.end();
+
+					if (path === '/stop') {
+						state.instance.state = 'stopping';
+						await sleep(500);
+						setTimeout(() => {
+							state.instance.state = 'stopped';
+							state.instance.ip_address = undefined;
+						}, 5000);
+						errorThreshold = 0.9;
+						return send(res, { message: 'Success' });
 					}
-					await sleep(333);
-					const sample = [details.zero, details.one, details.two];
-					return send(res, sample[Math.floor(Math.random() * 3)]);
-				}
 
-				if (path === '/worlds') {
-					return send(res, mockWorlds);
-				}
+					if (path === '/syncdns') {
+						state.dns_record.value = state.instance.ip_address ?? '';
+						await sleep(250);
+						setTimeout(() => (errorThreshold = 0.2), 1000);
+						return send(res, { message: 'Success' });
+					}
 
-				// /worlds/{name}
-				const worldMatch = path.match(/^\/worlds\/([^/]+)$/);
-				if (worldMatch) {
-					const worldId = worldMatch[1];
-					const world = mockWorlds.find((w) => w.world === worldId);
-					if (!world) return send(res, { error: 'World not found' }, 404);
-					return send(res, world);
-				}
+					if (path === '/status') {
+						await sleep(100);
+						return send(res, state);
+					}
 
-				// /worlds/{name}/{dimension}
-				const dimMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
-				if (dimMatch) {
-					const [, worldId, dim] = dimMatch;
-					const dimData = mockDimensions(worldId).find((d) => d.name === dim);
-					if (!dimData) return send(res, { error: 'Dimension not found' }, 404);
-					return send(res, dimData);
-				}
+					if (path.startsWith('/details')) {
+						const url = new URL(req.url, 'http://localhost');
+						const hostname = url.searchParams.get('hostname');
+						if (!hostname) {
+							res.statusCode = 400;
+							return res.end();
+						}
+						if (Math.random() < errorThreshold) {
+							res.statusCode = [500, 503, 504][Math.floor(Math.random() * 3)];
+							return res.end();
+						}
+						await sleep(333);
+						const sample = [details.zero, details.one, details.two];
+						return send(res, sample[Math.floor(Math.random() * 3)]);
+					}
 
-				next();
-			});
+					if (path === '/worlds') {
+						return send(res, mockWorlds);
+					}
+
+					// /worlds/{name}
+					const worldMatch = path.match(/^\/worlds\/([^/]+)$/);
+					if (worldMatch) {
+						const worldId = worldMatch[1];
+						const world = mockWorlds.find((w) => w.world === worldId);
+						if (!world) return send(res, { error: 'World not found' }, 404);
+						return send(res, world);
+					}
+
+					// /worlds/{name}/{dimension}
+					const dimMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
+					if (dimMatch) {
+						const [, worldId, dim] = dimMatch;
+						const dimData = mockDimensions(worldId).find((d) => d.name === dim);
+						if (!dimData) return send(res, { error: 'Dimension not found' }, 404);
+						return send(res, dimData);
+					}
+
+					next();
+				}
+			);
 		}
 	};
 }

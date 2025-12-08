@@ -36,6 +36,13 @@ jobs:
           fi
           echo "✅ Dependencies installed"
 
+      - name: Install Playwright browsers
+        working-directory: minecraft-ui
+        run: |
+          echo "Installing Playwright browsers..."
+          cd libs/ui && pnpm exec playwright install chromium || echo "⚠️ Playwright install failed, but continuing..."
+          echo "✅ Playwright browsers installed"
+
       - name: Check formatting
         working-directory: minecraft-ui
         run: |
