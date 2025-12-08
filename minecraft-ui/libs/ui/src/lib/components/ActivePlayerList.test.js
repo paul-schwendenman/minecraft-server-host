@@ -1,7 +1,7 @@
 import { render } from "@testing-library/svelte";
 import { describe, it, expect } from "vitest";
 import "@testing-library/jest-dom";
-import ActivePlayerList from "../../src/components/ActivePlayerList.svelte";
+import ActivePlayerList from "./ActivePlayerList.svelte";
 
 describe("ActivePlayerList", () => {
   it("handles no active users", () => {
@@ -32,3 +32,4 @@ describe("ActivePlayerList", () => {
     expect(getByText("Bill")).toBeInTheDocument();
   });
 });
+

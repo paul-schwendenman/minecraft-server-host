@@ -1,7 +1,7 @@
 import { render } from "@testing-library/svelte";
 import { describe, it, expect } from "vitest";
 import "@testing-library/jest-dom";
-import ActivePlayerMessage from "../../src/components/ActivePlayerMessage.svelte";
+import ActivePlayerMessage from "./ActivePlayerMessage.svelte";
 
 describe("ActivePlayerMessage", () => {
   it("handles no active users", () => {
@@ -19,3 +19,4 @@ describe("ActivePlayerMessage", () => {
     expect(getByText("The server has 3 active players:")).toBeInTheDocument();
   });
 });
+
