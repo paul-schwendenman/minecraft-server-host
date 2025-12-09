@@ -5,6 +5,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
 ExecStart=/usr/local/bin/mc-healthcheck.sh
 StandardOutput=journal
 StandardError=journal

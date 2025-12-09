@@ -64,6 +64,8 @@ elif [ ! -r /etc/minecraft.env ]; then
   echo "  ⚠️ /etc/minecraft.env not readable (permissions)"
 else
     source /etc/minecraft.env
+    export RCON_PASSWORD RCON_PORT
+
     if command -v minecraftctl >/dev/null 2>&1; then
         if ! minecraftctl rcon send "list" >/dev/null 2>&1; then
             echo "  ✘ RCON query failed"
