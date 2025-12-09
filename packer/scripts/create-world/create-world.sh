@@ -11,6 +11,12 @@ WORLD="$1"
 VERSION="$2"
 SEED="${3:-}"
 
+# Check if world already exists on EBS volume
+if [ -d "/srv/minecraft-server/$WORLD" ]; then
+  echo "[userdata] World '$WORLD' already exists on EBS. Registering it."
+  exec minecraftctl world register "$WORLD"
+fi
+
 JAR_PATH="/opt/minecraft/jars/minecraft_server_${VERSION}.jar"
 
 if [[ ! -f "$JAR_PATH" ]]; then

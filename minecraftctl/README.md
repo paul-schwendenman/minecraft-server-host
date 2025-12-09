@@ -91,6 +91,23 @@ minecraftctl world create vanilla-121 --version 1.21.1 --seed 8675309
 - Proper permissions (may require `sudo` for systemd operations)
 - RCON configuration (from `/etc/minecraft.env` or config file)
 
+### Register World
+
+```bash
+# Register an existing world with systemd services
+minecraftctl world register <world-name>
+```
+
+The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
+
+- Enables and starts `minecraft@<world>.service`
+- Enables `minecraft-map-rebuild@<world>.timer`
+- Enables `minecraft-world-backup@<world>.timer`
+- Enables `minecraft-map-backup@<world>.timer`
+- Reloads systemd daemon
+
+**Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd services and timers for an existing world.
+
 ### Build Maps
 
 ```bash

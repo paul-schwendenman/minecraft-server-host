@@ -119,10 +119,32 @@ var worldCreateCmd = &cobra.Command{
 	},
 }
 
+var worldRegisterCmd = &cobra.Command{
+	Use:   "register <world-name>",
+	Short: "Register an existing world with systemd services",
+	Long:  "Register an existing world by enabling systemd services and timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance.",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+
+		if err := worlds.RegisterWorld(worldName); err != nil {
+			return err
+		}
+
+		fmt.Printf("World '%s' registered successfully\n", worldName)
+		fmt.Printf("Systemd service minecraft@%s.service enabled and started\n", worldName)
+		fmt.Printf("Timers enabled: minecraft-map-rebuild@%s.timer, minecraft-world-backup@%s.timer, minecraft-map-backup@%s.timer\n",
+			worldName, worldName, worldName)
+
+		return nil
+	},
+}
+
 func init() {
 	worldCmd.AddCommand(worldListCmd)
 	worldCmd.AddCommand(worldInfoCmd)
 	worldCmd.AddCommand(worldCreateCmd)
+	worldCmd.AddCommand(worldRegisterCmd)
 
 	worldCreateCmd.Flags().StringVar(&createVersion, "version", "", "Minecraft server version (e.g., 1.21.1)")
 	worldCreateCmd.MarkFlagRequired("version")
