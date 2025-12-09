@@ -1,0 +1,8 @@
+[Unit]
+Description=Rebuild Minecraft maps for %i
+After=minecraft@%i.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
+ExecStartPost=/usr/local/bin/build-map-manifests.sh /srv/minecraft-server/%i

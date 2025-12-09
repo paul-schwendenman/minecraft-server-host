@@ -1,0 +1,7 @@
+# Built binaries
+minecraftctl
+minecraftctl-*
+
+# Distribution directory
+dist/
+

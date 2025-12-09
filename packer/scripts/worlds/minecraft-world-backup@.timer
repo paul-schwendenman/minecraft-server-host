@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic backup for world %i
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+Unit=minecraft-world-backup@%i.service
+
+[Install]
+WantedBy=timers.target

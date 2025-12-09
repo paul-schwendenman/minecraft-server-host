@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+@import './theme/mc-light.css';
+@import './theme/mc-dark.css';
+
+@plugin "daisyui" {
+	themes: mc-light --prefersdark mc-dark;
+}
+@config "../tailwind.config.js";
+
+.flex-2 {
+	flex: 2 2 0%;
+}

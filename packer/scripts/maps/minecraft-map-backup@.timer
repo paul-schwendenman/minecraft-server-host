@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodic map backup for world %i
+
+[Timer]
+# Example: every 12 hours
+OnCalendar=*-*-* 00,12:00:00
+Persistent=true
+Unit=minecraft-map-backup@%i.service
+
+[Install]
+WantedBy=timers.target

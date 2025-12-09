@@ -1,0 +1,13 @@
+[Unit]
+Description=Periodic map refresh for world %i
+PartOf=minecraft@%i.service
+Requires=minecraft@%i.service
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=15min
+Unit=minecraft-map-refresh@%i.service
+Persistent=true
+
+[Install]
+WantedBy=minecraft@%i.service

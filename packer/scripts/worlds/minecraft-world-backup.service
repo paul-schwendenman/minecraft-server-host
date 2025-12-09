@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup all Minecraft worlds
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
+ExecStart=/usr/local/bin/backup-worlds.sh all

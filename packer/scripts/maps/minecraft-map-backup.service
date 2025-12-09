@@ -1,0 +1,9 @@
+[Unit]
+Description=Backup all static maps
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
+ExecStart=/usr/local/bin/backup-maps.sh all

@@ -1,0 +1,29 @@
+[Unit]
+Description=Minecraft Server %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/srv/minecraft-server/%i
+User=minecraft
+Group=minecraft
+UMask=002
+EnvironmentFile=-/etc/minecraft.env
+
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+SuccessExitStatus=143
+
+ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
+ExecReload=/usr/local/bin/minecraftctl rcon send "reload"
+ExecStop=/usr/local/bin/minecraftctl rcon send "say SERVER SHUTTING DOWN. Saving map..."
+ExecStop=/usr/local/bin/minecraftctl rcon send "save-all"
+ExecStop=/usr/local/bin/minecraftctl rcon send "stop"
+
+Restart=on-failure
+RestartSec=20
+
+[Install]
+WantedBy=multi-user.target

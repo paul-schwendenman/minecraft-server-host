@@ -1,0 +1,11 @@
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
+export async function syncDnsRecord(fetchFn: typeof fetch = fetch): Promise<string> {
+	const resp = await fetchFn(`${API_BASE}/syncdns`);
+
+	if (!resp.ok) {
+		throw new Error(await resp.text());
+	}
+
+	return resp.text();
+}
