@@ -365,3 +365,52 @@ maps:
 
 	return nil
 }
+
+// RegisterWorld registers an existing world with systemd services and timers
+// without modifying any world files. This is used to "reattach" a world from
+// an EBS volume to a new server instance.
+func RegisterWorld(worldName string) error {
+	cfg := config.Get()
+	worldDir := filepath.Join(cfg.WorldsDir, worldName)
+	levelDatPath := filepath.Join(worldDir, "world", "level.dat")
+
+	// Validate that the world exists
+	if _, err := os.Stat(levelDatPath); os.IsNotExist(err) {
+		return fmt.Errorf("world not found: %s (no level.dat at %s)", worldName, levelDatPath)
+	}
+
+	// Reload systemd daemon first to ensure all service files are recognized
+	reloadCmd := exec.Command("systemctl", "daemon-reload")
+	if err := reloadCmd.Run(); err != nil {
+		return fmt.Errorf("failed to reload systemd daemon: %w", err)
+	}
+
+	// Enable and start the main service
+	serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
+	enableCmd := exec.Command("systemctl", "enable", serviceName)
+	if err := enableCmd.Run(); err != nil {
+		return fmt.Errorf("failed to enable systemd service %s: %w", serviceName, err)
+	}
+
+	startCmd := exec.Command("systemctl", "start", serviceName)
+	if err := startCmd.Run(); err != nil {
+		return fmt.Errorf("failed to start systemd service %s: %w", serviceName, err)
+	}
+
+	// Enable timers (but don't start them - they'll start on their schedule)
+	timers := []string{
+		fmt.Sprintf("minecraft-map-rebuild@%s.timer", worldName),
+		fmt.Sprintf("minecraft-world-backup@%s.timer", worldName),
+		fmt.Sprintf("minecraft-map-backup@%s.timer", worldName),
+	}
+
+	for _, timerName := range timers {
+		enableTimerCmd := exec.Command("systemctl", "enable", timerName)
+		if err := enableTimerCmd.Run(); err != nil {
+			// Log warning but don't fail - timers might not be installed
+			log.Warn().Err(err).Str("timer", timerName).Msg("failed to enable timer, continuing")
+		}
+	}
+
+	return nil
+}
