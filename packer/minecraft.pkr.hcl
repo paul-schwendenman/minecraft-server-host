@@ -74,7 +74,7 @@ variable "minecraft_jars" {
 
 variable "base_ami" {
   type    = string
-  default = "ami-011324958d859cddd" # output from previous build
+  default = "ami-052aa73372163225e" # output from previous build
 }
 
 source "amazon-ebs" "minecraft" {
