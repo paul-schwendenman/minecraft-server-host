@@ -10,11 +10,6 @@ variable "aws_profile" {
   default     = "minecraft"
 }
 
-variable "ami_id" {
-  description = "AMI ID of the Minecraft image built by Packer"
-  type        = string
-}
-
 variable "instance_type" {
   description = "EC2 instance type"
   type        = string
