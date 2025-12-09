@@ -72,11 +72,6 @@ variable "minecraft_jars" {
   ]
 }
 
-variable "base_ami" {
-  type    = string
-  default = "ami-052aa73372163225e" # output from previous build
-}
-
 source "amazon-ebs" "minecraft" {
   region        = "us-east-2"
   instance_type = "t3a.medium"
@@ -89,7 +84,14 @@ source "amazon-ebs" "minecraft" {
   #   owners      = ["099720109477"] # Canonical
   #   most_recent = true
   # }
-  source_ami    = var.base_ami
+
+  source_ami_filter {
+    filters = {
+      name = "minecraft-base-*"
+    }
+    owners      = ["self"]
+    most_recent = true
+  }
   ssh_username = "ubuntu"
   ami_name     = "minecraft-ubuntu-{{timestamp}}"
 }
