@@ -15,3 +15,6 @@ minecraft.pem
 
 packages/
 dist/*.zip
+
+.cursor/
+.vscode/
