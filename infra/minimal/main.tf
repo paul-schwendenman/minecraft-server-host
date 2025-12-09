@@ -3,6 +3,17 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+# Automatically find the most recent Minecraft AMI
+data "aws_ami" "minecraft" {
+  most_recent = true
+  owners      = ["self"]
+
+  filter {
+    name   = "name"
+    values = ["minecraft-ubuntu-*"]
+  }
+}
+
 # Security group to allow SSH + Minecraft + HTTP (for Caddy)
 resource "aws_security_group" "minecraft" {
   name        = "minecraft-test-sg"
@@ -42,7 +53,7 @@ resource "aws_security_group" "minecraft" {
 }
 
 resource "aws_instance" "minecraft" {
-  ami                    = var.ami_id
+  ami                    = data.aws_ami.minecraft.id
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [aws_security_group.minecraft.id]

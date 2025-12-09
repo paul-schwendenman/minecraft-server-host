@@ -57,10 +57,16 @@ echo "[*] Checking expected ports..."
 ss -tulwn | grep -E '(:25565|:80|:443)' || echo "  ✘ Expected ports not open"
 
 # 7. RCON query ---------------------------------------------------------------
-if [[ -r /etc/minecraft.env ]]; then
+echo "[*] Querying RCON..."
+if [ ! -e /etc/minecraft.env ]; then
+  echo "  ✘ /etc/minecraft.env missing"
+elif [ ! -r /etc/minecraft.env ]; then
+  echo "  ⚠️ /etc/minecraft.env not readable (permissions)"
+else
     source /etc/minecraft.env
+    export RCON_PASSWORD RCON_PORT
+
     if command -v minecraftctl >/dev/null 2>&1; then
-        echo "[*] Querying RCON..."
         if ! minecraftctl rcon send "list" >/dev/null 2>&1; then
             echo "  ✘ RCON query failed"
         else
@@ -69,8 +75,6 @@ if [[ -r /etc/minecraft.env ]]; then
     else
         echo "  (minecraftctl not installed)"
     fi
-else
-    echo "  (no /etc/minecraft.env found, skipping RCON)"
 fi
 
 # 8. Backups -------------------------------------------------------------

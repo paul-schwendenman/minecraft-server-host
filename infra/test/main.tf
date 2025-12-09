@@ -9,6 +9,17 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+# Automatically find the most recent Minecraft AMI
+data "aws_ami" "minecraft" {
+  most_recent = true
+  owners      = ["self"]
+
+  filter {
+    name   = "name"
+    values = ["minecraft-ubuntu-*"]
+  }
+}
+
 data "aws_route53_zone" "prod" {
   name         = "minecraft.paulandsierra.com."
   private_zone = false
@@ -36,7 +47,7 @@ module "ec2_role" {
 module "mc_stack" {
   source           = "../modules/mc_stack"
   name             = "minecraft-test"
-  ami_id           = var.ami_id
+  ami_id           = data.aws_ami.minecraft.id
   instance_type    = "t3.small"
   vpc_id           = module.networking.vpc_id
   subnet_id        = module.networking.public_subnet_id
