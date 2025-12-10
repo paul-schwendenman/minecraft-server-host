@@ -2,6 +2,7 @@
 set -euxo pipefail
 
 MINECRAFT_HOME="/srv/minecraft-server"
+MAP_DIR="/var/www/map"
 MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
 
@@ -17,6 +18,12 @@ fi
 sudo usermod -a -G "${MINECRAFT_GROUP}" "${MINECRAFT_USER}"
 sudo mkdir -p "${MINECRAFT_HOME}"
 sudo chown -R "${MINECRAFT_USER}:${MINECRAFT_GROUP}" "${MINECRAFT_HOME}"
+sudo chmod g+s "${MINECRAFT_HOME}"
 
 # -- Install nbt cli --
 sudo -u minecraft pip3 install --user nbtlib
+
+# --- Configure Caddy + map directory ---
+sudo mkdir -p "${MAP_DIR}"
+sudo chown -R root:${MINECRAFT_GROUP} "${MAP_DIR}"
+sudo chmod -R 775 "${MAP_DIR}"

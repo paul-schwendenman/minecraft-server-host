@@ -3,7 +3,7 @@ packer {}
 variable "test_host" {
   description = "Public IP or DNS of the test server"
   type        = string
-  default     = "localhost"  # Default value for development
+  default     = "localhost" # Default value for development
 }
 
 variable "test_user" {
@@ -38,8 +38,9 @@ build {
     destination = "/tmp/scripts/"
   }
 
-  # provisioner "shell" { script = "scripts/install_deps.sh" }
+  # provisioner "shell" { script = "scripts/install_base_deps.sh" }
   # provisioner "shell" { script = "scripts/create-minecraft-user.sh" }
+  # provisioner "shell" { script = "scripts/install_minecraftctl.sh" }
   # provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
   # provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
 

@@ -1,3 +1,13 @@
+variable "minecraft_jars" {
+  type = list(object({
+    version = string
+    url     = string
+    sha256  = string
+  }))
+  default     = []
+  description = "List of Minecraft JARs to download in base AMI"
+}
+
 source "amazon-ebs" "ubuntu_base" {
   region        = "us-east-2"
   instance_type = "t3.micro"
@@ -28,10 +38,20 @@ build {
   }
 
   provisioner "shell" {
-    script = "scripts/install_deps.sh"
+    script = "scripts/install_base_deps.sh"
   }
-  provisioner "shell" { script = "scripts/create-minecraft-user.sh" }
-  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
+
+  provisioner "shell" {
+    script = "scripts/create-minecraft-user.sh"
+  }
+
+  # Install Minecraft JARs if provided
+  provisioner "shell" {
+    environment_vars = [
+      "MINECRAFT_JARS_JSON=${jsonencode(var.minecraft_jars)}"
+    ]
+    script = "scripts/install_minecraft_jars.sh"
+  }
 
   provisioner "shell" {
     inline = [

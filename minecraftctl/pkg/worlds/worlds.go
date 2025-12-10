@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -346,6 +347,12 @@ maps:
 		}
 	}
 
+	// Fix permissions: chown all created files to minecraft:minecraft
+	// This ensures the systemd service (which runs as minecraft user) can write to these files
+	if err := chownToMinecraftUser(worldDir); err != nil {
+		log.Warn().Err(err).Str("world", worldName).Msg("failed to chown world directory to minecraft user, continuing")
+	}
+
 	// Enable and start systemd service if requested
 	if opts.EnableSystemd {
 		serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
@@ -364,6 +371,37 @@ maps:
 	}
 
 	return nil
+}
+
+// chownToMinecraftUser recursively changes ownership of a directory to minecraft:minecraft
+func chownToMinecraftUser(path string) error {
+	minecraftUser, err := user.Lookup("minecraft")
+	if err != nil {
+		return fmt.Errorf("failed to lookup minecraft user: %w", err)
+	}
+
+	minecraftGroup, err := user.LookupGroup("minecraft")
+	if err != nil {
+		return fmt.Errorf("failed to lookup minecraft group: %w", err)
+	}
+
+	uid, err := strconv.Atoi(minecraftUser.Uid)
+	if err != nil {
+		return fmt.Errorf("failed to parse minecraft user UID: %w", err)
+	}
+
+	gid, err := strconv.Atoi(minecraftGroup.Gid)
+	if err != nil {
+		return fmt.Errorf("failed to parse minecraft group GID: %w", err)
+	}
+
+	// Recursively chown the directory and all its contents
+	return filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		return os.Chown(filePath, uid, gid)
+	})
 }
 
 // RegisterWorld registers an existing world with systemd services and timers
