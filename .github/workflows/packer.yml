@@ -69,7 +69,7 @@ jobs:
 
           # Validate .hcl files (like virtual-box.hcl)
           for file in *.hcl; do
-            if [ -f "$file" ] && [[ "$file" != *.pkr.hcl ]]; then
+            if [ -f "$file" ] && [[ "$file" != *.pkr.hcl ]] && [[ "$file" != *.pkrvars.hcl ]]; then
               echo "Validating $file..."
               packer validate "$file" || exit 1
             fi
