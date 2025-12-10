@@ -9,9 +9,9 @@ if [ -z "$JARS_JSON" ] || [ "$JARS_JSON" = "[]" ]; then
   exit 0
 fi
 
-# Ensure jars directory exists
+# Ensure jars directory exists and is writable
 sudo mkdir -p "${JARS_DIR}"
-sudo chown ubuntu:ubuntu "${JARS_DIR}"
+sudo chown -R ubuntu:ubuntu "${JARS_DIR}"
 
 # Count total JARs to process
 TOTAL_JARS=$(echo "$JARS_JSON" | jq '. | length')
@@ -20,7 +20,7 @@ echo "[*] Processing ${TOTAL_JARS} Minecraft JAR(s)"
 # Download JARs (skip if already exists)
 echo "$JARS_JSON" | jq -r '.[] | "\(.version)|\(.url)|\(.sha256)"' | while IFS='|' read -r version url sha256; do
   JAR_FILE="${JARS_DIR}/minecraft_server_${version}.jar"
-  
+
   if [ -f "$JAR_FILE" ]; then
     echo "[*] Skipping ${version} - already exists"
   else
@@ -36,7 +36,7 @@ CHECKSUMS_FILE="${JARS_DIR}/checksums.txt"
 # If checksums.txt exists, we need to merge with existing entries
 # For simplicity, we'll recreate it with all JARs from the JSON
 # This ensures all JARs (both existing and new) are verified
-echo "$JARS_JSON" | jq -r '.[] | "\(.sha256)  minecraft_server_\(.version).jar"' > "$CHECKSUMS_FILE"
+echo "$JARS_JSON" | jq -r '.[] | "\(.sha256)  minecraft_server_\(.version).jar"' | sudo tee "$CHECKSUMS_FILE" > /dev/null
 
 # Verify all JARs using checksums.txt with --ignore-missing
 # This will verify all JARs that exist, and ignore any that don't exist yet
