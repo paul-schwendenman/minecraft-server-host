@@ -14,7 +14,9 @@ SEED="${3:-}"
 # Check if world already exists on EBS volume
 if [ -d "/srv/minecraft-server/$WORLD" ]; then
   echo "[userdata] World '$WORLD' already exists on EBS. Registering it."
-  exec minecraftctl world register "$WORLD"
+  minecraftctl world register "$WORLD"
+  sudo chown -R minecraft:minecraft "/srv/minecraft-server/$WORLD"
+  exit 0
 fi
 
 JAR_PATH="/opt/minecraft/jars/minecraft_server_${VERSION}.jar"
@@ -34,4 +36,6 @@ if [[ -n "$SEED" ]]; then
 fi
 
 # Execute minecraftctl
-exec "${CMD[@]}"
+"${CMD[@]}"
+
+sudo chown -R minecraft:minecraft "/srv/minecraft-server/$WORLD"
