@@ -97,6 +97,7 @@ Usage
 -----
 - Build the AMI with::
 
+    AWS_PROFILE=minecraft packer build base.pkr.hcl
     AWS_PROFILE=minecraft packer build minecraft.pkr.hcl
 
 - Launch with Terraform (see parent project modules).
@@ -121,10 +122,3 @@ docker Builder
 
     packer build docker.pkr.hcl
     docker run -it minecraft-local bash
-
-VirtualBox
-------------
-
-::
-
-    packer build virtual-box.pkr.hcl
