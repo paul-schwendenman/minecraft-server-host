@@ -101,7 +101,7 @@ build {
   sources = ["source.amazon-ebs.minecraft"]
 
   # --------------------------------------------------------------------------
-  # 1. Base Dependencies + Environment
+  # 1. Scripts + Minecraft-specific tools
   # --------------------------------------------------------------------------
   provisioner "shell" {
     inline = ["mkdir -p /tmp/scripts"]
@@ -112,9 +112,8 @@ build {
     destination = "/tmp/scripts/"
   }
 
-  provisioner "shell" { script = "scripts/install_deps.sh" }
-  provisioner "shell" { script = "scripts/create-minecraft-user.sh" }
-  provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
+  # Install minecraftctl (internal CLI)
+  provisioner "shell" { script = "scripts/install_minecraftctl.sh" }
 
   provisioner "shell" {
     inline = [
@@ -147,33 +146,10 @@ build {
   # 5. Install Minecraft JARs
   # --------------------------------------------------------------------------
   provisioner "shell" {
-    inline = concat(
-      [
-        "sudo mkdir -p /opt/minecraft/jars",
-        "sudo chown ubuntu:ubuntu /opt/minecraft/jars"
-      ],
-      [
-        for jar in var.minecraft_jars : <<EOC
-echo 'Installing Minecraft ${jar.version}'
-curl -fsSL ${jar.url} -o /opt/minecraft/jars/minecraft_server_${jar.version}.jar
-EOC
-      ],
-      [
-        # Create checksums.txt file in sha256sum format
-        "cat > /opt/minecraft/jars/checksums.txt << 'CHECKSUMS_EOF'",
-      ],
-      [
-        for jar in var.minecraft_jars : "${jar.sha256}  minecraft_server_${jar.version}.jar"
-      ],
-      [
-        "CHECKSUMS_EOF",
-        # Verify all JARs using checksums.txt
-        "cd /opt/minecraft/jars && sha256sum -c checksums.txt",
-        "sudo chown -R root:root /opt/minecraft/jars",
-        "sudo chmod 755 /opt/minecraft/jars",
-        "sudo chmod 644 /opt/minecraft/jars/checksums.txt"
-      ]
-    )
+    environment_vars = [
+      "MINECRAFT_JARS_JSON=${jsonencode(var.minecraft_jars)}"
+    ]
+    script = "scripts/install_minecraft_jars.sh"
   }
 
   # --------------------------------------------------------------------------
