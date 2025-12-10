@@ -4,7 +4,7 @@ variable "minecraft_jars" {
     url     = string
     sha256  = string
   }))
-  default = []
+  default     = []
   description = "List of Minecraft JARs to download in base AMI"
 }
 
