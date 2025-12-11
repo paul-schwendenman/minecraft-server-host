@@ -4,7 +4,8 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { mockServer } from './src/plugins/mock-server';
 
 export default defineConfig({
-	plugins: [mockServer(), tailwindcss(), sveltekit()],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	plugins: [mockServer() as any, tailwindcss(), sveltekit()],
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

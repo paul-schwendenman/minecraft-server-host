@@ -5,12 +5,12 @@
 	export let subtitle: string | null = null;
 	export let image: string;
 	export let href: string;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const resolvedHref = resolve(href as any);
 </script>
 
-<a
-	href={resolve(href)}
-	class="card border border-base-300 bg-base-200 transition hover:bg-base-300"
->
+<a href={resolvedHref} class="card border border-base-300 bg-base-200 transition hover:bg-base-300">
 	<figure class="aspect-video overflow-hidden">
 		<img src={image} alt={title} class="h-full w-full object-cover" />
 	</figure>
