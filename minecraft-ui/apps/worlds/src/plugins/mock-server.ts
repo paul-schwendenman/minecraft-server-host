@@ -1,5 +1,5 @@
 import type { ServerStatusResponse } from '@minecraft/data';
-import type { ViteDevServer } from 'vite';
+import type { Plugin } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'http';
 
 const mockWorlds = [
@@ -48,10 +48,10 @@ function mockDimensions(worldId: string) {
 	return mockWorlds.find((w) => w.world === worldId)?.dimensions || [];
 }
 
-export function mockServer() {
+export function mockServer(): Plugin {
 	return {
 		name: 'mock-server',
-		configureServer(server: ViteDevServer) {
+		configureServer(server) {
 			console.log('[mock-server] plugin active');
 
 			// ---------- Helpers ----------

@@ -40,7 +40,16 @@ jobs:
         working-directory: minecraft-ui
         run: |
           echo "Installing Playwright browsers..."
-          cd libs/ui && pnpm exec playwright install chromium || echo "⚠️ Playwright install failed, but continuing..."
+          # Install browsers for all packages that have playwright as a dependency
+          # This ensures each package gets browsers for its specific Playwright version
+          for dir in apps/* libs/*; do
+            if [ -d "$dir" ] && [ -f "$dir/package.json" ]; then
+              if grep -q '"playwright"' "$dir/package.json"; then
+                echo "Installing Playwright browsers for $dir..."
+                (cd "$dir" && pnpm exec playwright install chromium chromium-headless-shell || echo "⚠️ Playwright install failed for $dir, but continuing...")
+              fi
+            fi
+          done
           echo "✅ Playwright browsers installed"
 
       - name: Check formatting
