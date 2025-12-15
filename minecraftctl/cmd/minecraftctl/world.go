@@ -84,6 +84,11 @@ var (
 	createNoSystemd   bool
 )
 
+var (
+	upgradeVersion string
+	upgradeStop    bool
+)
+
 var worldCreateCmd = &cobra.Command{
 	Use:   "create <world-name>",
 	Short: "Create a new Minecraft world",
@@ -140,15 +145,65 @@ var worldRegisterCmd = &cobra.Command{
 	},
 }
 
+var worldUpgradeCmd = &cobra.Command{
+	Use:   "upgrade <world-name>",
+	Short: "Upgrade a world to a newer Minecraft version",
+	Long: `Upgrade a world's server.jar symlink to point to a newer version.
+
+This command:
+1. Verifies the world exists
+2. Checks that the target version is newer than the current version
+3. Verifies the target JAR exists in the jars directory
+4. Optionally stops the running server (with --stop flag)
+5. Updates the server.jar symlink to point to the new version
+
+Note: This only updates the JAR symlink. Minecraft will automatically upgrade
+world data when the server starts with the new version. World upgrades are
+one-way and cannot be reverted.`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldName := args[0]
+
+		if upgradeVersion == "" {
+			return fmt.Errorf("--version is required")
+		}
+
+		opts := worlds.UpgradeOptions{
+			TargetVersion: upgradeVersion,
+			StopService:   upgradeStop,
+		}
+
+		result, err := worlds.UpgradeWorld(worldName, opts)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("World '%s' upgraded successfully\n", result.WorldName)
+		fmt.Printf("  Previous version: %s\n", result.PreviousVersion)
+		fmt.Printf("  New version: %s\n", result.NewVersion)
+		if result.ServiceStopped {
+			fmt.Printf("\nNote: Service minecraft@%s.service was stopped.\n", worldName)
+			fmt.Println("Start it with: systemctl start minecraft@" + worldName + ".service")
+		}
+
+		return nil
+	},
+}
+
 func init() {
 	worldCmd.AddCommand(worldListCmd)
 	worldCmd.AddCommand(worldInfoCmd)
 	worldCmd.AddCommand(worldCreateCmd)
 	worldCmd.AddCommand(worldRegisterCmd)
+	worldCmd.AddCommand(worldUpgradeCmd)
 
 	worldCreateCmd.Flags().StringVar(&createVersion, "version", "", "Minecraft server version (e.g., 1.21.1)")
 	worldCreateCmd.MarkFlagRequired("version")
 	worldCreateCmd.Flags().StringVar(&createSeed, "seed", "", "World seed (optional)")
 	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
 	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling and starting systemd service")
+
+	worldUpgradeCmd.Flags().StringVar(&upgradeVersion, "version", "", "Target Minecraft server version (e.g., 1.21.11)")
+	worldUpgradeCmd.MarkFlagRequired("version")
+	worldUpgradeCmd.Flags().BoolVar(&upgradeStop, "stop", false, "Automatically stop the server if running")
 }
