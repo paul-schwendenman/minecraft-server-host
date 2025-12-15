@@ -97,8 +97,9 @@ Usage
 -----
 - Build the AMI with::
 
-    AWS_PROFILE=minecraft packer build base.pkr.hcl
-    AWS_PROFILE=minecraft packer build minecraft.pkr.hcl
+    cd packer
+    AWS_PROFILE=minecraft packer build -var-file=minecraft_jars.auto.pkrvars.hcl base.pkr.hcl
+    AWS_PROFILE=minecraft packer build -var-file=minecraft_jars.auto.pkrvars.hcl minecraft.pkr.hcl
 
 - Launch with Terraform (see parent project modules).
 - Use ``create-world.sh`` to create/manage worlds.

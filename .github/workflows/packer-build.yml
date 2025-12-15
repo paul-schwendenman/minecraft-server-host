@@ -74,7 +74,7 @@ jobs:
 
       - name: Build base AMI
         working-directory: packer
-        run: packer build base.pkr.hcl
+        run: packer build -var-file=minecraft_jars.auto.pkrvars.hcl base.pkr.hcl
 
   build-minecraft:
     needs: [detect-changes, build-base]
@@ -105,4 +105,4 @@ jobs:
 
       - name: Build minecraft AMI
         working-directory: packer
-        run: packer build minecraft.pkr.hcl
+        run: packer build -var-file=minecraft_jars.auto.pkrvars.hcl minecraft.pkr.hcl
