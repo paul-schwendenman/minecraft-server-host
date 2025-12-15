@@ -1,0 +1,108 @@
+name: Packer Build
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'packer/**'
+      - '.github/workflows/packer-build.yml'
+  workflow_dispatch:
+    inputs:
+      build_base:
+        description: 'Build base AMI'
+        type: boolean
+        default: false
+      build_minecraft:
+        description: 'Build minecraft AMI'
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      base: ${{ steps.changes.outputs.base }}
+      minecraft: ${{ steps.changes.outputs.minecraft }}
+      shared: ${{ steps.changes.outputs.shared }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          # Use git diff for push events, default to false for manual triggers
+          if [ "${{ github.event_name }}" = "push" ]; then
+            BASE=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(base\.pkr\.hcl|scripts/base/)' && echo true || echo false)
+            MINECRAFT=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(minecraft\.pkr\.hcl|scripts/minecraft/)' && echo true || echo false)
+            SHARED=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(scripts/shared/|minecraft_jars\.auto\.pkrvars\.hcl)' && echo true || echo false)
+          else
+            BASE=false
+            MINECRAFT=false
+            SHARED=false
+          fi
+          echo "base=$BASE" >> $GITHUB_OUTPUT
+          echo "minecraft=$MINECRAFT" >> $GITHUB_OUTPUT
+          echo "shared=$SHARED" >> $GITHUB_OUTPUT
+          echo "Detected changes - base: $BASE, minecraft: $MINECRAFT, shared: $SHARED"
+
+  build-base:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.base == 'true' || needs.detect-changes.outputs.shared == 'true' || inputs.build_base
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+
+      - name: Initialize Packer plugins
+        working-directory: packer
+        run: packer init minecraft.pkr.hcl
+
+      - name: Build base AMI
+        working-directory: packer
+        run: packer build base.pkr.hcl
+
+  build-minecraft:
+    needs: [detect-changes, build-base]
+    if: |
+      always() &&
+      (needs.build-base.result == 'success' || needs.build-base.result == 'skipped') &&
+      (needs.detect-changes.outputs.minecraft == 'true' ||
+       needs.detect-changes.outputs.shared == 'true' ||
+       needs.build-base.result == 'success' ||
+       inputs.build_minecraft)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Install Packer
+        uses: hashicorp/setup-packer@main
+
+      - name: Initialize Packer plugins
+        working-directory: packer
+        run: packer init minecraft.pkr.hcl
+
+      - name: Build minecraft AMI
+        working-directory: packer
+        run: packer build minecraft.pkr.hcl

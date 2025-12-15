@@ -29,11 +29,11 @@ build {
   }
 
   provisioner "shell" {
-    script = "scripts/install_base_deps.sh"
+    script = "scripts/base/install_base_deps.sh"
   }
 
   provisioner "shell" {
-    script = "scripts/install_minecraftctl.sh"
+    script = "scripts/minecraft/install_minecraftctl.sh"
   }
 
   post-processor "docker-tag" {

@@ -38,11 +38,11 @@ build {
   }
 
   provisioner "shell" {
-    script = "scripts/install_base_deps.sh"
+    script = "scripts/base/install_base_deps.sh"
   }
 
   provisioner "shell" {
-    script = "scripts/create-minecraft-user.sh"
+    script = "scripts/base/create-minecraft-user.sh"
   }
 
   # Install Minecraft JARs if provided
@@ -50,7 +50,7 @@ build {
     environment_vars = [
       "MINECRAFT_JARS_JSON=${jsonencode(var.minecraft_jars)}"
     ]
-    script = "scripts/install_minecraft_jars.sh"
+    script = "scripts/shared/install_minecraft_jars.sh"
   }
 
   provisioner "shell" {

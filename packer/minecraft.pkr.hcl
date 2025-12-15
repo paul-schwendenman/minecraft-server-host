@@ -58,7 +58,7 @@ build {
   }
 
   # Install minecraftctl (internal CLI)
-  provisioner "shell" { script = "scripts/install_minecraftctl.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_minecraftctl.sh" }
 
   provisioner "shell" {
     inline = [
@@ -73,19 +73,19 @@ build {
   # --------------------------------------------------------------------------
   # 3. Minecraft Service + Core Helpers
   # --------------------------------------------------------------------------
-  provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
-  provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_minecraft_service.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_user_data_helpers.sh" }
 
   # --------------------------------------------------------------------------
   # 4. Install modular script groups
   # --------------------------------------------------------------------------
-  provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
-  provisioner "shell" { script = "scripts/install_create_world.sh" }
-  provisioner "shell" { script = "scripts/install_map_rebuild.sh" }
-  provisioner "shell" { script = "scripts/install_map_refresh.sh" }
-  provisioner "shell" { script = "scripts/install_map_backup.sh" }
-  provisioner "shell" { script = "scripts/install_world_backup.sh" }
-  provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_autoshutdown.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_create_world.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_map_rebuild.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_map_refresh.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_map_backup.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_world_backup.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_mc_healthcheck.sh" }
 
   # --------------------------------------------------------------------------
   # 5. Install Minecraft JARs
@@ -94,7 +94,7 @@ build {
     environment_vars = [
       "MINECRAFT_JARS_JSON=${jsonencode(var.minecraft_jars)}"
     ]
-    script = "scripts/install_minecraft_jars.sh"
+    script = "scripts/shared/install_minecraft_jars.sh"
   }
 
   # --------------------------------------------------------------------------
