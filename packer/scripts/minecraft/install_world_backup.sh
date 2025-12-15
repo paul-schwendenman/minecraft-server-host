@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-SRC_DIR="/tmp/scripts/worlds"
+SRC_DIR="/tmp/scripts/minecraft/worlds"
 
 sudo install -Dm755 "${SRC_DIR}/backup-worlds.sh" /usr/local/bin/backup-worlds.sh
 
