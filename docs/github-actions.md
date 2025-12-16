@@ -7,6 +7,9 @@ This document describes all GitHub Actions workflows in this repository.
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | [Packer Build](#packer-build) | Push to master, manual | Builds AMIs for EC2 instances |
+| [Deploy Lambdas](#deploy-lambdas) | Push to master, manual | Builds and deploys Lambda functions |
+| [Deploy Worlds App](#deploy-worlds-app) | Push to master, manual | Builds and deploys Worlds UI to S3/CloudFront |
+| [Deploy Manager App](#deploy-manager-app) | Manual only | Builds and deploys Manager UI (legacy) |
 | [AMI Cleanup](#ami-cleanup) | Weekly, manual | Removes old AMIs to reduce costs |
 | [Packer Validation](#packer-validation) | Pull request | Validates Packer configuration |
 | [Lambda Validation](#lambda-validation) | Pull request | Validates Python Lambda functions |
@@ -44,6 +47,76 @@ The workflow detects which AMIs need rebuilding:
 |-------|---------|-------------|
 | `build_base` | `false` | Build the base AMI |
 | `build_minecraft` | `true` | Build the minecraft AMI |
+
+**AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
+
+### Deploy Lambdas
+
+**File:** `lambdas-deploy.yml`
+
+Builds and deploys Python Lambda functions to AWS. Only deploys lambdas that have changed.
+
+**Triggers:**
+- Push to `master` when files in `lambda/` change
+- Manual via `workflow_dispatch`
+
+**Change Detection:**
+The workflow detects which lambdas need rebuilding/deploying:
+- `lambda/control/` → deploys control lambda
+- `lambda/details/` → deploys details lambda
+- `lambda/worlds/` → deploys worlds lambda
+
+**Manual Trigger Options:**
+| Input | Default | Description |
+|-------|---------|-------------|
+| `deploy_control` | `false` | Deploy the control lambda |
+| `deploy_details` | `false` | Deploy the details lambda |
+| `deploy_worlds` | `false` | Deploy the worlds lambda |
+
+**Target Resources (Test Environment):**
+| Lambda | Function Name | Python |
+|--------|--------------|--------|
+| control | `minecraft-test-control` | 3.13 |
+| details | `minecraft-test-details` | 3.12 |
+| worlds | `minecraft-test-worlds` | 3.13 |
+
+**AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
+
+### Deploy Worlds App
+
+**File:** `worlds-deploy.yml`
+
+Builds and deploys the Worlds SvelteKit app (map viewer) to S3 and CloudFront.
+
+**Triggers:**
+- Push to `master` when files in `minecraft-ui/` change
+- Manual via `workflow_dispatch`
+
+**Manual Trigger Options:**
+| Input | Default | Description |
+|-------|---------|-------------|
+| `force_deploy` | `true` | Force deployment even without changes |
+
+**Target Resources (Test Environment):**
+- S3 Bucket: `minecraft-test-webapp`
+- CloudFront Distribution: `E35JG9QWEEVI98`
+
+**AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
+
+### Deploy Manager App
+
+**File:** `manager-deploy.yml`
+
+Builds and deploys the Manager Vite/Svelte app (legacy control panel) to S3 and CloudFront. Manual trigger only.
+
+**Triggers:**
+- Manual via `workflow_dispatch` only
+
+**Manual Trigger Options:**
+| Input | Default | Description |
+|-------|---------|-------------|
+| `s3_bucket` | `minecraft-test-webapp` | S3 bucket to deploy to |
+| `cloudfront_dist` | `E35JG9QWEEVI98` | CloudFront distribution ID |
 
 **AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
 
@@ -188,6 +261,6 @@ All workflows with `workflow_dispatch` can be triggered from the GitHub Actions 
 
 | Secret | Used By | Description |
 |--------|---------|-------------|
-| `AWS_ROLE_ARN` | packer-build, ami-cleanup | IAM role ARN for AWS OIDC |
+| `AWS_ROLE_ARN` | packer-build, ami-cleanup, lambdas-deploy, worlds-deploy, manager-deploy | IAM role ARN for AWS OIDC |
 | `PACKER_TEST_HOST` | packer (validation) | Optional: Host for ssh.pkr.hcl validation |
 | `PACKER_TEST_PRIVATE_KEY` | packer (validation) | Optional: SSH key for ssh.pkr.hcl validation |

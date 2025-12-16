@@ -12,7 +12,7 @@ On-demand Minecraft server infrastructure on AWS. Web app controls EC2 instances
 make control|details|worlds  # Build individual lambda -> dist/<name>.zip
 make lambdas                 # Build all lambdas
 make ui                      # Build minecraft-ui/apps/manager
-make deploy                  # Deploy lambdas + UI to AWS
+make deploy                  # Deploy lambdas + UI to AWS (manual)
 ```
 
 **UI dev**: `cd minecraft-ui && pnpm install && pnpm dev:manager`
@@ -20,6 +20,16 @@ make deploy                  # Deploy lambdas + UI to AWS
 **minecraftctl CLI**: See `minecraftctl/README.md` for Go build commands.
 
 **Packer AMIs**: See `packer/readme.rst` for AMI build commands.
+
+## CI/CD Deployments
+
+Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md` for details.
+
+| Component | Workflow | Trigger |
+|-----------|----------|---------|
+| Lambdas | `lambdas-deploy.yml` | Auto on `lambda/` changes |
+| Worlds App | `worlds-deploy.yml` | Auto on `minecraft-ui/` changes |
+| Manager App | `manager-deploy.yml` | Manual only (legacy) |
 
 ## Architecture
 
