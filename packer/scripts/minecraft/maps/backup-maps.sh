@@ -33,7 +33,7 @@ backup_world() {
     #   --progress
 
     aws s3 sync "$dir" "s3://$BUCKET/maps/$world/" --delete
-    echo "Backup complete for $WORLD."
+    echo "Backup complete for $world."
   else
     echo "Skipping missing map directory: $dir"
   fi
@@ -42,8 +42,18 @@ backup_world() {
 if [[ "$WORLD" == "all" ]]; then
   echo "Backing up all maps under $BASE_DIR"
   for d in "${BASE_DIR}"/*; do
-    [[ -d "$d" ]] && backup_world "$(basename "$d")"
+    [[ -d "$d" ]] && backup_world "$(basename "$d")" || true
   done
+
+  # Backup root-level files (manifest and index)
+  for f in "${BASE_DIR}/world_manifest.json" "${BASE_DIR}/index.html"; do
+    if [[ -f "$f" ]]; then
+      echo "Backing up $(basename "$f") → s3://$BUCKET/maps/"
+      aws s3 cp "$f" "s3://$BUCKET/maps/$(basename "$f")"
+    fi
+  done
+
+  echo "All map backups complete."
 else
   backup_world "$WORLD"
 fi
