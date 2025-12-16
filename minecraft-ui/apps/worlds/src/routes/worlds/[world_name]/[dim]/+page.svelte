@@ -2,20 +2,20 @@
 	import Header from '$lib/Header.svelte';
 	export let data;
 
-	const { world, dimension, preview, mapUrl } = data;
+	const { world, map, preview, mapUrl } = data;
 </script>
 
 <svelte:head>
-	<title>{world.name} – {dimension.name} | Maps | Minecraft Server Manager</title>
+	<title>{world.name} – {map.name} | Maps | Minecraft Server Manager</title>
 </svelte:head>
 
 <Header
 	breadcrumbs={[
 		{ label: 'Worlds', href: '/worlds' },
 		{ label: world.name, href: `/worlds/${world.name}` },
-		{ label: dimension.name }
+		{ label: map.name }
 	]}
-	title={`${world.name} – ${dimension.name}`}
+	title={`${world.name} – ${map.name}`}
 	{preview}
 	actionLabel="Open Full Map"
 	actionHref={mapUrl}

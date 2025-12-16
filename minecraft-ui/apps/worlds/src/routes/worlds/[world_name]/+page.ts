@@ -6,7 +6,7 @@ export const prerender = false;
 export const load: PageLoad = async ({ params, fetch }) => {
 	const { world_name: worldName } = params;
 
-	// Fetch world info & dimensions
+	// Fetch world info & maps
 	const world = await getWorld(worldName, fetch);
 
 	if (!world) {
@@ -15,6 +15,6 @@ export const load: PageLoad = async ({ params, fetch }) => {
 
 	return {
 		world,
-		dimensions: world.dimensions || []
+		maps: world.maps || []
 	};
 };

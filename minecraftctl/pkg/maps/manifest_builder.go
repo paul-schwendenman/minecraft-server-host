@@ -3,6 +3,7 @@ package maps
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -48,6 +49,7 @@ type WorldManifest struct {
 	DifficultyName string              `json:"difficulty_name"`
 	LastPlayed     string              `json:"last_played"`
 	Maps           []map[string]string `json:"maps"`
+	Preview        string              `json:"preview"`
 	LastRendered   string              `json:"last_rendered"`
 }
 
@@ -66,6 +68,9 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 	worldDir := filepath.Join(worldPath, "world")
 	worldMapsDir := filepath.Join(mb.mapsDir, worldName)
 	mapList := []map[string]string{}
+
+	// Track the first overworld map's preview path for world-level preview
+	var overworldPreviewPath string
 
 	// Build manifest for each map
 	for _, mapDef := range mapConfig.Maps {
@@ -97,6 +102,11 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 		}
 		mapOutput := filepath.Join(worldMapsDir, outputSubdir)
 
+		// Capture the first overworld map's preview path for world-level preview
+		if mapDef.Dimension == "overworld" && overworldPreviewPath == "" {
+			overworldPreviewPath = filepath.Join(mapOutput, "preview.png")
+		}
+
 		manifest := Manifest{
 			World:        worldName,
 			Map:          mapDef.Name,
@@ -122,6 +132,16 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 		return nil
 	}
 
+	// Copy overworld preview to world-level preview
+	worldPreviewPath := filepath.Join(worldMapsDir, "preview.png")
+	if overworldPreviewPath != "" {
+		if err := copyFile(overworldPreviewPath, worldPreviewPath); err != nil {
+			log.Warn().Err(err).Msg("failed to copy overworld preview to world level")
+		} else {
+			log.Info().Str("src", overworldPreviewPath).Str("dst", worldPreviewPath).Msg("world preview created")
+		}
+	}
+
 	// Build world-level manifest
 	levelDatPath := filepath.Join(worldDir, "level.dat")
 	levelInfo, err := nbt.ReadLevelDat(levelDatPath)
@@ -144,6 +164,7 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 		DifficultyName: difficultyName,
 		LastPlayed:     lastPlayed,
 		Maps:           mapList,
+		Preview:        fmt.Sprintf("%s/preview.png", worldName),
 		LastRendered:   time.Now().Format(time.RFC3339),
 	}
 
@@ -300,6 +321,32 @@ func (mb *ManifestBuilder) writeHTMLIndex(path string) error {
 
 	if err := os.WriteFile(path, []byte(html.String()), 0644); err != nil {
 		return fmt.Errorf("failed to write HTML index: %w", err)
+	}
+
+	return nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %w", err)
+	}
+	defer srcFile.Close()
+
+	// Create parent directory if needed
+	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %w", err)
+	}
+	defer dstFile.Close()
+
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("failed to copy file: %w", err)
 	}
 
 	return nil

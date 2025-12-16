@@ -1,6 +1,6 @@
-export interface Dimension {
+export interface MapInfo {
 	name: string;
-	id: number;
+	dimension: string;
 	previewUrl: string;
 	mapUrl: string;
 }
@@ -9,7 +9,7 @@ export interface World {
 	world: string;
 	previewUrl: string;
 	mapUrl: string;
-	dimensions: Dimension[];
+	maps: MapInfo[];
 	version: string;
 }
 

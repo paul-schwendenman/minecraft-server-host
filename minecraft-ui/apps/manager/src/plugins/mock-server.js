@@ -22,10 +22,10 @@ const mockWorlds = [
   },
 ];
 
-const mockDimensions = (worldId) => [
-  { id: "overworld", map_url: `/maps/${worldId}/overworld/` },
-  { id: "nether", map_url: `/maps/${worldId}/nether/` },
-  { id: "the_end", map_url: `/maps/${worldId}/the_end/` },
+const mockMaps = (worldId) => [
+  { name: "overworld", dimension: "overworld", map_url: `/maps/${worldId}/overworld/` },
+  { name: "nether", dimension: "nether", map_url: `/maps/${worldId}/nether/` },
+  { name: "the_end", dimension: "end", map_url: `/maps/${worldId}/the_end/` },
 ];
 
 export function mockServer() {
@@ -166,7 +166,7 @@ export function mockServer() {
           const worldId = mapsMatch[1];
           return send(res, {
             world: worldId,
-            dimensions: mockDimensions(worldId),
+            maps: mockMaps(worldId),
           });
         }
 

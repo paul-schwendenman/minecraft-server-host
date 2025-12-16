@@ -1,21 +1,21 @@
 import type { PageLoad } from './$types';
-import { getWorldDimension } from '@minecraft/data';
+import { getWorldMap } from '@minecraft/data';
 
 export const prerender = false;
 
 export const load: PageLoad = async ({ fetch, params }) => {
-	const { world_name: worldName, dim: dimName } = params;
+	const { world_name: worldName, dim: mapName } = params;
 
-	const dimension = await getWorldDimension(worldName, dimName, fetch);
+	const map = await getWorldMap(worldName, mapName, fetch);
 
-	if (!dimension) {
-		throw new Error(`Dimension '${dimName}' not found for world '${worldName}'`);
+	if (!map) {
+		throw new Error(`Map '${mapName}' not found for world '${worldName}'`);
 	}
 
 	return {
 		world: { name: worldName },
-		dimension,
-		preview: dimension.previewUrl,
-		mapUrl: dimension.mapUrl
+		map,
+		preview: map.previewUrl,
+		mapUrl: map.mapUrl
 	};
 };

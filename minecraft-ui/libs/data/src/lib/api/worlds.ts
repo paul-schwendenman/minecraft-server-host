@@ -1,4 +1,4 @@
-import type { World, WorldDetail, Dimension } from '../types/index.js';
+import type { World, WorldDetail, MapInfo } from '../types/index.js';
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
@@ -20,13 +20,13 @@ export async function getWorld(name: string, fetchFn: typeof fetch = fetch): Pro
 	return resp.json();
 }
 
-/** Fetch manifest for a specific dimension */
-export async function getWorldDimension(
+/** Fetch manifest for a specific map */
+export async function getWorldMap(
 	world: string,
-	dim: string,
+	mapName: string,
 	fetchFn: typeof fetch = fetch
-): Promise<Dimension> {
-	const resp = await fetchFn(`${API_BASE}/worlds/${world}/${dim}`);
+): Promise<MapInfo> {
+	const resp = await fetchFn(`${API_BASE}/worlds/${world}/${mapName}`);
 	if (!resp.ok) {
 		throw new Error(await resp.text());
 	}
