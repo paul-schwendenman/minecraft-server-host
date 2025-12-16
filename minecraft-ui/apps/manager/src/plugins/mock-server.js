@@ -23,7 +23,11 @@ const mockWorlds = [
 ];
 
 const mockMaps = (worldId) => [
-  { name: "overworld", dimension: "overworld", map_url: `/maps/${worldId}/overworld/` },
+  {
+    name: "overworld",
+    dimension: "overworld",
+    map_url: `/maps/${worldId}/overworld/`,
+  },
   { name: "nether", dimension: "nether", map_url: `/maps/${worldId}/nether/` },
   { name: "the_end", dimension: "end", map_url: `/maps/${worldId}/the_end/` },
 ];
