@@ -23,8 +23,11 @@ make deploy                  # Deploy lambdas + UI to AWS
 
 ## Architecture
 
-- `lambda/` - Python (FastAPI/Mangum) Lambda functions for EC2 control
+- `lambda/` - Python Lambda functions:
+  - `control/` - EC2 start/stop/status (FastAPI/Mangum)
+  - `details/` - Minecraft server ping
+  - `worlds/` - Map manifest API (reads from S3, enriches with preview URLs)
 - `minecraft-ui/` - pnpm monorepo with Svelte 5 apps (`@minecraft/*` packages)
-- `minecraftctl/` - Go CLI for server-side world/map management
+- `minecraftctl/` - Go CLI for server-side world/map management (see `minecraftctl/CLAUDE.md`)
 - `packer/` - AMI builds: base.pkr.hcl (foundation) → minecraft.pkr.hcl (server)
 - `infra/` - Terraform modules (test/ and prod/ environments)

@@ -7,22 +7,22 @@ const mockWorlds = [
 		world: 'default',
 		previewUrl: '/mock/maps/default/preview.png',
 		mapUrl: '/mock/maps/default/',
-		dimensions: [
+		maps: [
 			{
 				name: 'overworld',
-				id: 0,
+				dimension: 'overworld',
 				previewUrl: '/mock/maps/default/overworld.png',
 				mapUrl: '/mock/maps/default/overworld/'
 			},
 			{
 				name: 'nether',
-				id: -1,
+				dimension: 'nether',
 				previewUrl: '/mock/maps/default/nether.png',
 				mapUrl: '/mock/maps/default/nether/'
 			},
 			{
 				name: 'end',
-				id: 1,
+				dimension: 'end',
 				previewUrl: '/mock/maps/default/end.png',
 				mapUrl: '/mock/maps/default/end/'
 			}
@@ -32,10 +32,10 @@ const mockWorlds = [
 		world: 'creative',
 		previewUrl: '/mock/maps/creative/preview.png',
 		mapUrl: '/mock/maps/creative/',
-		dimensions: [
+		maps: [
 			{
 				name: 'overworld',
-				id: 0,
+				dimension: 'overworld',
 				previewUrl: '/mock/maps/creative/overworld.png',
 				mapUrl: '/mock/maps/creative/overworld/'
 			}
@@ -43,9 +43,9 @@ const mockWorlds = [
 	}
 ];
 
-// Helper for mock dimension details
-function mockDimensions(worldId: string) {
-	return mockWorlds.find((w) => w.world === worldId)?.dimensions || [];
+// Helper for mock map details
+function mockMaps(worldId: string) {
+	return mockWorlds.find((w) => w.world === worldId)?.maps || [];
 }
 
 export function mockServer(): Plugin {
@@ -187,13 +187,13 @@ export function mockServer(): Plugin {
 						return send(res, world);
 					}
 
-					// /worlds/{name}/{dimension}
-					const dimMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
-					if (dimMatch) {
-						const [, worldId, dim] = dimMatch;
-						const dimData = mockDimensions(worldId).find((d) => d.name === dim);
-						if (!dimData) return send(res, { error: 'Dimension not found' }, 404);
-						return send(res, dimData);
+					// /worlds/{name}/{map}
+					const mapMatch = path.match(/^\/worlds\/([^/]+)\/([^/]+)$/);
+					if (mapMatch) {
+						const [, worldId, mapName] = mapMatch;
+						const mapData = mockMaps(worldId).find((m) => m.name === mapName);
+						if (!mapData) return send(res, { error: 'Map not found' }, 404);
+						return send(res, mapData);
 					}
 
 					next();

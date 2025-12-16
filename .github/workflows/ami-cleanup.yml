@@ -1,0 +1,125 @@
+name: AMI Cleanup
+
+on:
+  schedule:
+    # Run every Sunday at 2:00 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (show what would be deleted without deleting)'
+        type: boolean
+        default: true
+      keep_count:
+        description: 'Number of recent AMIs to keep per type'
+        type: number
+        default: 3
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  # Default to 3 for scheduled runs, use input for manual runs
+  KEEP_COUNT: ${{ inputs.keep_count || 3 }}
+  # Default to false (actually delete) for scheduled runs
+  DRY_RUN: ${{ inputs.dry_run || 'false' }}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Cleanup old AMIs
+        run: |
+          set -euo pipefail
+
+          echo "=== AMI Cleanup ==="
+          echo "Region: $AWS_REGION"
+          echo "Keep count: $KEEP_COUNT"
+          echo "Dry run: $DRY_RUN"
+          echo ""
+
+          cleanup_ami_type() {
+            local pattern="$1"
+            local type_name="$2"
+
+            echo "--- Processing $type_name AMIs (pattern: $pattern) ---"
+
+            # Get all AMIs matching pattern, sorted by creation date (newest first)
+            amis=$(aws ec2 describe-images \
+              --owners self \
+              --filters "Name=name,Values=$pattern" \
+              --query 'Images | sort_by(@, &CreationDate) | reverse(@) | [*].[ImageId,Name,CreationDate]' \
+              --output text)
+
+            if [ -z "$amis" ]; then
+              echo "No $type_name AMIs found"
+              echo ""
+              return
+            fi
+
+            # Count total AMIs
+            total=$(echo "$amis" | wc -l | tr -d ' ')
+            echo "Found $total $type_name AMIs"
+
+            # Show AMIs to keep
+            echo ""
+            echo "Keeping (most recent $KEEP_COUNT):"
+            echo "$amis" | head -n "$KEEP_COUNT" | while read -r ami_id name created; do
+              echo "  ✓ $ami_id - $name ($created)"
+            done
+
+            # Get AMIs to delete (skip the first KEEP_COUNT)
+            to_delete=$(echo "$amis" | tail -n +$((KEEP_COUNT + 1)))
+
+            if [ -z "$to_delete" ]; then
+              echo ""
+              echo "No $type_name AMIs to delete"
+              echo ""
+              return
+            fi
+
+            echo ""
+            echo "Deleting:"
+            echo "$to_delete" | while read -r ami_id name created; do
+              echo "  ✗ $ami_id - $name ($created)"
+
+              if [ "$DRY_RUN" = "false" ]; then
+                # Get associated snapshots before deregistering
+                snapshots=$(aws ec2 describe-images \
+                  --image-ids "$ami_id" \
+                  --query 'Images[0].BlockDeviceMappings[*].Ebs.SnapshotId' \
+                  --output text)
+
+                # Deregister the AMI
+                echo "    Deregistering AMI..."
+                aws ec2 deregister-image --image-id "$ami_id"
+
+                # Delete associated snapshots
+                for snapshot_id in $snapshots; do
+                  if [ "$snapshot_id" != "None" ] && [ -n "$snapshot_id" ]; then
+                    echo "    Deleting snapshot $snapshot_id..."
+                    aws ec2 delete-snapshot --snapshot-id "$snapshot_id" || true
+                  fi
+                done
+              fi
+            done
+            echo ""
+          }
+
+          # Cleanup both AMI types
+          cleanup_ami_type "minecraft-base-*" "Base"
+          cleanup_ami_type "minecraft-ubuntu-*" "Minecraft"
+
+          echo "=== Cleanup Complete ==="
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "This was a dry run. No AMIs were deleted."
+            echo "Run again with dry_run=false to actually delete."
+          fi
