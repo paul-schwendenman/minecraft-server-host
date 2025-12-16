@@ -1,0 +1,181 @@
+name: Deploy Lambdas
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'lambda/**'
+      - '.github/workflows/lambdas-deploy.yml'
+  workflow_dispatch:
+    inputs:
+      deploy_control:
+        description: 'Deploy control lambda'
+        type: boolean
+        default: false
+      deploy_details:
+        description: 'Deploy details lambda'
+        type: boolean
+        default: false
+      deploy_worlds:
+        description: 'Deploy worlds lambda'
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      control: ${{ steps.changes.outputs.control }}
+      details: ${{ steps.changes.outputs.details }}
+      worlds: ${{ steps.changes.outputs.worlds }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CONTROL=$(git diff --name-only HEAD~1 HEAD | grep -qE '^lambda/control/' && echo true || echo false)
+            DETAILS=$(git diff --name-only HEAD~1 HEAD | grep -qE '^lambda/details/' && echo true || echo false)
+            WORLDS=$(git diff --name-only HEAD~1 HEAD | grep -qE '^lambda/worlds/' && echo true || echo false)
+          else
+            CONTROL=${{ inputs.deploy_control }}
+            DETAILS=${{ inputs.deploy_details }}
+            WORLDS=${{ inputs.deploy_worlds }}
+          fi
+          echo "control=$CONTROL" >> $GITHUB_OUTPUT
+          echo "details=$DETAILS" >> $GITHUB_OUTPUT
+          echo "worlds=$WORLDS" >> $GITHUB_OUTPUT
+          echo "Detected - control: $CONTROL, details: $DETAILS, worlds: $WORLDS"
+
+  build:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - lambda: control
+            python-version: '3.13'
+            deploy: ${{ needs.detect-changes.outputs.control }}
+          - lambda: details
+            python-version: '3.12'
+            deploy: ${{ needs.detect-changes.outputs.details }}
+          - lambda: worlds
+            python-version: '3.13'
+            deploy: ${{ needs.detect-changes.outputs.worlds }}
+    steps:
+      - name: Skip if not deploying
+        if: matrix.deploy != 'true'
+        run: echo "Skipping ${{ matrix.lambda }} - no changes detected"
+
+      - uses: actions/checkout@v4
+        if: matrix.deploy == 'true'
+
+      - name: Setup Python
+        if: matrix.deploy == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        if: matrix.deploy == 'true'
+        uses: astral-sh/setup-uv@v4
+
+      - name: Build lambda package
+        if: matrix.deploy == 'true'
+        run: |
+          mkdir -p dist packages
+          cd lambda/${{ matrix.lambda }}
+          uv export --frozen --no-dev --no-editable -o requirements.txt
+          uv pip install \
+            --no-installer-metadata \
+            --no-compile-bytecode \
+            --python-platform x86_64-manylinux2014 \
+            --python ${{ matrix.python-version }} \
+            --target ../../packages \
+            -r requirements.txt
+          cd ../../packages && zip -qr ../dist/${{ matrix.lambda }}.zip .
+          cd ../lambda/${{ matrix.lambda }} && zip -qr ../../dist/${{ matrix.lambda }}.zip app
+          echo "Built dist/${{ matrix.lambda }}.zip"
+          ls -lh ../../dist/${{ matrix.lambda }}.zip
+
+      - name: Upload artifact
+        if: matrix.deploy == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.lambda }}-lambda
+          path: dist/${{ matrix.lambda }}.zip
+          retention-days: 1
+
+  deploy-test:
+    needs: [detect-changes, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Download control artifact
+        if: needs.detect-changes.outputs.control == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: control-lambda
+          path: dist
+
+      - name: Deploy control lambda
+        if: needs.detect-changes.outputs.control == 'true'
+        run: |
+          aws lambda update-function-code \
+            --function-name minecraft-test-control \
+            --zip-file fileb://dist/control.zip \
+            --region us-east-2
+          echo "Deployed control lambda"
+
+      - name: Download details artifact
+        if: needs.detect-changes.outputs.details == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: details-lambda
+          path: dist
+
+      - name: Deploy details lambda
+        if: needs.detect-changes.outputs.details == 'true'
+        run: |
+          aws lambda update-function-code \
+            --function-name minecraft-test-details \
+            --zip-file fileb://dist/details.zip \
+            --region us-east-2
+          echo "Deployed details lambda"
+
+      - name: Download worlds artifact
+        if: needs.detect-changes.outputs.worlds == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: worlds-lambda
+          path: dist
+
+      - name: Deploy worlds lambda
+        if: needs.detect-changes.outputs.worlds == 'true'
+        run: |
+          aws lambda update-function-code \
+            --function-name minecraft-test-worlds \
+            --zip-file fileb://dist/worlds.zip \
+            --region us-east-2
+          echo "Deployed worlds lambda"
+
+      - name: Summary
+        run: |
+          echo "## Lambda Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Lambda | Deployed |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| control | ${{ needs.detect-changes.outputs.control }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| details | ${{ needs.detect-changes.outputs.details }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| worlds | ${{ needs.detect-changes.outputs.worlds }} |" >> $GITHUB_STEP_SUMMARY

@@ -1,38 +1,29 @@
-# sv
+# Minecraft Worlds Viewer
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+SvelteKit app for viewing Minecraft world maps. Uses static adapter for S3/CloudFront deployment.
 
-## Creating a project
+## Development
 
-If you're seeing this, you've probably already done this step. Congrats!
-
-```sh
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+```bash
+pnpm install
+pnpm dev
 ```
 
-## Developing
+## Deployment
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+**CI/CD (recommended):** Push changes to `master` branch. The `worlds-deploy.yml` workflow automatically builds and deploys to S3/CloudFront.
 
-```sh
-npm run dev
+**Manual:**
 
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+```bash
+pnpm build
+aws s3 sync build/ s3://minecraft-test-webapp --delete
+aws cloudfront create-invalidation --distribution-id E35JG9QWEEVI98 --paths "/*"
 ```
 
 ## Building
 
-To create a production version of your app:
-
-```sh
-npm run build
+```bash
+pnpm build      # Output: build/
+pnpm preview    # Preview production build locally
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

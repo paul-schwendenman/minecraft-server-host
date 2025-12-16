@@ -1,0 +1,86 @@
+name: Deploy Manager App
+
+on:
+  workflow_dispatch:
+    inputs:
+      s3_bucket:
+        description: 'S3 bucket to deploy to'
+        type: string
+        default: 'minecraft-test-webapp'
+      cloudfront_dist:
+        description: 'CloudFront distribution ID'
+        type: string
+        default: 'E35JG9QWEEVI98'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.3.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: minecraft-ui/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: minecraft-ui
+        run: pnpm install --frozen-lockfile
+
+      - name: Build manager app
+        working-directory: minecraft-ui/apps/manager
+        run: pnpm run build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: manager-app
+          path: minecraft-ui/apps/manager/dist
+          retention-days: 1
+
+  deploy-test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: manager-app
+          path: dist
+
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://${{ inputs.s3_bucket }}/ --delete
+          echo "Deployed to s3://${{ inputs.s3_bucket }}/"
+
+      - name: Invalidate CloudFront cache
+        if: inputs.cloudfront_dist != ''
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ inputs.cloudfront_dist }} \
+            --paths '/*'
+          echo "CloudFront cache invalidated"
+
+      - name: Summary
+        run: |
+          echo "## Manager App Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** ${{ inputs.s3_bucket }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront:** ${{ inputs.cloudfront_dist }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY

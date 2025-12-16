@@ -1,23 +1,24 @@
 # Minecraft Server Management UI
 
-## Get started
+Legacy control panel for starting/stopping the Minecraft server.
 
-Install the dependencies...
+## Development
 
 ```bash
 pnpm install
-```
-
-```bash
 pnpm dev
 ```
 
-## Building and running in production mode
+## Deployment
 
-To create an optimized version of the app:
+**CI/CD:** Manually trigger `manager-deploy.yml` workflow from GitHub Actions (this is a legacy app, not auto-deployed).
+
+**Manual:**
 
 ```bash
 pnpm build
-aws s3 sync dist/ s3://your-bucket-name --delete
-aws cloudfront create-invalidation --distribution-id XYZ --paths "/*"
+aws s3 sync dist/ s3://minecraft-test-webapp --delete
+aws cloudfront create-invalidation --distribution-id E35JG9QWEEVI98 --paths "/*"
 ```
+
+Or use `make deploy-ui` from repo root.
