@@ -2,6 +2,15 @@
 Control lambda
 ---------------
 
+FastAPI + Mangum lambda for EC2 start/stop/status and Route53 DNS sync.
+
+Deployment
+----------
+
+**CI/CD (recommended):** Push changes to ``master`` branch. The ``lambdas-deploy.yml`` workflow automatically builds and deploys.
+
+**Manual build:**
+
 ::
 
     uv export --frozen --no-dev --no-editable -o requirements.txt
@@ -23,8 +32,10 @@ Control lambda
 
     zip -r package.zip app
 
+Or use ``make control`` from repo root.
 
-
+Local Development
+-----------------
 
 Localstack commands::
 
