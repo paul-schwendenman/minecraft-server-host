@@ -81,28 +81,26 @@ $(LAMBDAS): %:
 deploy: deploy-lambdas deploy-ui
 .PHONY: deploy
 
+deploy-control: control
+	aws lambda update-function-code \
+		--function-name $(CONTROL_FUNC) \
+		--zip-file fileb://$(DIST_DIR)/control.zip \
+		--region $(AWS_REGION)
+
+deploy-details: details
+	aws lambda update-function-code \
+		--function-name $(DETAILS_FUNC) \
+		--zip-file fileb://$(DIST_DIR)/details.zip \
+		--region $(AWS_REGION)
+
 deploy-worlds: worlds
 	aws lambda update-function-code \
 		--function-name $(WORLD_FUNC) \
 		--zip-file fileb://$(DIST_DIR)/worlds.zip \
 		--region $(AWS_REGION)
 
-
-deploy-lambdas:
-	@echo "🚀 Deploying Lambda functions..."
-	aws lambda update-function-code \
-		--function-name $(CONTROL_FUNC) \
-		--zip-file fileb://$(DIST_DIR)/control.zip \
-		--region $(AWS_REGION)
-	aws lambda update-function-code \
-		--function-name $(DETAILS_FUNC) \
-		--zip-file fileb://$(DIST_DIR)/details.zip \
-		--region $(AWS_REGION)
-	aws lambda update-function-code \
-		--function-name $(WORLD_FUNC) \
-		--zip-file fileb://$(DIST_DIR)/worlds.zip \
-		--region $(AWS_REGION)
-	@echo "✅ Lambda functions updated"
+deploy-lambdas: deploy-control deploy-details deploy-worlds
+	@echo "✅ All Lambda functions deployed"
 
 deploy-ui:
 	@echo "🌐 Deploying web UI to S3..."
@@ -126,7 +124,7 @@ ifdef CLOUDFRONT_DIST
 endif
 	@echo "✅ UI deployed to https://$(S3_BUCKET).s3.$(AWS_REGION).amazonaws.com/"
 
-.PHONY: deploy-lambdas deploy-ui deploy-ui-worlds
+.PHONY: deploy-control deploy-details deploy-worlds deploy-lambdas deploy-ui deploy-ui-worlds
 
 # ============================================================
 # Maintenance
