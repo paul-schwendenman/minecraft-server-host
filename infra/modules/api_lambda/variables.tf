@@ -31,6 +31,12 @@ variable "zone_id" {
   default     = ""
 }
 
+variable "control_zip_path" {
+  description = "Path to the control lambda zip"
+  type        = string
+  default     = "./../../dist/control.zip"
+}
+
 variable "details_zip_path" {
   description = "Path to the details lambda zip"
   type        = string

@@ -90,22 +90,14 @@ resource "aws_iam_role_policy" "lambda_s3_maps" {
   })
 }
 
-data "archive_file" "lambda_zip" {
-  type        = "zip"
-  source_file = "${path.module}/lambda/handler.py"
-  output_path = "${path.module}/lambda/lambda.zip"
-}
-
 resource "aws_lambda_function" "control" {
   function_name = "${var.name}-control"
   role          = aws_iam_role.lambda_exec.arn
-  handler       = "handler.lambda_handler"
-  runtime       = "python3.11"
+  handler       = "app.main.handler"
+  runtime       = "python3.13"
 
-  #   filename         = "${path.module}/lambda/lambda.zip"
-  #   source_code_hash = filebase64sha256("${path.module}/lambda/lambda.zip")
-  filename         = data.archive_file.lambda_zip.output_path
-  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+  filename         = var.control_zip_path
+  source_code_hash = filebase64sha256(var.control_zip_path)
 
   environment {
     variables = {
