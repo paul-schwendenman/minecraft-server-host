@@ -64,7 +64,7 @@ resource "aws_cloudfront_distribution" "webapp" {
     path_pattern           = "/api/*"
     target_origin_id       = "api-origin"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods        = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods         = ["GET", "HEAD"]
     compress               = true
 
