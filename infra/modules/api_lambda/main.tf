@@ -96,8 +96,8 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/lambda/lambda.zip"
 }
 
-resource "aws_lambda_function" "mc_control" {
-  function_name = "${var.name}-mc-control"
+resource "aws_lambda_function" "control" {
+  function_name = "${var.name}-control"
   role          = aws_iam_role.lambda_exec.arn
   handler       = "handler.lambda_handler"
   runtime       = "python3.11"
@@ -160,7 +160,7 @@ resource "aws_apigatewayv2_api" "http" {
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id             = aws_apigatewayv2_api.http.id
   integration_type   = "AWS_PROXY"
-  integration_uri    = aws_lambda_function.mc_control.invoke_arn
+  integration_uri    = aws_lambda_function.control.invoke_arn
   integration_method = "POST"
 }
 
@@ -277,7 +277,7 @@ resource "aws_lambda_permission" "allow_api_worlds" {
 resource "aws_lambda_permission" "apigw" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.mc_control.function_name
+  function_name = aws_lambda_function.control.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.http.execution_arn}/*/*"
 }
