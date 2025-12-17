@@ -32,20 +32,31 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 ```
 
-### 2. Create the IAM Role
+### 2. Set Environment Variables
+
+Set these variables once, then use `envsubst` to substitute them in the policy files:
+
+```bash
+export AWS_ACCOUNT_ID="550950537404"
+export GITHUB_REPO="paul-schwendenman/minecraft-server-host"
+export TEST_CLOUDFRONT_DISTRIBUTION_ID="E35JG9QWEEVI98"
+# export PROD_CLOUDFRONT_DISTRIBUTION_ID="EXXXXXXXXXX"  # Set when prod exists
+```
+
+### 3. Create the IAM Role
 
 Create a role that GitHub Actions can assume. The trust policy restricts access to your specific repository.
 
 ```bash
 # Create the trust policy
-cat > trust-policy.json << 'EOF'
+cat << 'EOF' | envsubst | tee trust-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+        "Federated": "arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
@@ -53,7 +64,7 @@ cat > trust-policy.json << 'EOF'
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/YOUR_REPO:*"
+          "token.actions.githubusercontent.com:sub": "repo:${GITHUB_REPO}:*"
         }
       }
     }
@@ -67,16 +78,12 @@ aws iam create-role \
   --assume-role-policy-document file://trust-policy.json
 ```
 
-Replace:
-- `ACCOUNT_ID` with your AWS account ID
-- `YOUR_ORG/YOUR_REPO` with your GitHub org/repo (e.g., `paul-schwendenman/minecraft-server-host`)
-
-### 3. Attach Permissions for Packer
+### 4. Attach Permissions for Packer
 
 Packer needs permissions to create EC2 instances and AMIs:
 
 ```bash
-cat > packer-policy.json << 'EOF'
+cat << 'EOF' | tee packer-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -130,12 +137,12 @@ aws iam put-role-policy \
   --policy-document file://packer-policy.json
 ```
 
-### 4. Attach Permissions for Test Deployments
+### 5. Attach Permissions for Test Deployments
 
 Lambda and webapp deployments to the test environment need these permissions:
 
 ```bash
-cat > test-deploy-policy.json << 'EOF'
+cat << 'EOF' | envsubst | tee test-deploy-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -143,7 +150,7 @@ cat > test-deploy-policy.json << 'EOF'
       "Sid": "LambdaDeployTest",
       "Effect": "Allow",
       "Action": ["lambda:UpdateFunctionCode"],
-      "Resource": "arn:aws:lambda:us-east-2:ACCOUNT_ID:function:minecraft-test-*"
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:minecraft-test-*"
     },
     {
       "Sid": "S3WebappDeployTest",
@@ -163,7 +170,7 @@ cat > test-deploy-policy.json << 'EOF'
       "Sid": "CloudFrontInvalidateTest",
       "Effect": "Allow",
       "Action": ["cloudfront:CreateInvalidation"],
-      "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/TEST_DISTRIBUTION_ID"
+      "Resource": "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/${TEST_CLOUDFRONT_DISTRIBUTION_ID}"
     }
   ]
 }
@@ -175,16 +182,14 @@ aws iam put-role-policy \
   --policy-document file://test-deploy-policy.json
 ```
 
-Replace:
-- `ACCOUNT_ID` with your AWS account ID
-- `TEST_DISTRIBUTION_ID` with your test CloudFront distribution ID
+### 6. Attach Permissions for Prod Deployments (when ready)
 
-### 5. Attach Permissions for Prod Deployments (when ready)
-
-When you set up the production environment, add these permissions:
+When you set up the production environment, set the prod distribution ID and add these permissions:
 
 ```bash
-cat > prod-deploy-policy.json << 'EOF'
+export PROD_CLOUDFRONT_DISTRIBUTION_ID="EXXXXXXXXXX"  # Your prod distribution ID
+
+cat << 'EOF' | envsubst | tee prod-deploy-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -192,7 +197,7 @@ cat > prod-deploy-policy.json << 'EOF'
       "Sid": "LambdaDeployProd",
       "Effect": "Allow",
       "Action": ["lambda:UpdateFunctionCode"],
-      "Resource": "arn:aws:lambda:us-east-2:ACCOUNT_ID:function:minecraft-prod-*"
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:minecraft-prod-*"
     },
     {
       "Sid": "S3WebappDeployProd",
@@ -212,7 +217,7 @@ cat > prod-deploy-policy.json << 'EOF'
       "Sid": "CloudFrontInvalidateProd",
       "Effect": "Allow",
       "Action": ["cloudfront:CreateInvalidation"],
-      "Resource": "arn:aws:cloudfront::ACCOUNT_ID:distribution/PROD_DISTRIBUTION_ID"
+      "Resource": "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/${PROD_CLOUDFRONT_DISTRIBUTION_ID}"
     }
   ]
 }
@@ -224,11 +229,11 @@ aws iam put-role-policy \
   --policy-document file://prod-deploy-policy.json
 ```
 
-Replace:
-- `ACCOUNT_ID` with your AWS account ID
-- `PROD_DISTRIBUTION_ID` with your prod CloudFront distribution ID
+### 7. Add the Role ARN to GitHub Secrets
 
-### 6. Add the Role ARN to GitHub Secrets
+Replace:
+
+- `ACCOUNT_ID` with your AWS account ID
 
 1. Go to your repository on GitHub
 2. Navigate to **Settings** > **Secrets and variables** > **Actions**
@@ -422,6 +427,7 @@ You can make the trust policy more restrictive:
 ```
 
 This restricts access to only the `master` branch. Other options:
+
 - `repo:org/repo:ref:refs/heads/*` - any branch
 - `repo:org/repo:environment:production` - specific environment
 - `repo:org/repo:pull_request` - pull requests only
@@ -441,12 +447,12 @@ This restricts access to only the `master` branch. Other options:
 
 ### "AccessDeniedException" for lambda:UpdateFunctionCode
 
-- Add the TestDeployPolicy (step 4) to the role
+- Add the TestDeployPolicy (step 5) to the role
 - Verify the Lambda function name matches `minecraft-test-*` pattern
 
 ### "AccessDenied" for S3 operations
 
-- Add the TestDeployPolicy (step 4) to the role
+- Add the TestDeployPolicy (step 5) to the role
 - Verify the S3 bucket name matches `minecraft-test-webapp`
 
 ## References
