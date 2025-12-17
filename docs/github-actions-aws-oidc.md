@@ -39,8 +39,16 @@ Set these variables once, then use `envsubst` to substitute them in the policy f
 ```bash
 export AWS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
 export GITHUB_REPO="YOUR_ORG/YOUR_REPO"
+
+# Test environment
+export TEST_LAMBDA_PREFIX="minecraft-test"        # Lambda functions: ${TEST_LAMBDA_PREFIX}-control, etc.
+export TEST_S3_BUCKET="minecraft-test-webapp"     # S3 bucket for webapp
 export TEST_CLOUDFRONT_DISTRIBUTION_ID="YOUR_TEST_DISTRIBUTION_ID"
-# export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"  # Set when prod exists
+
+# Prod environment (set when ready)
+# export PROD_LAMBDA_PREFIX="minecraft-prod"
+# export PROD_S3_BUCKET="minecraft-prod-webapp"
+# export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"
 ```
 
 ### 3. Create the IAM Role
@@ -150,7 +158,7 @@ cat << 'EOF' | envsubst | tee test-deploy-policy.json
       "Sid": "LambdaDeployTest",
       "Effect": "Allow",
       "Action": ["lambda:UpdateFunctionCode"],
-      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:minecraft-test-*"
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:${TEST_LAMBDA_PREFIX}-*"
     },
     {
       "Sid": "S3WebappDeployTest",
@@ -162,8 +170,8 @@ cat << 'EOF' | envsubst | tee test-deploy-policy.json
         "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::minecraft-test-webapp",
-        "arn:aws:s3:::minecraft-test-webapp/*"
+        "arn:aws:s3:::${TEST_S3_BUCKET}",
+        "arn:aws:s3:::${TEST_S3_BUCKET}/*"
       ]
     },
     {
@@ -187,6 +195,8 @@ aws iam put-role-policy \
 When you set up the production environment, set the prod distribution ID and add these permissions:
 
 ```bash
+export PROD_LAMBDA_PREFIX="minecraft-prod"
+export PROD_S3_BUCKET="minecraft-prod-webapp"
 export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"
 
 cat << 'EOF' | envsubst | tee prod-deploy-policy.json
@@ -197,7 +207,7 @@ cat << 'EOF' | envsubst | tee prod-deploy-policy.json
       "Sid": "LambdaDeployProd",
       "Effect": "Allow",
       "Action": ["lambda:UpdateFunctionCode"],
-      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:minecraft-prod-*"
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:${PROD_LAMBDA_PREFIX}-*"
     },
     {
       "Sid": "S3WebappDeployProd",
@@ -209,8 +219,8 @@ cat << 'EOF' | envsubst | tee prod-deploy-policy.json
         "s3:DeleteObject"
       ],
       "Resource": [
-        "arn:aws:s3:::minecraft-prod-webapp",
-        "arn:aws:s3:::minecraft-prod-webapp/*"
+        "arn:aws:s3:::${PROD_S3_BUCKET}",
+        "arn:aws:s3:::${PROD_S3_BUCKET}/*"
       ]
     },
     {
@@ -246,6 +256,46 @@ Replace:
 If you manage infrastructure with Terraform, here's a complete module:
 
 ```hcl
+variable "github_repo" {
+  description = "GitHub repository in format 'org/repo'"
+  type        = string
+}
+
+variable "test_lambda_prefix" {
+  description = "Prefix for test Lambda functions"
+  type        = string
+  default     = "minecraft-test"
+}
+
+variable "test_s3_bucket" {
+  description = "S3 bucket name for test webapp"
+  type        = string
+  default     = "minecraft-test-webapp"
+}
+
+variable "test_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for test environment"
+  type        = string
+}
+
+variable "prod_lambda_prefix" {
+  description = "Prefix for prod Lambda functions"
+  type        = string
+  default     = "minecraft-prod"
+}
+
+variable "prod_s3_bucket" {
+  description = "S3 bucket name for prod webapp"
+  type        = string
+  default     = "minecraft-prod-webapp"
+}
+
+variable "prod_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for prod environment"
+  type        = string
+  default     = ""
+}
+
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -271,7 +321,7 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:YOUR_ORG/YOUR_REPO:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
           }
         }
       }
@@ -341,7 +391,7 @@ resource "aws_iam_role_policy" "test_deploy" {
         Sid      = "LambdaDeployTest"
         Effect   = "Allow"
         Action   = ["lambda:UpdateFunctionCode"]
-        Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:minecraft-test-*"
+        Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.test_lambda_prefix}-*"
       },
       {
         Sid    = "S3WebappDeployTest"
@@ -353,8 +403,8 @@ resource "aws_iam_role_policy" "test_deploy" {
           "s3:DeleteObject"
         ]
         Resource = [
-          "arn:aws:s3:::minecraft-test-webapp",
-          "arn:aws:s3:::minecraft-test-webapp/*"
+          "arn:aws:s3:::${var.test_s3_bucket}",
+          "arn:aws:s3:::${var.test_s3_bucket}/*"
         ]
       },
       {
@@ -379,7 +429,7 @@ resource "aws_iam_role_policy" "test_deploy" {
 #         Sid      = "LambdaDeployProd"
 #         Effect   = "Allow"
 #         Action   = ["lambda:UpdateFunctionCode"]
-#         Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:minecraft-prod-*"
+#         Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.prod_lambda_prefix}-*"
 #       },
 #       {
 #         Sid    = "S3WebappDeployProd"
@@ -391,8 +441,8 @@ resource "aws_iam_role_policy" "test_deploy" {
 #           "s3:DeleteObject"
 #         ]
 #         Resource = [
-#           "arn:aws:s3:::minecraft-prod-webapp",
-#           "arn:aws:s3:::minecraft-prod-webapp/*"
+#           "arn:aws:s3:::${var.prod_s3_bucket}",
+#           "arn:aws:s3:::${var.prod_s3_bucket}/*"
 #         ]
 #       },
 #       {
@@ -448,12 +498,12 @@ This restricts access to only the `master` branch. Other options:
 ### "AccessDeniedException" for lambda:UpdateFunctionCode
 
 - Add the TestDeployPolicy (step 5) to the role
-- Verify the Lambda function name matches `minecraft-test-*` pattern
+- Verify the Lambda function name matches `${TEST_LAMBDA_PREFIX}-*` pattern
 
 ### "AccessDenied" for S3 operations
 
 - Add the TestDeployPolicy (step 5) to the role
-- Verify the S3 bucket name matches `minecraft-test-webapp`
+- Verify the S3 bucket name matches `${TEST_S3_BUCKET}`
 
 ## References
 
