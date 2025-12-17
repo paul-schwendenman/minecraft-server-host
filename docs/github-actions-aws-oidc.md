@@ -1,6 +1,6 @@
 # GitHub Actions AWS OIDC Setup
 
-The `packer-build.yml` workflow uses OpenID Connect (OIDC) to authenticate with AWS. This is more secure than storing long-lived AWS credentials as secrets.
+GitHub Actions workflows use OpenID Connect (OIDC) to authenticate with AWS. This is more secure than storing long-lived AWS credentials as secrets.
 
 ## How It Works
 
@@ -32,20 +32,39 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 ```
 
-### 2. Create the IAM Role
+### 2. Set Environment Variables
+
+Set these variables once, then use `envsubst` to substitute them in the policy files:
+
+```bash
+export AWS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+export GITHUB_REPO="YOUR_ORG/YOUR_REPO"
+
+# Test environment
+export TEST_LAMBDA_PREFIX="minecraft-test"        # Lambda functions: ${TEST_LAMBDA_PREFIX}-control, etc.
+export TEST_S3_BUCKET="minecraft-test-webapp"     # S3 bucket for webapp
+export TEST_CLOUDFRONT_DISTRIBUTION_ID="YOUR_TEST_DISTRIBUTION_ID"
+
+# Prod environment (set when ready)
+# export PROD_LAMBDA_PREFIX="minecraft-prod"
+# export PROD_S3_BUCKET="minecraft-prod-webapp"
+# export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"
+```
+
+### 3. Create the IAM Role
 
 Create a role that GitHub Actions can assume. The trust policy restricts access to your specific repository.
 
 ```bash
 # Create the trust policy
-cat > trust-policy.json << 'EOF'
+cat << 'EOF' | envsubst | tee trust-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
       "Effect": "Allow",
       "Principal": {
-        "Federated": "arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com"
+        "Federated": "arn:aws:iam::${AWS_ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
       },
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
@@ -53,7 +72,7 @@ cat > trust-policy.json << 'EOF'
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
         },
         "StringLike": {
-          "token.actions.githubusercontent.com:sub": "repo:YOUR_ORG/YOUR_REPO:*"
+          "token.actions.githubusercontent.com:sub": "repo:${GITHUB_REPO}:*"
         }
       }
     }
@@ -63,24 +82,21 @@ EOF
 
 # Create the role
 aws iam create-role \
-  --role-name GitHubActionsPackerRole \
+  --role-name GitHubActionsRole \
   --assume-role-policy-document file://trust-policy.json
 ```
 
-Replace:
-- `ACCOUNT_ID` with your AWS account ID
-- `YOUR_ORG/YOUR_REPO` with your GitHub org/repo (e.g., `paul-schwendenman/minecraft-server-host`)
-
-### 3. Attach Permissions for Packer
+### 4. Attach Permissions for Packer
 
 Packer needs permissions to create EC2 instances and AMIs:
 
 ```bash
-cat > packer-policy.json << 'EOF'
+cat << 'EOF' | tee packer-policy.json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "PackerEC2",
       "Effect": "Allow",
       "Action": [
         "ec2:AttachVolume",
@@ -124,24 +140,162 @@ cat > packer-policy.json << 'EOF'
 EOF
 
 aws iam put-role-policy \
-  --role-name GitHubActionsPackerRole \
+  --role-name GitHubActionsRole \
   --policy-name PackerBuildPolicy \
   --policy-document file://packer-policy.json
 ```
 
-### 4. Add the Role ARN to GitHub Secrets
+### 5. Attach Permissions for Test Deployments
+
+Lambda and webapp deployments to the test environment need these permissions:
+
+```bash
+cat << 'EOF' | envsubst | tee test-deploy-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LambdaDeployTest",
+      "Effect": "Allow",
+      "Action": ["lambda:UpdateFunctionCode"],
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:${TEST_LAMBDA_PREFIX}-*"
+    },
+    {
+      "Sid": "S3WebappDeployTest",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${TEST_S3_BUCKET}",
+        "arn:aws:s3:::${TEST_S3_BUCKET}/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontInvalidateTest",
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation"],
+      "Resource": "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/${TEST_CLOUDFRONT_DISTRIBUTION_ID}"
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name GitHubActionsRole \
+  --policy-name TestDeployPolicy \
+  --policy-document file://test-deploy-policy.json
+```
+
+### 6. Attach Permissions for Prod Deployments (when ready)
+
+When you set up the production environment, set the prod distribution ID and add these permissions:
+
+```bash
+export PROD_LAMBDA_PREFIX="minecraft-prod"
+export PROD_S3_BUCKET="minecraft-prod-webapp"
+export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"
+
+cat << 'EOF' | envsubst | tee prod-deploy-policy.json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "LambdaDeployProd",
+      "Effect": "Allow",
+      "Action": ["lambda:UpdateFunctionCode"],
+      "Resource": "arn:aws:lambda:us-east-2:${AWS_ACCOUNT_ID}:function:${PROD_LAMBDA_PREFIX}-*"
+    },
+    {
+      "Sid": "S3WebappDeployProd",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::${PROD_S3_BUCKET}",
+        "arn:aws:s3:::${PROD_S3_BUCKET}/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontInvalidateProd",
+      "Effect": "Allow",
+      "Action": ["cloudfront:CreateInvalidation"],
+      "Resource": "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/${PROD_CLOUDFRONT_DISTRIBUTION_ID}"
+    }
+  ]
+}
+EOF
+
+aws iam put-role-policy \
+  --role-name GitHubActionsRole \
+  --policy-name ProdDeployPolicy \
+  --policy-document file://prod-deploy-policy.json
+```
+
+### 7. Add the Role ARN to GitHub Secrets
+
+Replace:
+
+- `ACCOUNT_ID` with your AWS account ID
 
 1. Go to your repository on GitHub
 2. Navigate to **Settings** > **Secrets and variables** > **Actions**
 3. Click **New repository secret**
 4. Name: `AWS_ROLE_ARN`
-5. Value: `arn:aws:iam::ACCOUNT_ID:role/GitHubActionsPackerRole`
+5. Value: `arn:aws:iam::ACCOUNT_ID:role/GitHubActionsRole`
 
 ## Terraform Module (Optional)
 
 If you manage infrastructure with Terraform, here's a complete module:
 
 ```hcl
+variable "github_repo" {
+  description = "GitHub repository in format 'org/repo'"
+  type        = string
+}
+
+variable "test_lambda_prefix" {
+  description = "Prefix for test Lambda functions"
+  type        = string
+  default     = "minecraft-test"
+}
+
+variable "test_s3_bucket" {
+  description = "S3 bucket name for test webapp"
+  type        = string
+  default     = "minecraft-test-webapp"
+}
+
+variable "test_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for test environment"
+  type        = string
+}
+
+variable "prod_lambda_prefix" {
+  description = "Prefix for prod Lambda functions"
+  type        = string
+  default     = "minecraft-prod"
+}
+
+variable "prod_s3_bucket" {
+  description = "S3 bucket name for prod webapp"
+  type        = string
+  default     = "minecraft-prod-webapp"
+}
+
+variable "prod_cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for prod environment"
+  type        = string
+  default     = ""
+}
+
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -150,8 +304,8 @@ resource "aws_iam_openid_connect_provider" "github" {
   thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
 
-resource "aws_iam_role" "github_actions_packer" {
-  name = "GitHubActionsPackerRole"
+resource "aws_iam_role" "github_actions" {
+  name = "GitHubActionsRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -167,7 +321,7 @@ resource "aws_iam_role" "github_actions_packer" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:paul-schwendenman/minecraft-server-host:*"
+            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
           }
         }
       }
@@ -177,12 +331,13 @@ resource "aws_iam_role" "github_actions_packer" {
 
 resource "aws_iam_role_policy" "packer" {
   name = "PackerBuildPolicy"
-  role = aws_iam_role.github_actions_packer.id
+  role = aws_iam_role.github_actions.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
+        Sid    = "PackerEC2"
         Effect = "Allow"
         Action = [
           "ec2:AttachVolume",
@@ -225,9 +380,84 @@ resource "aws_iam_role_policy" "packer" {
   })
 }
 
+resource "aws_iam_role_policy" "test_deploy" {
+  name = "TestDeployPolicy"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "LambdaDeployTest"
+        Effect   = "Allow"
+        Action   = ["lambda:UpdateFunctionCode"]
+        Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.test_lambda_prefix}-*"
+      },
+      {
+        Sid    = "S3WebappDeployTest"
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "arn:aws:s3:::${var.test_s3_bucket}",
+          "arn:aws:s3:::${var.test_s3_bucket}/*"
+        ]
+      },
+      {
+        Sid      = "CloudFrontInvalidateTest"
+        Effect   = "Allow"
+        Action   = ["cloudfront:CreateInvalidation"]
+        Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.test_cloudfront_distribution_id}"
+      }
+    ]
+  })
+}
+
+# Uncomment when prod environment exists
+# resource "aws_iam_role_policy" "prod_deploy" {
+#   name = "ProdDeployPolicy"
+#   role = aws_iam_role.github_actions.id
+#
+#   policy = jsonencode({
+#     Version = "2012-10-17"
+#     Statement = [
+#       {
+#         Sid      = "LambdaDeployProd"
+#         Effect   = "Allow"
+#         Action   = ["lambda:UpdateFunctionCode"]
+#         Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.prod_lambda_prefix}-*"
+#       },
+#       {
+#         Sid    = "S3WebappDeployProd"
+#         Effect = "Allow"
+#         Action = [
+#           "s3:ListBucket",
+#           "s3:GetObject",
+#           "s3:PutObject",
+#           "s3:DeleteObject"
+#         ]
+#         Resource = [
+#           "arn:aws:s3:::${var.prod_s3_bucket}",
+#           "arn:aws:s3:::${var.prod_s3_bucket}/*"
+#         ]
+#       },
+#       {
+#         Sid      = "CloudFrontInvalidateProd"
+#         Effect   = "Allow"
+#         Action   = ["cloudfront:CreateInvalidation"]
+#         Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.prod_cloudfront_distribution_id}"
+#       }
+#     ]
+#   })
+# }
+
 output "role_arn" {
   description = "Add this to GitHub Secrets as AWS_ROLE_ARN"
-  value       = aws_iam_role.github_actions_packer.arn
+  value       = aws_iam_role.github_actions.arn
 }
 ```
 
@@ -247,6 +477,7 @@ You can make the trust policy more restrictive:
 ```
 
 This restricts access to only the `master` branch. Other options:
+
 - `repo:org/repo:ref:refs/heads/*` - any branch
 - `repo:org/repo:environment:production` - specific environment
 - `repo:org/repo:pull_request` - pull requests only
@@ -263,6 +494,16 @@ This restricts access to only the `master` branch. Other options:
 
 - Create the OIDC provider in AWS (step 1)
 - Verify it's in the correct AWS region
+
+### "AccessDeniedException" for lambda:UpdateFunctionCode
+
+- Add the TestDeployPolicy (step 5) to the role
+- Verify the Lambda function name matches `${TEST_LAMBDA_PREFIX}-*` pattern
+
+### "AccessDenied" for S3 operations
+
+- Add the TestDeployPolicy (step 5) to the role
+- Verify the S3 bucket name matches `${TEST_S3_BUCKET}`
 
 ## References
 

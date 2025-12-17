@@ -11,7 +11,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 app = FastAPI(title="Minecraft Server API", version="1.0")
-handler = Mangum(app)
+handler = Mangum(app, api_gateway_base_path="/api")
 
 
 @app.get("/")
