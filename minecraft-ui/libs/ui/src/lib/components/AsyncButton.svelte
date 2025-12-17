@@ -9,7 +9,7 @@
 		if (!pending) {
 			pending = true;
 
-			action().then(() => {
+			action().finally(() => {
 				pending = false;
 			});
 		}
