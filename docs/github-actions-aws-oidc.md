@@ -37,10 +37,10 @@ resource "aws_iam_openid_connect_provider" "github" {
 Set these variables once, then use `envsubst` to substitute them in the policy files:
 
 ```bash
-export AWS_ACCOUNT_ID="550950537404"
-export GITHUB_REPO="paul-schwendenman/minecraft-server-host"
-export TEST_CLOUDFRONT_DISTRIBUTION_ID="E35JG9QWEEVI98"
-# export PROD_CLOUDFRONT_DISTRIBUTION_ID="EXXXXXXXXXX"  # Set when prod exists
+export AWS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
+export GITHUB_REPO="YOUR_ORG/YOUR_REPO"
+export TEST_CLOUDFRONT_DISTRIBUTION_ID="YOUR_TEST_DISTRIBUTION_ID"
+# export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"  # Set when prod exists
 ```
 
 ### 3. Create the IAM Role
@@ -187,7 +187,7 @@ aws iam put-role-policy \
 When you set up the production environment, set the prod distribution ID and add these permissions:
 
 ```bash
-export PROD_CLOUDFRONT_DISTRIBUTION_ID="EXXXXXXXXXX"  # Your prod distribution ID
+export PROD_CLOUDFRONT_DISTRIBUTION_ID="YOUR_PROD_DISTRIBUTION_ID"
 
 cat << 'EOF' | envsubst | tee prod-deploy-policy.json
 {
@@ -271,7 +271,7 @@ resource "aws_iam_role" "github_actions" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:paul-schwendenman/minecraft-server-host:*"
+            "token.actions.githubusercontent.com:sub" = "repo:YOUR_ORG/YOUR_REPO:*"
           }
         }
       }
