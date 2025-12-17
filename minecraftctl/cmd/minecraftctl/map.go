@@ -36,6 +36,7 @@ var mapBuildCmd = &cobra.Command{
 		nonBlocking, _ := cmd.Flags().GetBool("non-blocking")
 		parallel, _ := cmd.Flags().GetBool("parallel")
 		maxWorkers, _ := cmd.Flags().GetInt("max-workers")
+		logLevel, _ := cmd.Flags().GetString("log-level")
 
 		// Expand all patterns to world names
 		worldNames := make([]string, 0)
@@ -62,6 +63,7 @@ var mapBuildCmd = &cobra.Command{
 				LockTimeout: lockTimeout,
 				NoLock:      noLock,
 				NonBlocking: nonBlocking,
+				LogLevel:    logLevel,
 			}
 			return builder.Build(opts)
 		}
@@ -74,6 +76,7 @@ var mapBuildCmd = &cobra.Command{
 			LockTimeout: lockTimeout,
 			NoLock:      noLock,
 			NonBlocking: nonBlocking,
+			LogLevel:    logLevel,
 		}, parallel, maxWorkers)
 	},
 }
@@ -85,9 +88,10 @@ var mapPreviewCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		mapName := args[1]
+		logLevel, _ := cmd.Flags().GetString("log-level")
 
 		builder := maps.NewBuilder()
-		return builder.GeneratePreview(worldName, mapName)
+		return builder.GeneratePreview(worldName, mapName, logLevel)
 	},
 }
 
@@ -100,6 +104,7 @@ var mapManifestCmd = &cobra.Command{
 		previewOnly, _ := cmd.Flags().GetBool("preview-only")
 		parallel, _ := cmd.Flags().GetBool("parallel")
 		maxWorkers, _ := cmd.Flags().GetInt("max-workers")
+		logLevel, _ := cmd.Flags().GetString("log-level")
 
 		// Expand all patterns to world names
 		worldNames := make([]string, 0)
@@ -125,6 +130,7 @@ var mapManifestCmd = &cobra.Command{
 				WorldName:        worldNames[0],
 				GeneratePreviews: !noPreview,
 				PreviewOnly:      previewOnly,
+				LogLevel:         logLevel,
 			}
 			err = builder.BuildManifests(worldNames[0], opts)
 		} else {
@@ -132,6 +138,7 @@ var mapManifestCmd = &cobra.Command{
 			err = manifestBatch(worldNames, maps.ManifestOptions{
 				GeneratePreviews: !noPreview,
 				PreviewOnly:      previewOnly,
+				LogLevel:         logLevel,
 			}, parallel, maxWorkers)
 		}
 
@@ -458,12 +465,16 @@ func init() {
 	mapBuildCmd.Flags().Bool("non-blocking", false, "Exit immediately if lock is held")
 	mapBuildCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
 	mapBuildCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
+	mapBuildCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
+
+	mapPreviewCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
 	mapManifestCmd.Flags().Bool("no-preview", false, "Skip preview generation")
 	mapManifestCmd.Flags().Bool("preview-only", false, "Only generate previews, skip manifest")
 	mapManifestCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
 	mapManifestCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
 	mapManifestCmd.Flags().Bool("update-index", false, "Update aggregate manifest and HTML index after manifest generation")
+	mapManifestCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
 	mapConfigGenerateCmd.Flags().Bool("force", false, "Overwrite existing config file")
 	mapConfigGenerateCmd.Flags().Int("radius", 2048, "Radius of the spawn area zoom region")

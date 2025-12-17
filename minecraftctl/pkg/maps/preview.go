@@ -12,7 +12,10 @@ import (
 )
 
 // GeneratePreview generates a preview image for a map
-func (b *Builder) GeneratePreview(worldName, mapName string) error {
+func (b *Builder) GeneratePreview(worldName, mapName, logLevel string) error {
+	if logLevel == "" {
+		logLevel = "warning"
+	}
 	worldPath := filepath.Join(b.worldsDir, worldName)
 	mapConfig, err := config.LoadMapConfig(worldPath)
 	if err != nil {
@@ -88,6 +91,7 @@ func (b *Builder) GeneratePreview(worldName, mapName string) error {
 		"--dimension", mapDef.Dimension,
 		"--area", area,
 		"--zoom", "2",
+		"--log-level", logLevel,
 		"--trim",
 		"--output", previewPath,
 	}

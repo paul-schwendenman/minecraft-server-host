@@ -44,6 +44,7 @@ type BuildOptions struct {
 	LockTimeout time.Duration // Lock timeout (0 = block forever)
 	NoLock      bool          // Disable file locking
 	NonBlocking bool          // Exit immediately if lock is held
+	LogLevel    string        // unmined log level (verbose, debug, information, warning, error, fatal)
 }
 
 // Build builds maps for a world according to its map-config.yml
@@ -96,6 +97,11 @@ func (b *Builder) Build(opts BuildOptions) error {
 	worldMapsDir := filepath.Join(b.mapsDir, opts.WorldName)
 	if err := os.MkdirAll(worldMapsDir, 0755); err != nil {
 		return fmt.Errorf("failed to create maps directory: %w", err)
+	}
+
+	// Default log level to warning if not specified
+	if opts.LogLevel == "" {
+		opts.LogLevel = "warning"
 	}
 
 	// Build each map
@@ -176,7 +182,7 @@ func (b *Builder) buildMap(
 		"--output", mapOutput,
 		"--imageformat", defaults.ImageFormat,
 		"--chunkprocessors", strconv.Itoa(defaults.ChunkProcessors),
-		"--log-level", "information",
+		"--log-level", opts.LogLevel,
 		"--zoomout", strconv.Itoa(zoomout),
 		"--zoomin", strconv.Itoa(zoomin),
 	}
@@ -197,7 +203,7 @@ func (b *Builder) buildMap(
 
 	// Build ranges
 	for _, r := range mapDef.Ranges {
-		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin); err != nil {
+		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel); err != nil {
 			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
 			continue
 		}
@@ -215,6 +221,7 @@ func (b *Builder) buildRange(
 	mapOutput string,
 	defaultZoomout int,
 	defaultZoomin int,
+	logLevel string,
 ) error {
 	// Calculate area bounds
 	x1 := r.Center[0] - r.Radius
@@ -244,7 +251,7 @@ func (b *Builder) buildRange(
 		"--output", mapOutput,
 		"--imageformat", defaults.ImageFormat,
 		"--chunkprocessors", strconv.Itoa(defaults.ChunkProcessors),
-		"--log-level", "information",
+		"--log-level", logLevel,
 		"--zoomout", strconv.Itoa(zoomout),
 		"--zoomin", strconv.Itoa(zoomin),
 		areaArg,
