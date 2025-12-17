@@ -9,7 +9,7 @@ export async function getStatus() {
 }
 
 export async function stopInstance() {
-  const resp = await fetch("/api/stop");
+  const resp = await fetch("/api/stop", { method: "POST" });
   const text = await resp.text();
 
   if (resp.ok) {
@@ -20,7 +20,7 @@ export async function stopInstance() {
 }
 
 export async function startInstance() {
-  const resp = await fetch("/api/start");
+  const resp = await fetch("/api/start", { method: "POST" });
   const text = await resp.text();
 
   if (resp.ok) {
@@ -30,7 +30,7 @@ export async function startInstance() {
   }
 }
 export async function syncDnsRecord() {
-  const resp = await fetch("/api/syncdns");
+  const resp = await fetch("/api/syncdns", { method: "POST" });
   const text = await resp.text();
 
   if (resp.ok) {

@@ -26,8 +26,9 @@ type ManifestBuilder struct {
 // ManifestOptions control manifest building behavior
 type ManifestOptions struct {
 	WorldName        string
-	GeneratePreviews bool // Generate previews during manifest creation
-	PreviewOnly      bool // Only generate previews, skip manifest
+	GeneratePreviews bool   // Generate previews during manifest creation
+	PreviewOnly      bool   // Only generate previews, skip manifest
+	LogLevel         string // unmined log level (verbose, debug, information, warning, error, fatal)
 }
 
 // NewManifestBuilder creates a new manifest builder
@@ -72,19 +73,25 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 	// Track the first overworld map's preview path for world-level preview
 	var overworldPreviewPath string
 
+	// Default log level to warning if not specified
+	logLevel := opts.LogLevel
+	if logLevel == "" {
+		logLevel = "warning"
+	}
+
 	// Build manifest for each map
 	for _, mapDef := range mapConfig.Maps {
 		// Generate preview if requested
 		if (opts.GeneratePreviews || opts.PreviewOnly) && !opts.PreviewOnly {
 			log.Info().Str("map", mapDef.Name).Msg("generating preview")
-			if err := mb.builder.GeneratePreview(worldName, mapDef.Name); err != nil {
+			if err := mb.builder.GeneratePreview(worldName, mapDef.Name, logLevel); err != nil {
 				log.Warn().Err(err).Str("map", mapDef.Name).Msg("failed to generate preview, continuing")
 				// Don't fail entire operation on preview error
 			}
 		} else if opts.PreviewOnly {
 			// Preview-only mode: generate preview without manifest
 			log.Info().Str("map", mapDef.Name).Msg("generating preview only")
-			if err := mb.builder.GeneratePreview(worldName, mapDef.Name); err != nil {
+			if err := mb.builder.GeneratePreview(worldName, mapDef.Name, logLevel); err != nil {
 				log.Warn().Err(err).Str("map", mapDef.Name).Msg("failed to generate preview")
 				// Continue with other maps
 			}
