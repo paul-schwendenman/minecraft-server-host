@@ -31,7 +31,7 @@ fi
 
 DEST="s3://$BUCKET/worlds/${WORLD}-$(date +%F-%H%M).tar.gz"
 echo "Uploading backup to $DEST"
-aws s3 cp "$TMPFILE" "$DEST"
+aws s3 cp "$TMPFILE" "$DEST" --no-progress
 
 rm -f "$TMPFILE"
 echo "✅ Backup complete for $WORLD"
