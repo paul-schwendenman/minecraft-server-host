@@ -191,7 +191,7 @@ func (b *Builder) buildMap(
 	baseArgs = b.addMapOptions(baseArgs, mapDef.Options)
 
 	log.Info().Str("map", mapDef.Name).Str("dimension", mapDef.Dimension).
-		Msg("rendering base map")
+		Strs("args", baseArgs).Msg("rendering base map")
 
 	// Build base map
 	cmd := exec.Command(b.unminedPath, baseArgs...)
@@ -257,7 +257,10 @@ func (b *Builder) buildRange(
 		areaArg,
 	}
 
-	log.Info().Str("range", r.Name).Msg("rendering range")
+	// Apply map-specific options (gndxray, topY, bottomY, shadows, etc.)
+	args = b.addMapOptions(args, mapDef.Options)
+
+	log.Info().Str("range", r.Name).Strs("args", args).Msg("rendering range")
 
 	cmd := exec.Command(b.unminedPath, args...)
 	cmd.Stdout = os.Stdout
@@ -273,10 +276,10 @@ func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string 
 		args = append(args, "--bottomY", strconv.Itoa(*opts.BottomY))
 	}
 	if opts.GndXray != nil && *opts.GndXray {
-		args = append(args, "--gndxray")
+		args = append(args, "--gndxray", "true")
 	}
 	if opts.Night != nil && *opts.Night {
-		args = append(args, "--night")
+		args = append(args, "--night", "true")
 	}
 	if opts.Shadows != nil {
 		var shadowArg string
