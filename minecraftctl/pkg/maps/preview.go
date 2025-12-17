@@ -88,10 +88,12 @@ func (b *Builder) GeneratePreview(worldName, mapName string) error {
 		"--dimension", mapDef.Dimension,
 		"--area", area,
 		"--zoom", "2",
-		"--shadows", "3d",
 		"--trim",
 		"--output", previewPath,
 	}
+
+	// Apply map-specific options (gndxray, topY, bottomY, shadows, etc.)
+	args = b.addMapOptions(args, mapDef.Options)
 
 	cmd := exec.Command(b.unminedPath, args...)
 	cmd.Stdout = os.Stdout
