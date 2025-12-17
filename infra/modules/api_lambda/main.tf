@@ -107,6 +107,10 @@ resource "aws_lambda_function" "control" {
       ZONE_ID     = var.zone_id
     }
   }
+
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+  }
 }
 
 resource "aws_lambda_function" "details" {
@@ -115,12 +119,16 @@ resource "aws_lambda_function" "details" {
 
   source_code_hash = filebase64sha256(var.details_zip_path)
   handler          = "app.main.lambda_handler"
-  runtime          = "python3.11"
+  runtime          = "python3.12"
   role             = aws_iam_role.lambda_exec.arn
 
   environment {
     variables = {
     }
+  }
+
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
   }
 }
 
@@ -131,7 +139,7 @@ resource "aws_lambda_function" "worlds" {
 
   source_code_hash = filebase64sha256(var.worlds_zip_path)
   handler          = "app.main.lambda_handler"
-  runtime          = "python3.11"
+  runtime          = "python3.13"
   timeout          = 10
 
   environment {
@@ -141,6 +149,10 @@ resource "aws_lambda_function" "worlds" {
       MAP_PREFIX  = "maps/"
       BASE_URL    = ""
     }
+  }
+
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
   }
 }
 
