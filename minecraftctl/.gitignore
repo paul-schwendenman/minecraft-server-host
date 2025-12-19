@@ -1,7 +1,6 @@
 # Built binaries
-minecraftctl
-minecraftctl-*
+/minecraftctl
+/minecraftctl-*
 
 # Distribution directory
 dist/
-
