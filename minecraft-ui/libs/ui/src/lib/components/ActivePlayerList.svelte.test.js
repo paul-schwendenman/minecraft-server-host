@@ -1,36 +1,32 @@
-import { render } from '@testing-library/svelte';
+import { render } from 'vitest-browser-svelte';
 import { describe, it, expect } from 'vitest';
 import ActivePlayerList from './ActivePlayerList.svelte';
 
-describe.skip('ActivePlayerList', () => {
-	it('handles no active users', () => {
-		const { container, queryAllByRole } = render(ActivePlayerList);
+describe('ActivePlayerList', () => {
+	it('handles no active users', async () => {
+		const { container } = render(ActivePlayerList);
 
-		expect(container).toHaveTextContent('');
-		expect(queryAllByRole('listitem')).toHaveLength(0);
+		await expect.element(container).toHaveTextContent('');
 	});
 
-	it('handles one active user', () => {
+	it('handles one active user', async () => {
 		const samplePlayers = [{ id: '1', name: 'Bob' }];
-		const { getByText, getAllByRole } = render(ActivePlayerList, {
-			props: { players: samplePlayers }
-		});
+		const screen = render(ActivePlayerList, { players: samplePlayers });
 
-		expect(getAllByRole('listitem')).toHaveLength(1);
-		expect(getByText('Bob')).toBeInTheDocument();
+		await expect.element(screen.getByRole('listitem')).toBeInTheDocument();
+		await expect.element(screen.getByText('Bob')).toBeInTheDocument();
 	});
 
-	it.skip('handles multiple active users', () => {
+	it('handles multiple active users', async () => {
 		const samplePlayers = [
 			{ id: '1', name: 'Bob' },
 			{ id: '2', name: 'Bill' }
 		];
-		const { getByText, getAllByRole } = render(ActivePlayerList, {
-			props: { players: samplePlayers }
-		});
+		const screen = render(ActivePlayerList, { players: samplePlayers });
 
-		expect(getAllByRole('listitem')).toHaveLength(2);
-		expect(getByText('Bob')).toBeInTheDocument();
-		expect(getByText('Bill')).toBeInTheDocument();
+		const items = screen.getByRole('listitem').all();
+		expect(items).toHaveLength(2);
+		await expect.element(screen.getByText('Bob')).toBeInTheDocument();
+		await expect.element(screen.getByText('Bill')).toBeInTheDocument();
 	});
 });

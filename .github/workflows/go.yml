@@ -53,10 +53,15 @@ jobs:
           go vet ./... || exit 1
           echo "✅ go vet passed"
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: minecraftctl
         run: |
-          echo "Running Go tests..."
-          go test ./... || exit 1
+          echo "Running Go tests with coverage..."
+          go test -race -coverprofile=coverage.out -covermode=atomic ./...
           echo "✅ All tests passed"
+
+      - name: Display coverage summary
+        working-directory: minecraftctl
+        run: |
+          go tool cover -func=coverage.out | tail -1
 

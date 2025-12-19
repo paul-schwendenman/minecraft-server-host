@@ -83,3 +83,25 @@ jobs:
             echo "✅ Module imports successfully"
           fi
 
+      - name: Run tests
+        working-directory: lambda/${{ matrix.lambda-name }}
+        env:
+          AWS_REGION: us-east-2
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          AWS_DEFAULT_REGION: us-east-2
+          CORS_ORIGIN: "*"
+          MAPS_BUCKET: test-bucket
+          BASE_URL: https://test.example.com
+          INSTANCE_ID: i-test123
+          REGION: us-east-2
+        run: |
+          if [ -d "tests" ]; then
+            echo "Running pytest for lambda/${{ matrix.lambda-name }}..."
+            uv sync --group dev
+            uv run pytest tests/ -v
+            echo "✅ All tests passed"
+          else
+            echo "⚠️ No tests directory found, skipping tests"
+          fi
+

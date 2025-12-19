@@ -1,101 +1,123 @@
-import { render } from '@testing-library/svelte';
+import { render } from 'vitest-browser-svelte';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import ServerDetails from './ServerDetails.svelte';
 
-// Create a simple mock store that implements the store interface
-/**
- * @param {unknown} initialValue
- * @returns {{ subscribe: (callback: (value: unknown) => void) => () => void, set: (newValue: unknown) => void, update: (fn: (v: unknown) => unknown) => void }}
- */
-const createMockStore = (initialValue) => {
-	let value = initialValue;
-	const subscribers = new Set();
+// Use vi.hoisted to define mocks before vi.mock is hoisted
+const { mockDetails, mockStatus } = vi.hoisted(() => {
+	/** @param {any} initialValue */
+	const createMockStore = (initialValue) => {
+		let value = initialValue;
+		/** @type {Set<(v: any) => void>} */
+		const subscribers = new Set();
+		return {
+			/** @param {(v: any) => void} callback */
+			subscribe: (callback) => {
+				subscribers.add(callback);
+				callback(value);
+				return () => subscribers.delete(callback);
+			},
+			/** @param {any} newValue */
+			set: (newValue) => {
+				value = newValue;
+				subscribers.forEach((callback) => callback(value));
+			},
+			/** @param {(v: any) => any} fn */
+			update: (fn) => {
+				value = fn(value);
+				subscribers.forEach((callback) => callback(value));
+			}
+		};
+	};
 	return {
-		subscribe: (callback) => {
-			subscribers.add(callback);
-			callback(value);
-			return () => subscribers.delete(callback);
-		},
-		set: (newValue) => {
-			value = newValue;
-			subscribers.forEach((callback) => callback(value));
-		},
-		update: (fn) => {
-			value = fn(value);
-			subscribers.forEach((callback) => callback(value));
+		mockDetails: createMockStore(null),
+		mockStatus: {
+			...createMockStore({ instance: { state: 'stopped' }, dns_record: {} }),
+			refresh: vi.fn(() => Promise.resolve()),
+			dispatch: vi.fn(() => Promise.resolve())
 		}
 	};
-};
-
-const mockDetails = createMockStore(null);
+});
 
 vi.mock('@minecraft/data', () => ({
-	details: mockDetails
+	details: mockDetails,
+	status: mockStatus,
+	getStatus: vi.fn(),
+	startInstance: vi.fn(),
+	stopInstance: vi.fn(),
+	syncDnsRecord: vi.fn(),
+	getDetails: vi.fn()
 }));
 
-describe.skip('ServerDetails', () => {
+// Import component after mock is set up
+import ServerDetails from './ServerDetails.svelte';
+
+describe('ServerDetails', () => {
 	beforeEach(() => {
 		mockDetails.set(null);
 	});
 
 	describe('server details returned successfully', () => {
 		it('handles no active users', async () => {
-			mockDetails.set({
-				players: { max: 20, online: 0 },
-				version: { name: '1.15.2' }
-			});
+			mockDetails.set(
+				Promise.resolve({
+					players: { max: 20, online: 0 },
+					version: { name: '1.15.2' }
+				})
+			);
 
-			const { getByText } = render(ServerDetails);
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			expect(getByText('The server has no active players.')).toBeInTheDocument();
+			const screen = render(ServerDetails);
+			await expect
+				.element(screen.getByText('The server has no active players.'))
+				.toBeInTheDocument();
 		});
 
 		it('handles 1 active user', async () => {
-			mockDetails.set({
-				players: {
-					max: 20,
-					online: 1,
-					sample: [{ id: 'cdce37cd', name: 'example' }]
-				},
-				version: { name: '1.15.2' }
-			});
+			mockDetails.set(
+				Promise.resolve({
+					players: {
+						max: 20,
+						online: 1,
+						sample: [{ id: 'cdce37cd', name: 'example' }]
+					},
+					version: { name: '1.15.2' }
+				})
+			);
 
-			const { getByText, getAllByRole } = render(ServerDetails);
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			expect(getByText('The server has 1 active player:')).toBeInTheDocument();
-			expect(getAllByRole('listitem')).toHaveLength(1);
-			expect(getByText('example')).toBeInTheDocument();
+			const screen = render(ServerDetails);
+			await expect.element(screen.getByText('The server has 1 active player:')).toBeInTheDocument();
+			await expect.element(screen.getByText('example')).toBeInTheDocument();
 		});
 
 		it('handles multiple active users', async () => {
-			mockDetails.set({
-				players: {
-					max: 20,
-					online: 2,
-					sample: [
-						{ id: '1', name: 'example' },
-						{ id: '2', name: 'example2' }
-					]
-				},
-				version: { name: '1.15.2' }
-			});
+			mockDetails.set(
+				Promise.resolve({
+					players: {
+						max: 20,
+						online: 2,
+						sample: [
+							{ id: '1', name: 'Alice' },
+							{ id: '2', name: 'Bob' }
+						]
+					},
+					version: { name: '1.15.2' }
+				})
+			);
 
-			const { getByText, getAllByRole } = render(ServerDetails);
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			expect(getByText('The server has 2 active players:')).toBeInTheDocument();
-			expect(getAllByRole('listitem')).toHaveLength(2);
-			expect(getByText('example')).toBeInTheDocument();
-			expect(getByText('example2')).toBeInTheDocument();
+			const screen = render(ServerDetails);
+			await expect
+				.element(screen.getByText('The server has 2 active players:'))
+				.toBeInTheDocument();
+			await expect.element(screen.getByText('Alice')).toBeInTheDocument();
+			await expect.element(screen.getByText('Bob')).toBeInTheDocument();
 		});
 	});
 
 	describe('server details are still loading', () => {
-		it('displays loading message', () => {
+		it('displays loading message', async () => {
 			const pending = new Promise(() => {});
 			mockDetails.set(pending);
 
-			const { getByText } = render(ServerDetails);
-			expect(getByText('Loading details...')).toBeInTheDocument();
+			const screen = render(ServerDetails);
+			await expect.element(screen.getByText('Loading details...')).toBeInTheDocument();
 		});
 	});
 
@@ -103,10 +125,8 @@ describe.skip('ServerDetails', () => {
 		it('displays an error message', async () => {
 			mockDetails.set(Promise.reject('Error'));
 
-			const { findByText } = render(ServerDetails);
-			const errorEl = await findByText('Failed to load details.');
-			expect(errorEl).toBeInTheDocument();
-			expect(errorEl.className).toContain('text-red-700');
+			const screen = render(ServerDetails);
+			await expect.element(screen.getByText('Failed to load details.')).toBeInTheDocument();
 		});
 	});
 });

@@ -12,7 +12,7 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest --environment=node",
-		"test": "echo 'tests skipped for @minecraft/ui' && exit 0",
+		"test": "vitest --environment=node --run",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build"
 	},

@@ -7,6 +7,31 @@ on:
       - '.github/workflows/packer.yml'
 
 jobs:
+  test-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install bats and shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats shellcheck
+
+      - name: Run shellcheck on scripts
+        working-directory: packer
+        run: |
+          echo "Running shellcheck on packer scripts..."
+          bats tests/shellcheck.bats
+          echo "✅ All scripts pass shellcheck"
+
+      - name: Run bats tests
+        working-directory: packer
+        run: |
+          echo "Running bats tests..."
+          bats tests/autoshutdown.bats tests/rebuild-map.bats tests/create-world.bats
+          echo "✅ All bats tests passed"
+
   validate:
     runs-on: ubuntu-latest
     steps:
