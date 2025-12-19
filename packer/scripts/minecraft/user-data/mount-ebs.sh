@@ -4,7 +4,7 @@ set -euxo pipefail
 MOUNT_POINT="${MOUNT_POINT:-/srv/minecraft-server}"
 
 # Wait until at least 2 disks are present (root + data)
-for i in $(seq 1 60); do
+for _ in $(seq 1 60); do
   DISK_COUNT=$(lsblk -dn -o TYPE | grep -c disk || true)
   [ "$DISK_COUNT" -ge 2 ] && break
   sleep 2

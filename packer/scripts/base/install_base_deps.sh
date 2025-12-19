@@ -54,7 +54,6 @@ if ! command -v yq >/dev/null 2>&1; then
 fi
 
 # --- Install uNmINeD CLI ---
-MINECRAFT_GROUP="minecraft"
 UNMINED_DIR="/opt/unmined"
 MAP_DIR="/var/www/map"
 UNMINED_VERSION="dev"

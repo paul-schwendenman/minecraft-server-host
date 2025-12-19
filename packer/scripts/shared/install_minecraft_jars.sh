@@ -18,7 +18,7 @@ TOTAL_JARS=$(echo "$JARS_JSON" | jq '. | length')
 echo "[*] Processing ${TOTAL_JARS} Minecraft JAR(s)"
 
 # Download JARs (skip if already exists)
-echo "$JARS_JSON" | jq -r '.[] | "\(.version)|\(.url)|\(.sha256)"' | while IFS='|' read -r version url sha256; do
+echo "$JARS_JSON" | jq -r '.[] | "\(.version)|\(.url)"' | while IFS='|' read -r version url; do
   JAR_FILE="${JARS_DIR}/minecraft_server_${version}.jar"
 
   if [ -f "$JAR_FILE" ]; then

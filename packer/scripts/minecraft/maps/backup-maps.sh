@@ -42,7 +42,9 @@ backup_world() {
 if [[ "$WORLD" == "all" ]]; then
   echo "Backing up all maps under $BASE_DIR"
   for d in "${BASE_DIR}"/*; do
-    [[ -d "$d" ]] && backup_world "$(basename "$d")" || true
+    if [[ -d "$d" ]]; then
+      backup_world "$(basename "$d")"
+    fi
   done
 
   # Backup root-level files (manifest and index)
