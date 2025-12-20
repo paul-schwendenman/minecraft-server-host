@@ -25,10 +25,24 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 
 | Command | File | Description |
 |---------|------|-------------|
-| `world` | `cmd/minecraftctl/world.go` | list, info, create, register, upgrade |
-| `map` | `cmd/minecraftctl/map.go` | build, preview, manifest, index, config |
+| `world` | `cmd/minecraftctl/world.go` | list, info, create, register, upgrade, status, start, stop, restart, enable, disable, logs, backup |
+| `map` | `cmd/minecraftctl/map.go` | build, preview, manifest, index, config, backup, rebuild, refresh |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
+
+#### Service Management Commands
+
+The CLI includes systemd service management commands for controlling Minecraft services:
+
+**World service commands:**
+- `world status|start|stop|restart|enable|disable <world>` - Control `minecraft@<world>.service`
+- `world logs <world>` - View logs via journalctl (`-f` to follow, `-n` for lines)
+- `world backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-world-backup@<world>`
+
+**Map service commands:**
+- `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`
+- `map rebuild status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-rebuild@<world>`
+- `map refresh status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-refresh@<world>`
 
 ### Packages
 
@@ -40,6 +54,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | `pkg/rcon` | RCON client |
 | `pkg/config` | Global config via Viper |
 | `pkg/nbt` | NBT level.dat reader |
+| `pkg/systemd` | Systemctl/journalctl wrapper functions |
 
 ## Key Concepts
 
