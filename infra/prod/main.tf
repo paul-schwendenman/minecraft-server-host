@@ -89,14 +89,25 @@ module "web_ui" {
   geo_whitelist = []
 }
 
-module "dns_records" {
-  source = "../modules/dns_records"
-
-  zone_id        = aws_route53_zone.prod.zone_id
-  dns_name       = aws_route53_zone.prod.name
-  ipv4_addresses = [module.mc_stack.public_ip]
-  ipv6_addresses = module.mc_stack.ipv6_addresses
-}
+# Temporarily commented out for import - will uncomment after apply
+#
+# TODO: Fix underlying dependency issue in dns_records module
+# The module uses `count` based on `var.ipv6_addresses != null` (line 12 of dns_records/main.tf)
+# but ipv6_addresses comes from module.mc_stack.ipv6_addresses which requires the EC2 instance
+# to exist first. This creates a chicken-and-egg problem during terraform import.
+# Possible fixes:
+#   1. Use `length(var.ipv6_addresses) > 0` instead of `!= null` check
+#   2. Make the AAAA record a separate resource not dependent on count
+#   3. Use lifecycle { ignore_changes } or moved blocks
+#
+# module "dns_records" {
+#   source = "../modules/dns_records"
+#
+#   zone_id        = aws_route53_zone.prod.zone_id
+#   dns_name       = aws_route53_zone.prod.name
+#   ipv4_addresses = [module.mc_stack.public_ip]
+#   ipv6_addresses = module.mc_stack.ipv6_addresses
+# }
 
 output "server_public_ip" {
   value = module.mc_stack.public_ip
