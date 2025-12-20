@@ -8,6 +8,15 @@ Go CLI for managing Minecraft server worlds, maps, JARs, and RCON.
 go build -o minecraftctl ./cmd/minecraftctl
 ```
 
+## Test & Lint
+
+```bash
+go test ./...                    # Run all tests
+go test -race ./...              # Run with race detection
+go fmt ./...                     # Format code
+go vet ./...                     # Static analysis
+```
+
 ## Architecture
 
 Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/minecraftctl/main.go`

@@ -21,6 +21,15 @@ make deploy                  # Deploy lambdas + UI to AWS (manual)
 
 **Packer AMIs**: See `packer/readme.rst` for AMI build commands.
 
+## Testing & Validation
+
+| Subproject | Command |
+|------------|---------|
+| minecraftctl | `cd minecraftctl && go test ./...` |
+| lambda/* | `cd lambda/<name> && uv run pytest tests/ -v` |
+| minecraft-ui | `cd minecraft-ui && pnpm -r test` |
+| packer | `cd packer && bats tests/*.bats` |
+
 ## CI/CD Deployments
 
 Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md` for details.

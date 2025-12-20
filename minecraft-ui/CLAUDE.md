@@ -32,6 +32,15 @@ cd apps/manager && pnpm build   # Output: dist/
 cd apps/worlds && pnpm build    # Output: build/
 ```
 
+## Test & Lint
+
+```bash
+pnpm -r test                     # Run all tests
+pnpm -r lint                     # Run linting
+pnpm -r check                    # Type checking (svelte-check)
+pnpm -r format                   # Format code (prettier)
+```
+
 ## Deploy
 
 **CI/CD (recommended):**
