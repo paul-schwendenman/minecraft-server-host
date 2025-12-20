@@ -14,3 +14,9 @@ variable "public_subnet_cidr" {
   type        = string
   default     = "10.0.1.0/24"
 }
+
+variable "availability_zone" {
+  description = "Availability zone for the public subnet. If not specified, AWS chooses one."
+  type        = string
+  default     = null
+}

@@ -30,6 +30,7 @@ module "networking" {
   name               = "minecraft-prod"
   vpc_cidr           = "10.1.0.0/16"
   public_subnet_cidr = "10.1.1.0/24"
+  availability_zone  = "us-east-2c"  # Must match existing EBS volume
 }
 
 module "s3_buckets" {
@@ -97,9 +98,8 @@ module "dns_records" {
   ipv4_addresses = [module.mc_stack.public_ip]
   ipv6_addresses = module.mc_stack.ipv6_addresses
 
-  # Set to false for initial apply when EC2 doesn't exist yet, then set to true
-  create_a_record    = false
-  create_aaaa_record = false
+  create_a_record    = true
+  create_aaaa_record = true
 }
 
 output "server_public_ip" {
