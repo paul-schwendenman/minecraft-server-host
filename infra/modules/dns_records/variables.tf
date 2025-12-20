@@ -11,13 +11,25 @@ variable "dns_name" {
 variable "ipv4_addresses" {
   description = "IPv4 addresses for the A record. Optional."
   type        = list(string)
-  default     = null
+  default     = []
 }
 
 variable "ipv6_addresses" {
   description = "IPv6 addresses for the AAAA record. Optional."
   type        = list(string)
-  default     = null
+  default     = []
+}
+
+variable "create_a_record" {
+  description = "Whether to create the A record. Set to true after EC2 instance exists."
+  type        = bool
+  default     = false
+}
+
+variable "create_aaaa_record" {
+  description = "Whether to create the AAAA record. Set to true after EC2 instance exists."
+  type        = bool
+  default     = false
 }
 
 variable "ttl" {
