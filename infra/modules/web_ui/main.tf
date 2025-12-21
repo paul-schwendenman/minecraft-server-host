@@ -11,7 +11,7 @@ resource "aws_cloudfront_origin_access_control" "webapp" {
 }
 
 resource "aws_cloudfront_function" "maps_index" {
-  name    = "maps-append-index"
+  name    = "${var.name}-maps-append-index"
   runtime = "cloudfront-js-1.0"
   comment = "Append index.html for directory-style requests under /maps/*"
   publish = true

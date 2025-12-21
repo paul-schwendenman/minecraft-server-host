@@ -25,6 +25,14 @@ make lambdas    # Build all
 
 **Manual:** `make deploy-lambdas` (requires AWS credentials)
 
+## Test
+
+```bash
+cd lambda/<name>
+uv sync --group dev              # Install dev dependencies
+uv run pytest tests/ -v          # Run tests
+```
+
 ## Test Environment
 
 - `minecraft-test-control`

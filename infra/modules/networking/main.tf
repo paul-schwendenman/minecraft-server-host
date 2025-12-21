@@ -20,6 +20,7 @@ resource "aws_internet_gateway" "this" {
 resource "aws_subnet" "public" {
   vpc_id                          = aws_vpc.this.id
   cidr_block                      = var.public_subnet_cidr
+  availability_zone               = var.availability_zone
   map_public_ip_on_launch         = true
   ipv6_cidr_block                 = cidrsubnet(aws_vpc.this.ipv6_cidr_block, 8, 0)
   assign_ipv6_address_on_creation = true

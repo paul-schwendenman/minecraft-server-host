@@ -3,11 +3,11 @@ package worlds
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/paul/minecraftctl/pkg/config"
+	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/rs/zerolog/log"
 )
 
@@ -27,28 +27,14 @@ type UpgradeResult struct {
 
 // IsServiceRunning checks if the minecraft service for a world is running
 func IsServiceRunning(worldName string) (bool, error) {
-	serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-	cmd := exec.Command("systemctl", "is-active", "--quiet", serviceName)
-	err := cmd.Run()
-	if err != nil {
-		// is-active returns non-zero for inactive/failed services
-		if _, ok := err.(*exec.ExitError); ok {
-			return false, nil
-		}
-		return false, fmt.Errorf("failed to check service status: %w", err)
-	}
-	return true, nil
+	serviceName := systemd.FormatUnitName("minecraft", worldName, systemd.UnitService)
+	return systemd.IsActive(serviceName)
 }
 
 // StopService stops the minecraft service for a world
 func StopService(worldName string) error {
-	serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-	cmd := exec.Command("systemctl", "stop", serviceName)
-	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to stop service %s: %w (output: %s)",
-			serviceName, err, strings.TrimSpace(string(output)))
-	}
-	return nil
+	serviceName := systemd.FormatUnitName("minecraft", worldName, systemd.UnitService)
+	return systemd.Stop(serviceName)
 }
 
 // GetCurrentVersion reads the current version from the server.jar symlink

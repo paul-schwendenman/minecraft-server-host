@@ -1,7 +1,6 @@
 package worlds
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/paul/minecraftctl/pkg/config"
+	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/paul/minecraftctl/pkg/nbt"
 	"github.com/rs/zerolog/log"
 )
@@ -253,19 +253,12 @@ func CreateWorld(worldName string, opts CreateWorldOptions) error {
 	// Load RCON settings from /etc/minecraft.env
 	rconPort := cfg.Rcon.Port
 	rconPassword := cfg.Rcon.Password
-	if envFile, err := os.Open("/etc/minecraft.env"); err == nil {
-		defer envFile.Close()
-		scanner := bufio.NewScanner(envFile)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
-			if strings.HasPrefix(line, "RCON_PORT=") {
-				portStr := strings.TrimPrefix(line, "RCON_PORT=")
-				if port, err := strconv.Atoi(portStr); err == nil {
-					rconPort = port
-				}
-			} else if strings.HasPrefix(line, "RCON_PASSWORD=") {
-				rconPassword = strings.TrimPrefix(line, "RCON_PASSWORD=")
-			}
+	if ef, err := envfile.Load(envfile.DefaultMinecraftEnvPath); err == nil {
+		if port, err := ef.GetInt("RCON_PORT"); err == nil {
+			rconPort = port
+		}
+		if pwd, ok := ef.Get("RCON_PASSWORD"); ok {
+			rconPassword = pwd
 		}
 	} else {
 		log.Warn().Msg("/etc/minecraft.env not found, using config values for RCON")

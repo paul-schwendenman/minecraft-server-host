@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/paul/minecraftctl/pkg/worlds"
 	"github.com/spf13/cobra"
 )
@@ -87,6 +88,15 @@ var (
 var (
 	upgradeVersion string
 	upgradeStop    bool
+)
+
+// Logs command flags
+var (
+	logsFollow  bool
+	logsLines   int
+	logsSince   string
+	logsOutput  string
+	logsNoPager bool
 )
 
 var worldCreateCmd = &cobra.Command{
@@ -190,6 +200,163 @@ one-way and cannot be reverted.`,
 	},
 }
 
+// Service management commands
+var worldStatusCmd = &cobra.Command{
+	Use:   "status <world>",
+	Short: "Show status of the Minecraft server service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Status(unit)
+	},
+}
+
+var worldStartCmd = &cobra.Command{
+	Use:   "start <world>",
+	Short: "Start the Minecraft server service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Start(unit)
+	},
+}
+
+var worldStopCmd = &cobra.Command{
+	Use:   "stop <world>",
+	Short: "Stop the Minecraft server service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Stop(unit)
+	},
+}
+
+var worldRestartCmd = &cobra.Command{
+	Use:   "restart <world>",
+	Short: "Restart the Minecraft server service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Restart(unit)
+	},
+}
+
+var worldEnableCmd = &cobra.Command{
+	Use:   "enable <world>",
+	Short: "Enable the Minecraft server service to start on boot",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Enable(unit)
+	},
+}
+
+var worldDisableCmd = &cobra.Command{
+	Use:   "disable <world>",
+	Short: "Disable the Minecraft server service from starting on boot",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		return systemd.Disable(unit)
+	},
+}
+
+var worldLogsCmd = &cobra.Command{
+	Use:   "logs <world>",
+	Short: "View logs for the Minecraft server service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		opts := systemd.LogOptions{
+			Follow:  logsFollow,
+			Lines:   logsLines,
+			Since:   logsSince,
+			Output:  logsOutput,
+			NoPager: logsNoPager,
+		}
+		return systemd.Logs(unit, opts)
+	},
+}
+
+// World backup commands
+var worldBackupCmd = &cobra.Command{
+	Use:   "backup",
+	Short: "Manage world backup service",
+}
+
+var worldBackupStatusCmd = &cobra.Command{
+	Use:   "status <world>",
+	Short: "Show status of the world backup service and timer",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		service := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
+		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
+		fmt.Println("=== Service ===")
+		if err := systemd.Status(service); err != nil {
+			// Continue to show timer status even if service status fails
+		}
+		fmt.Println("\n=== Timer ===")
+		return systemd.Status(timer)
+	},
+}
+
+var worldBackupStartCmd = &cobra.Command{
+	Use:   "start <world>",
+	Short: "Trigger a world backup now",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
+		return systemd.Start(unit)
+	},
+}
+
+var worldBackupStopCmd = &cobra.Command{
+	Use:   "stop <world>",
+	Short: "Stop a running world backup",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
+		return systemd.Stop(unit)
+	},
+}
+
+var worldBackupEnableCmd = &cobra.Command{
+	Use:   "enable <world>",
+	Short: "Enable the world backup timer",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
+		return systemd.EnableNow(timer)
+	},
+}
+
+var worldBackupDisableCmd = &cobra.Command{
+	Use:   "disable <world>",
+	Short: "Disable the world backup timer",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
+		return systemd.Disable(timer)
+	},
+}
+
+var worldBackupLogsCmd = &cobra.Command{
+	Use:   "logs <world>",
+	Short: "View logs for the world backup service",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
+		opts := systemd.LogOptions{
+			Follow:  logsFollow,
+			Lines:   logsLines,
+			Since:   logsSince,
+			Output:  logsOutput,
+			NoPager: logsNoPager,
+		}
+		return systemd.Logs(unit, opts)
+	},
+}
+
 func init() {
 	worldCmd.AddCommand(worldListCmd)
 	worldCmd.AddCommand(worldInfoCmd)
@@ -197,13 +364,46 @@ func init() {
 	worldCmd.AddCommand(worldRegisterCmd)
 	worldCmd.AddCommand(worldUpgradeCmd)
 
+	// Service management commands
+	worldCmd.AddCommand(worldStatusCmd)
+	worldCmd.AddCommand(worldStartCmd)
+	worldCmd.AddCommand(worldStopCmd)
+	worldCmd.AddCommand(worldRestartCmd)
+	worldCmd.AddCommand(worldEnableCmd)
+	worldCmd.AddCommand(worldDisableCmd)
+	worldCmd.AddCommand(worldLogsCmd)
+
+	// World backup commands
+	worldCmd.AddCommand(worldBackupCmd)
+	worldBackupCmd.AddCommand(worldBackupStatusCmd)
+	worldBackupCmd.AddCommand(worldBackupStartCmd)
+	worldBackupCmd.AddCommand(worldBackupStopCmd)
+	worldBackupCmd.AddCommand(worldBackupEnableCmd)
+	worldBackupCmd.AddCommand(worldBackupDisableCmd)
+	worldBackupCmd.AddCommand(worldBackupLogsCmd)
+
+	// Create command flags
 	worldCreateCmd.Flags().StringVar(&createVersion, "version", "", "Minecraft server version (e.g., 1.21.1)")
 	worldCreateCmd.MarkFlagRequired("version")
 	worldCreateCmd.Flags().StringVar(&createSeed, "seed", "", "World seed (optional)")
 	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
 	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling and starting systemd service")
 
+	// Upgrade command flags
 	worldUpgradeCmd.Flags().StringVar(&upgradeVersion, "version", "", "Target Minecraft server version (e.g., 1.21.11)")
 	worldUpgradeCmd.MarkFlagRequired("version")
 	worldUpgradeCmd.Flags().BoolVar(&upgradeStop, "stop", false, "Automatically stop the server if running")
+
+	// Logs command flags (shared between world logs and world backup logs)
+	worldLogsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, "Follow log output")
+	worldLogsCmd.Flags().IntVarP(&logsLines, "lines", "n", 100, "Number of lines to show")
+	worldLogsCmd.Flags().StringVar(&logsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
+	worldLogsCmd.Flags().StringVarP(&logsOutput, "output", "o", "", "Output format (short, json, cat)")
+	worldLogsCmd.Flags().BoolVar(&logsNoPager, "no-pager", false, "Disable paging")
+
+	worldBackupLogsCmd.Flags().BoolVarP(&logsFollow, "follow", "f", false, "Follow log output")
+	worldBackupLogsCmd.Flags().IntVarP(&logsLines, "lines", "n", 100, "Number of lines to show")
+	worldBackupLogsCmd.Flags().StringVar(&logsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
+	worldBackupLogsCmd.Flags().StringVarP(&logsOutput, "output", "o", "", "Output format (short, json, cat)")
+	worldBackupLogsCmd.Flags().BoolVar(&logsNoPager, "no-pager", false, "Disable paging")
 }
