@@ -18,8 +18,8 @@ type entry struct {
 
 // Properties represents a Minecraft server.properties file
 type Properties struct {
-	entries []entry           // ordered list of entries (preserves file order)
-	index   map[string]int    // key -> index in entries
+	entries []entry        // ordered list of entries (preserves file order)
+	index   map[string]int // key -> index in entries
 	path    string
 }
 

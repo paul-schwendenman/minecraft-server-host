@@ -17,11 +17,11 @@ const (
 
 // LogOptions configures journalctl output
 type LogOptions struct {
-	Follow   bool   // -f flag
-	Lines    int    // -n flag (default: 100)
-	Since    string // --since flag
-	Output   string // -o flag (short, json, etc.)
-	NoPager  bool   // --no-pager flag
+	Follow  bool   // -f flag
+	Lines   int    // -n flag (default: 100)
+	Since   string // --since flag
+	Output  string // -o flag (short, json, etc.)
+	NoPager bool   // --no-pager flag
 }
 
 // FormatUnitName constructs the full unit name from components
