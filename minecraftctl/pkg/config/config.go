@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
@@ -86,6 +87,22 @@ var globalConfig *GlobalConfig
 
 // Init initializes the configuration system
 func Init(cfgFile string) error {
+	return InitWithEnvFile(cfgFile, "")
+}
+
+// InitWithEnvFile initializes the configuration system with an optional env file
+func InitWithEnvFile(cfgFile, envFilePath string) error {
+	// Auto-load minecraft.env to set RCON environment variables
+	// This makes RCON commands work without manually exporting env vars
+	if envFilePath == "" {
+		envFilePath = envfile.DefaultMinecraftEnvPath
+	}
+	if ef, err := envfile.Load(envFilePath); err == nil {
+		// Only export vars that aren't already set (env vars take precedence)
+		ef.ExportIfNotSet()
+	}
+	// Ignore error if env file doesn't exist - it's optional
+
 	// Set defaults
 	viper.SetDefault("worlds_dir", DefaultWorldsDir)
 	viper.SetDefault("maps_dir", DefaultMapsDir)

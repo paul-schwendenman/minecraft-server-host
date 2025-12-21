@@ -13,6 +13,7 @@ import (
 
 var (
 	cfgFile   string
+	envFile   string
 	verbose   bool
 	worldsDir string
 	mapsDir   string
@@ -51,8 +52,8 @@ func newRootCmd() *cobra.Command {
 				zerolog.SetGlobalLevel(zerolog.InfoLevel)
 			}
 
-			// Initialize config
-			if err := config.Init(cfgFile); err != nil {
+			// Initialize config (also loads /etc/minecraft.env if present)
+			if err := config.InitWithEnvFile(cfgFile, envFile); err != nil {
 				return fmt.Errorf("failed to initialize config: %w", err)
 			}
 
@@ -71,6 +72,7 @@ func newRootCmd() *cobra.Command {
 
 	// Global flags
 	cmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is /etc/minecraftctl.yml or ~/.config/minecraftctl.yml)")
+	cmd.PersistentFlags().StringVar(&envFile, "env-file", "", "environment file to load (default: /etc/minecraft.env)")
 	cmd.PersistentFlags().StringVar(&worldsDir, "worlds-dir", "", "directory containing Minecraft worlds")
 	cmd.PersistentFlags().StringVar(&mapsDir, "maps-dir", "", "directory for map output")
 	cmd.PersistentFlags().StringVar(&jarsDir, "jars-dir", "", "directory containing Minecraft server JARs (default: /opt/minecraft/jars)")
