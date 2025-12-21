@@ -4,6 +4,12 @@ variable "aws_profile" {
   default     = "minecraft"
 }
 
+variable "ami_id" {
+  description = "AMI ID for the Minecraft EC2 instance. If null, uses the latest minecraft-ubuntu-* AMI."
+  type        = string
+  default     = null
+}
+
 provider "aws" {
   region  = "us-east-2"
   profile = var.aws_profile
@@ -30,7 +36,7 @@ module "networking" {
   name               = "minecraft-prod"
   vpc_cidr           = "10.1.0.0/16"
   public_subnet_cidr = "10.1.1.0/24"
-  availability_zone  = "us-east-2c"  # Must match existing EBS volume
+  availability_zone  = "us-east-2c"
 }
 
 module "s3_buckets" {
@@ -48,18 +54,18 @@ module "ec2_role" {
 module "mc_stack" {
   source           = "../modules/mc_stack"
   name             = "minecraft-prod"
-  ami_id           = data.aws_ami.minecraft.id
+  ami_id           = var.ami_id != null ? var.ami_id : data.aws_ami.minecraft.id
   instance_type    = "t3.small"
   vpc_id           = module.networking.vpc_id
   subnet_id        = module.networking.public_subnet_id
   key_name         = "minecraft-packer"
   root_volume_size = 8
-  data_volume_size = 8                        # Match existing EBS size
+  data_volume_size = 8
   ssh_cidr_blocks = [
     "104.230.245.46/32",
   ]
   world_version     = "1.21.4"
-  availability_zone = "us-east-2c"            # MUST match existing EBS
+  availability_zone = "us-east-2c"
 
   iam_instance_profile = module.ec2_role.instance_profile_name
   map_bucket           = module.s3_buckets.map_bucket_name
@@ -124,4 +130,19 @@ output "webapp_url" {
 
 output "map_bucket_name" {
   value = module.s3_buckets.map_bucket_name
+}
+
+output "latest_ami_id" {
+  description = "The latest available minecraft-ubuntu-* AMI ID"
+  value       = data.aws_ami.minecraft.id
+}
+
+output "latest_ami_name" {
+  description = "The name of the latest available minecraft-ubuntu-* AMI"
+  value       = data.aws_ami.minecraft.name
+}
+
+output "current_ami_id" {
+  description = "The AMI ID currently configured for the EC2 instance"
+  value       = var.ami_id != null ? var.ami_id : data.aws_ami.minecraft.id
 }
