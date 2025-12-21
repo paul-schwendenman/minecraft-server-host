@@ -16,6 +16,10 @@ resource "aws_cloudfront_function" "maps_index" {
   comment = "Append index.html for directory-style requests under /maps/*"
   publish = true
   code    = file("${path.module}/cf-functions/maps-append-index.js")
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_cloudfront_distribution" "webapp" {
