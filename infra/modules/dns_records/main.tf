@@ -5,6 +5,12 @@ resource "aws_route53_record" "a_record" {
   type    = "A"
   ttl     = var.ttl
   records = var.ipv4_addresses
+
+  lifecycle {
+    ignore_changes = [
+      records
+    ]
+  }
 }
 
 # --- AAAA record (IPv6) ---
