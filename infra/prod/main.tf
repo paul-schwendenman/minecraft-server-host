@@ -55,7 +55,7 @@ module "mc_stack" {
   source           = "../modules/mc_stack"
   name             = "minecraft-prod"
   ami_id           = var.ami_id != null ? var.ami_id : data.aws_ami.minecraft.id
-  instance_type    = "t3.small"
+  instance_type    = "t3.medium"
   vpc_id           = module.networking.vpc_id
   subnet_id        = module.networking.public_subnet_id
   key_name         = "minecraft-packer"
