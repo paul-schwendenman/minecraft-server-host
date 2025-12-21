@@ -38,6 +38,12 @@ jobs:
         working-directory: minecraft-ui
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace libs
+        working-directory: minecraft-ui
+        run: |
+          pnpm --filter @minecraft/data build
+          pnpm --filter @minecraft/ui build
+
       - name: Build manager app
         working-directory: minecraft-ui/apps/manager
         run: pnpm run build
