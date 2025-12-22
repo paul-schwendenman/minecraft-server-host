@@ -45,3 +45,15 @@ variable "map_bucket_domain_name" {
   description = "The regional domain name of the map S3 bucket"
   type        = string
 }
+
+variable "custom_domain" {
+  description = "Optional custom domain for CloudFront (e.g., www.example.com)"
+  type        = string
+  default     = ""
+}
+
+variable "acm_certificate_arn" {
+  description = "ARN of ACM certificate for custom domain (required if custom_domain is set)"
+  type        = string
+  default     = ""
+}
