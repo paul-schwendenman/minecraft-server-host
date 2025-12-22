@@ -20,7 +20,7 @@ resource "aws_acm_certificate" "cert" {
   }
 
   tags = {
-    Name = var.domain
+    Name = replace(var.domain, "*", "wildcard ")
   }
 }
 
