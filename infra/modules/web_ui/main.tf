@@ -25,6 +25,7 @@ resource "aws_cloudfront_function" "maps_index" {
 resource "aws_cloudfront_distribution" "webapp" {
   enabled             = true
   default_root_object = "index.html"
+  aliases             = var.custom_domain != "" ? [var.custom_domain] : []
 
   ##########################################
   # ORIGINS
@@ -161,8 +162,20 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  viewer_certificate {
-    cloudfront_default_certificate = true
+  dynamic "viewer_certificate" {
+    for_each = var.acm_certificate_arn != "" ? [1] : []
+    content {
+      acm_certificate_arn      = var.acm_certificate_arn
+      ssl_support_method       = "sni-only"
+      minimum_protocol_version = "TLSv1.2_2021"
+    }
+  }
+
+  dynamic "viewer_certificate" {
+    for_each = var.acm_certificate_arn == "" ? [1] : []
+    content {
+      cloudfront_default_certificate = true
+    }
   }
 }
 
@@ -223,8 +236,24 @@ resource "aws_s3_bucket_policy" "maps" {
 ###############################################
 # DNS (optional)
 ###############################################
+
+# ALIAS record for custom domain (preferred for CloudFront)
+resource "aws_route53_record" "webapp_custom_domain" {
+  count   = var.custom_domain != "" && var.zone_id != "" ? 1 : 0
+  name    = var.custom_domain
+  type    = "A"
+  zone_id = var.zone_id
+
+  alias {
+    name                   = aws_cloudfront_distribution.webapp.domain_name
+    zone_id                = aws_cloudfront_distribution.webapp.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
+# Legacy CNAME record (for backward compatibility with dns_name variable)
 resource "aws_route53_record" "webapp_dns" {
-  count   = var.dns_name != "" && var.zone_id != "" ? 1 : 0
+  count   = var.dns_name != "" && var.zone_id != "" && var.custom_domain == "" ? 1 : 0
   name    = var.dns_name
   type    = "CNAME"
   zone_id = var.zone_id

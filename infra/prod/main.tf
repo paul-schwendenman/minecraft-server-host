@@ -15,6 +15,13 @@ provider "aws" {
   profile = var.aws_profile
 }
 
+# us-east-1 provider required for ACM certificates used by CloudFront
+provider "aws" {
+  alias   = "us_east_1"
+  region  = "us-east-1"
+  profile = var.aws_profile
+}
+
 # Automatically find the most recent Minecraft AMI
 data "aws_ami" "minecraft" {
   most_recent = true
@@ -29,6 +36,17 @@ data "aws_ami" "minecraft" {
 # Route53 zone - managed by prod (imported from old setup)
 resource "aws_route53_zone" "prod" {
   name = "minecraft.paulandsierra.com"
+}
+
+# ACM certificate for CloudFront custom domains (must be in us-east-1)
+module "acm_certificate" {
+  source = "../modules/acm_certificate"
+  providers = {
+    aws = aws.us_east_1
+  }
+
+  domain  = "*.minecraft.paulandsierra.com"
+  zone_id = aws_route53_zone.prod.zone_id
 }
 
 module "networking" {
@@ -91,6 +109,11 @@ module "web_ui" {
   webapp_bucket_domain_name = module.s3_buckets.webapp_bucket_domain_name
   map_bucket_name           = module.s3_buckets.map_bucket_name
   map_bucket_domain_name    = module.s3_buckets.map_bucket_domain_name
+
+  # Custom domain configuration
+  custom_domain       = "www.minecraft.paulandsierra.com"
+  acm_certificate_arn = module.acm_certificate.certificate_arn
+  zone_id             = aws_route53_zone.prod.zone_id
 
   # No geo restrictions for production
   geo_whitelist = []

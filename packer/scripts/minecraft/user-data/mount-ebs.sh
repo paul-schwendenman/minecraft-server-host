@@ -22,5 +22,5 @@ fi
 mkdir -p "$MOUNT_POINT"
 UUID=$(blkid -s UUID -o value "$DEVICE")
 
-grep -q "$UUID" /etc/fstab || echo "UUID=$UUID $MOUNT_POINT xfs defaults,nofail 0 2" | sudo tee -a /etc/fstab
+grep -q "$UUID" /etc/fstab || echo "UUID=$UUID $MOUNT_POINT auto defaults,nofail 0 2" | sudo tee -a /etc/fstab
 mount -a
