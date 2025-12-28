@@ -12,6 +12,22 @@ A CLI tool for managing Minecraft worlds, maps, and RCON commands. Built with Go
 
 ## Installation
 
+### From GitHub Releases (Recommended)
+
+Install the latest release with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paul-schwendenman/minecraft-server-host/master/minecraftctl/install.sh | bash
+```
+
+To also install man pages and shell completions:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/paul-schwendenman/minecraft-server-host/master/minecraftctl/install.sh | INSTALL_MAN=1 INSTALL_COMPLETIONS=1 bash
+```
+
+### From Source
+
 ```bash
 make build
 sudo make install
@@ -192,6 +208,51 @@ This creates binaries in the `dist/` directory for:
 - macOS amd64
 - macOS arm64
 
+## Documentation
+
+### Man Pages
+
+Man pages are auto-generated from the command definitions. After installation with `INSTALL_MAN=1`, view them with:
+
+```bash
+man minecraftctl
+man minecraftctl-world-create
+man minecraftctl-map-build
+```
+
+To generate man pages locally:
+
+```bash
+make docs
+man ./man/man1/minecraftctl.1
+```
+
+### Shell Completions
+
+Shell completions are available for bash, zsh, and fish. Install with `INSTALL_COMPLETIONS=1` or generate locally:
+
+```bash
+make docs
+```
+
+This creates:
+- `completions/minecraftctl.bash` - Bash completion
+- `completions/minecraftctl.zsh` - Zsh completion
+- `completions/minecraftctl.fish` - Fish completion
+
+To manually install completions:
+
+```bash
+# Bash
+sudo install -m 644 completions/minecraftctl.bash /etc/bash_completion.d/minecraftctl
+
+# Zsh (add to fpath)
+sudo install -m 644 completions/minecraftctl.zsh /usr/local/share/zsh/site-functions/_minecraftctl
+
+# Fish
+install -m 644 completions/minecraftctl.fish ~/.config/fish/completions/
+```
+
 ## Development
 
 ```bash
@@ -206,6 +267,12 @@ make lint
 
 # Run tests
 make test
+
+# Generate man pages and completions
+make docs
+
+# Install man pages to system
+sudo make install-man
 ```
 
 ## License
