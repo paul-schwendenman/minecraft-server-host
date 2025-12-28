@@ -32,6 +32,38 @@ type WorldInfo struct {
 	HasMapConfig bool
 }
 
+// GetWorldNames returns a list of world names for shell completion.
+// This is a lightweight function that only returns names, not full WorldInfo.
+func GetWorldNames() ([]string, error) {
+	cfg := config.Get()
+	worldsDir := cfg.WorldsDir
+
+	entries, err := os.ReadDir(worldsDir)
+	if err != nil {
+		return nil, err
+	}
+
+	var names []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+
+		worldPath := filepath.Join(worldsDir, entry.Name())
+		levelDatPath := filepath.Join(worldPath, "world", "level.dat")
+
+		// Check if this looks like a world directory
+		if _, err := os.Stat(levelDatPath); os.IsNotExist(err) {
+			continue
+		}
+
+		names = append(names, entry.Name())
+	}
+
+	sort.Strings(names)
+	return names, nil
+}
+
 // ListWorlds returns a list of all worlds in the configured worlds directory
 func ListWorlds() ([]WorldInfo, error) {
 	cfg := config.Get()

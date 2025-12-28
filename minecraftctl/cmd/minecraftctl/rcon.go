@@ -5,16 +5,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/rcon"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-var rconCmd = &cobra.Command{
-	Use:   "rcon",
-	Short: "RCON commands",
-	Long:  "Execute RCON commands on the Minecraft server",
-}
+// RconCmd is an alias for the command defined in internal/commands
+var RconCmd = commands.RconCmd
 
 var rconStatusCmd = &cobra.Command{
 	Use:   "status",
@@ -103,7 +101,7 @@ var rconExecCmd = &cobra.Command{
 }
 
 func init() {
-	rconCmd.AddCommand(rconStatusCmd)
-	rconCmd.AddCommand(rconSendCmd)
-	rconCmd.AddCommand(rconExecCmd)
+	RconCmd.AddCommand(rconStatusCmd)
+	RconCmd.AddCommand(rconSendCmd)
+	RconCmd.AddCommand(rconExecCmd)
 }

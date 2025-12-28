@@ -12,10 +12,10 @@ import (
 func init() {
 	// Register subcommands with root command
 	rootCmd := root.GetRootCmd()
-	rootCmd.AddCommand(worldCmd)
-	rootCmd.AddCommand(mapCmd)
-	rootCmd.AddCommand(rconCmd)
-	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(WorldCmd)
+	rootCmd.AddCommand(MapCmd)
+	rootCmd.AddCommand(RconCmd)
+	rootCmd.AddCommand(ConfigCmd)
 	rootCmd.AddCommand(jars.JarCmd)
 }
 
