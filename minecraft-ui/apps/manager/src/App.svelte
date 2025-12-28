@@ -2,10 +2,6 @@
   import { ServerStatus } from "@minecraft/ui";
   import { status } from "@minecraft/data";
 
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/service-worker.js");
-  }
-
   let serverStatus = status.refresh();
 
   function handleRefresh() {
