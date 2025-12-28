@@ -7,38 +7,38 @@ import (
 )
 
 func TestWorldCmdExists(t *testing.T) {
-	if worldCmd == nil {
-		t.Fatal("worldCmd is nil")
+	if WorldCmd == nil {
+		t.Fatal("WorldCmd is nil")
 	}
-	if worldCmd.Use != "world" {
-		t.Errorf("worldCmd.Use = %q, want world", worldCmd.Use)
+	if WorldCmd.Use != "world" {
+		t.Errorf("WorldCmd.Use = %q, want world", WorldCmd.Use)
 	}
-	if worldCmd.Short == "" {
-		t.Error("worldCmd should have Short description")
+	if WorldCmd.Short == "" {
+		t.Error("WorldCmd should have Short description")
 	}
 }
 
 func TestMapCmdExists(t *testing.T) {
-	if mapCmd == nil {
-		t.Fatal("mapCmd is nil")
+	if MapCmd == nil {
+		t.Fatal("MapCmd is nil")
 	}
-	if mapCmd.Use != "map" {
-		t.Errorf("mapCmd.Use = %q, want map", mapCmd.Use)
+	if MapCmd.Use != "map" {
+		t.Errorf("MapCmd.Use = %q, want map", MapCmd.Use)
 	}
-	if mapCmd.Short == "" {
-		t.Error("mapCmd should have Short description")
+	if MapCmd.Short == "" {
+		t.Error("MapCmd should have Short description")
 	}
 }
 
 func TestRconCmdExists(t *testing.T) {
-	if rconCmd == nil {
-		t.Fatal("rconCmd is nil")
+	if RconCmd == nil {
+		t.Fatal("RconCmd is nil")
 	}
-	if rconCmd.Use != "rcon" {
-		t.Errorf("rconCmd.Use = %q, want rcon", rconCmd.Use)
+	if RconCmd.Use != "rcon" {
+		t.Errorf("RconCmd.Use = %q, want rcon", RconCmd.Use)
 	}
-	if rconCmd.Short == "" {
-		t.Error("rconCmd should have Short description")
+	if RconCmd.Short == "" {
+		t.Error("RconCmd should have Short description")
 	}
 }
 
@@ -51,14 +51,14 @@ func TestWorldSubcommands(t *testing.T) {
 
 	for _, name := range subcommands {
 		found := false
-		for _, cmd := range worldCmd.Commands() {
+		for _, cmd := range WorldCmd.Commands() {
 			if cmd.Use == name || cmd.Name() == name {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("worldCmd missing subcommand %q", name)
+			t.Errorf("WorldCmd missing subcommand %q", name)
 		}
 	}
 }
@@ -93,14 +93,14 @@ func TestMapSubcommands(t *testing.T) {
 
 	for _, name := range subcommands {
 		found := false
-		for _, cmd := range mapCmd.Commands() {
+		for _, cmd := range MapCmd.Commands() {
 			if cmd.Use == name || cmd.Name() == name {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("mapCmd missing subcommand %q", name)
+			t.Errorf("MapCmd missing subcommand %q", name)
 		}
 	}
 }
@@ -170,14 +170,14 @@ func TestRconSubcommands(t *testing.T) {
 
 	for _, name := range subcommands {
 		found := false
-		for _, cmd := range rconCmd.Commands() {
+		for _, cmd := range RconCmd.Commands() {
 			if cmd.Use == name || cmd.Name() == name {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("rconCmd missing subcommand %q", name)
+			t.Errorf("RconCmd missing subcommand %q", name)
 		}
 	}
 }
@@ -203,19 +203,19 @@ func TestCommandsRegisteredWithRoot(t *testing.T) {
 }
 
 func TestWorldCmdHasSubcommands(t *testing.T) {
-	if len(worldCmd.Commands()) == 0 {
-		t.Error("worldCmd should have subcommands")
+	if len(WorldCmd.Commands()) == 0 {
+		t.Error("WorldCmd should have subcommands")
 	}
 }
 
 func TestMapCmdHasSubcommands(t *testing.T) {
-	if len(mapCmd.Commands()) == 0 {
-		t.Error("mapCmd should have subcommands")
+	if len(MapCmd.Commands()) == 0 {
+		t.Error("MapCmd should have subcommands")
 	}
 }
 
 func TestRconCmdHasSubcommands(t *testing.T) {
-	if len(rconCmd.Commands()) == 0 {
-		t.Error("rconCmd should have subcommands")
+	if len(RconCmd.Commands()) == 0 {
+		t.Error("RconCmd should have subcommands")
 	}
 }
