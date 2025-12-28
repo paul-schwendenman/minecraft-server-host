@@ -8,6 +8,10 @@ on:
       - '.github/workflows/lambdas-deploy.yml'
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Environment to deploy to'
+        type: environment
+        required: true
       deploy_control:
         description: 'Deploy control lambda'
         type: boolean
@@ -113,9 +117,10 @@ jobs:
           path: dist/${{ matrix.lambda }}.zip
           retention-days: 1
 
-  deploy-test:
+  deploy:
     needs: [detect-changes, build]
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'test' }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -134,7 +139,7 @@ jobs:
         if: needs.detect-changes.outputs.control == 'true'
         run: |
           aws lambda update-function-code \
-            --function-name minecraft-test-control \
+            --function-name ${{ vars.LAMBDA_PREFIX }}-control \
             --zip-file fileb://dist/control.zip \
             --region us-east-2
           echo "Deployed control lambda"
@@ -150,7 +155,7 @@ jobs:
         if: needs.detect-changes.outputs.details == 'true'
         run: |
           aws lambda update-function-code \
-            --function-name minecraft-test-details \
+            --function-name ${{ vars.LAMBDA_PREFIX }}-details \
             --zip-file fileb://dist/details.zip \
             --region us-east-2
           echo "Deployed details lambda"
@@ -166,7 +171,7 @@ jobs:
         if: needs.detect-changes.outputs.worlds == 'true'
         run: |
           aws lambda update-function-code \
-            --function-name minecraft-test-worlds \
+            --function-name ${{ vars.LAMBDA_PREFIX }}-worlds \
             --zip-file fileb://dist/worlds.zip \
             --region us-east-2
           echo "Deployed worlds lambda"
@@ -174,6 +179,9 @@ jobs:
       - name: Summary
         run: |
           echo "## Lambda Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment || 'test' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lambda Prefix:** ${{ vars.LAMBDA_PREFIX }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Lambda | Deployed |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|----------|" >> $GITHUB_STEP_SUMMARY
           echo "| control | ${{ needs.detect-changes.outputs.control }} |" >> $GITHUB_STEP_SUMMARY

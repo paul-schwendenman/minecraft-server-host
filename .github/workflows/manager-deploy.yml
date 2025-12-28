@@ -3,14 +3,10 @@ name: Deploy Manager App
 on:
   workflow_dispatch:
     inputs:
-      s3_bucket:
-        description: 'S3 bucket to deploy to'
-        type: string
-        default: 'minecraft-test-webapp'
-      cloudfront_dist:
-        description: 'CloudFront distribution ID'
-        type: string
-        default: 'E35JG9QWEEVI98'
+      environment:
+        description: 'Environment to deploy to'
+        type: environment
+        required: true
 
 permissions:
   id-token: write
@@ -55,9 +51,10 @@ jobs:
           path: minecraft-ui/apps/manager/dist
           retention-days: 1
 
-  deploy-test:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -73,20 +70,20 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync dist/ s3://${{ inputs.s3_bucket }}/ --delete
-          echo "Deployed to s3://${{ inputs.s3_bucket }}/"
+          aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/ --delete
+          echo "Deployed to s3://${{ vars.S3_BUCKET }}/"
 
       - name: Invalidate CloudFront cache
-        if: inputs.cloudfront_dist != ''
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ inputs.cloudfront_dist }} \
+            --distribution-id ${{ vars.CLOUDFRONT_DIST }} \
             --paths '/*'
           echo "CloudFront cache invalidated"
 
       - name: Summary
         run: |
           echo "## Manager App Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket:** ${{ inputs.s3_bucket }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront:** ${{ inputs.cloudfront_dist }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront:** ${{ vars.CLOUDFRONT_DIST }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY

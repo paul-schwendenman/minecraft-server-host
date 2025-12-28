@@ -8,10 +8,10 @@ on:
       - '.github/workflows/worlds-deploy.yml'
   workflow_dispatch:
     inputs:
-      force_deploy:
-        description: 'Force deployment even without changes'
-        type: boolean
-        default: true
+      environment:
+        description: 'Environment to deploy to'
+        type: environment
+        required: true
 
 permissions:
   id-token: write
@@ -56,9 +56,10 @@ jobs:
           path: minecraft-ui/apps/worlds/build
           retention-days: 1
 
-  deploy-test:
+  deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'test' }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -74,19 +75,20 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync build/ s3://minecraft-test-webapp/ --delete
-          echo "Deployed to s3://minecraft-test-webapp/"
+          aws s3 sync build/ s3://${{ vars.S3_BUCKET }}/worlds/ --delete
+          echo "Deployed to s3://${{ vars.S3_BUCKET }}/worlds/"
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id E35JG9QWEEVI98 \
-            --paths '/*'
+            --distribution-id ${{ vars.CLOUDFRONT_DIST }} \
+            --paths '/worlds/*'
           echo "CloudFront cache invalidated"
 
       - name: Summary
         run: |
           echo "## Worlds App Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket:** minecraft-test-webapp" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront:** E35JG9QWEEVI98" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment:** ${{ inputs.environment || 'test' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront:** ${{ vars.CLOUDFRONT_DIST }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY
