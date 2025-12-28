@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/paul/minecraftctl/pkg/worlds"
 	"github.com/spf13/cobra"
@@ -23,12 +24,8 @@ func worldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-// WorldCmd is the parent command for world management
-var WorldCmd = &cobra.Command{
-	Use:   "world",
-	Short: "Manage Minecraft worlds",
-	Long:  "Commands for listing and inspecting Minecraft worlds",
-}
+// WorldCmd is an alias for the command defined in internal/commands
+var WorldCmd = commands.WorldCmd
 
 var worldListCmd = &cobra.Command{
 	Use:   "list",

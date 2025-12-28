@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/maps"
 	"github.com/paul/minecraftctl/pkg/systemd"
@@ -49,12 +50,8 @@ func mapSingleWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete 
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-// MapCmd is the parent command for map management
-var MapCmd = &cobra.Command{
-	Use:   "map",
-	Short: "Manage maps",
-	Long:  "Commands for building and managing Minecraft world maps",
-}
+// MapCmd is an alias for the command defined in internal/commands
+var MapCmd = commands.MapCmd
 
 var mapBuildCmd = &cobra.Command{
 	Use:               "build <world> [worlds...]",

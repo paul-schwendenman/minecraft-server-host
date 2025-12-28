@@ -41,9 +41,9 @@ vet:
 
 lint: fmt vet
 
-docs:
+docs: build
 	@echo "Generating documentation..."
-	go run ./cmd/gendocs
+	./$(BINARY_NAME) gendocs
 	@echo "Documentation generated in man/ and completions/"
 
 clean-docs:

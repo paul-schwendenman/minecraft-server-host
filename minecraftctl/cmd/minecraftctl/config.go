@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/paul/minecraftctl/pkg/properties"
@@ -12,12 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ConfigCmd is the parent command for server configuration management
-var ConfigCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Server configuration management",
-	Long:  "Manage Minecraft server.properties configuration files",
-}
+// ConfigCmd is an alias for the command defined in internal/commands
+var ConfigCmd = commands.ConfigCmd
 
 var configCheckCmd = &cobra.Command{
 	Use:   "check <world>",

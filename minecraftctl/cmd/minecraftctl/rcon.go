@@ -5,17 +5,14 @@ import (
 	"os"
 	"strings"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/rcon"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
 
-// RconCmd is the parent command for RCON operations
-var RconCmd = &cobra.Command{
-	Use:   "rcon",
-	Short: "RCON commands",
-	Long:  "Execute RCON commands on the Minecraft server",
-}
+// RconCmd is an alias for the command defined in internal/commands
+var RconCmd = commands.RconCmd
 
 var rconStatusCmd = &cobra.Command{
 	Use:   "status",

@@ -81,7 +81,7 @@ jobs:
       - name: Generate documentation
         run: |
           cd ./minecraftctl
-          make docs
+          ./minecraftctl-linux-amd64 gendocs
           tar -czvf minecraftctl-man.tar.gz man/
 
       - name: Create Release

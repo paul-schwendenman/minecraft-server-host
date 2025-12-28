@@ -1,4 +1,3 @@
-// gendocs generates man pages and shell completions for minecraftctl
 package main
 
 import (
@@ -7,53 +6,44 @@ import (
 	"path/filepath"
 	"time"
 
-	cmd "github.com/paul/minecraftctl/cmd/minecraftctl"
 	"github.com/paul/minecraftctl/cmd/minecraftctl/root"
 	"github.com/paul/minecraftctl/internal/version"
-	"github.com/paul/minecraftctl/pkg/jars"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
 
-func main() {
-	// Default output directories
-	manDir := "man/man1"
-	completionsDir := "completions"
+var gendocsCmd = &cobra.Command{
+	Use:    "gendocs",
+	Short:  "Generate documentation (man pages and shell completions)",
+	Hidden: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		manDir, _ := cmd.Flags().GetString("man-dir")
+		completionsDir, _ := cmd.Flags().GetString("completions-dir")
 
-	// Parse command line arguments
-	if len(os.Args) > 1 {
-		manDir = os.Args[1]
-	}
-	if len(os.Args) > 2 {
-		completionsDir = os.Args[2]
-	}
+		rootCmd := root.GetRootCmd()
+		rootCmd.DisableAutoGenTag = true
 
-	// Register all subcommands
-	rootCmd := root.GetRootCmd()
-	rootCmd.AddCommand(cmd.WorldCmd)
-	rootCmd.AddCommand(cmd.MapCmd)
-	rootCmd.AddCommand(cmd.RconCmd)
-	rootCmd.AddCommand(cmd.ConfigCmd)
-	rootCmd.AddCommand(jars.JarCmd)
+		// Generate man pages
+		if err := generateManPages(rootCmd, manDir); err != nil {
+			return err
+		}
 
-	// Disable auto-generation tag for cleaner output
-	rootCmd.DisableAutoGenTag = true
+		// Generate shell completions
+		if err := generateCompletions(rootCmd, completionsDir); err != nil {
+			return err
+		}
 
-	// Generate man pages
-	if err := generateManPages(rootCmd, manDir); err != nil {
-		fmt.Fprintf(os.Stderr, "Error generating man pages: %v\n", err)
-		os.Exit(1)
-	}
+		fmt.Printf("Documentation generated successfully:\n")
+		fmt.Printf("  Man pages:    %s/\n", manDir)
+		fmt.Printf("  Completions:  %s/\n", completionsDir)
+		return nil
+	},
+}
 
-	// Generate shell completions
-	if err := generateCompletions(rootCmd, completionsDir); err != nil {
-		fmt.Fprintf(os.Stderr, "Error generating completions: %v\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Documentation generated successfully:\n")
-	fmt.Printf("  Man pages:    %s/\n", manDir)
-	fmt.Printf("  Completions:  %s/\n", completionsDir)
+func init() {
+	gendocsCmd.Flags().String("man-dir", "man/man1", "Output directory for man pages")
+	gendocsCmd.Flags().String("completions-dir", "completions", "Output directory for shell completions")
+	root.GetRootCmd().AddCommand(gendocsCmd)
 }
 
 func generateManPages(rootCmd *cobra.Command, outputDir string) error {
