@@ -32,6 +32,7 @@ var worldCmd = &cobra.Command{
 var worldListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all worlds",
+	Long:  "List all worlds. Use --full to show service status, enabled state, and timer information.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldList, err := worlds.ListWorlds()
 		if err != nil {
@@ -44,13 +45,58 @@ var worldListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG")
-		for _, world := range worldList {
-			mapCfg := "no"
-			if world.HasMapConfig {
-				mapCfg = "yes"
+
+		if listFull {
+			fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG\tSERVICE\tENABLED\tTIMERS")
+			for _, world := range worldList {
+				mapCfg := "no"
+				if world.HasMapConfig {
+					mapCfg = "yes"
+				}
+
+				// Get service status
+				serviceUnit := systemd.FormatUnitName("minecraft", world.Name, systemd.UnitService)
+				serviceState := systemd.GetActiveState(serviceUnit)
+
+				// Get enabled status
+				enabled, _ := systemd.IsEnabled(serviceUnit)
+				enabledStr := "no"
+				if enabled {
+					enabledStr = "yes"
+				}
+
+				// Get timer statuses
+				rebuildTimer := systemd.FormatUnitName("minecraft-map-rebuild", world.Name, systemd.UnitTimer)
+				backupTimer := systemd.FormatUnitName("minecraft-world-backup", world.Name, systemd.UnitTimer)
+
+				rebuildEnabled, _ := systemd.IsEnabled(rebuildTimer)
+				backupEnabled, _ := systemd.IsEnabled(backupTimer)
+
+				timers := ""
+				if rebuildEnabled {
+					timers += "✓ rebuild "
+				} else {
+					timers += "✗ rebuild "
+				}
+				if backupEnabled {
+					timers += "✓ backup"
+				} else {
+					timers += "✗ backup"
+				}
+
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					world.Name, world.Version, world.Difficulty, mapCfg,
+					serviceState, enabledStr, timers)
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", world.Name, world.Version, world.Difficulty, mapCfg)
+		} else {
+			fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG")
+			for _, world := range worldList {
+				mapCfg := "no"
+				if world.HasMapConfig {
+					mapCfg = "yes"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", world.Name, world.Version, world.Difficulty, mapCfg)
+			}
 		}
 		w.Flush()
 
@@ -102,6 +148,9 @@ var (
 	upgradeVersion string
 	upgradeStop    bool
 )
+
+// List command flags
+var listFull bool
 
 // Logs command flags
 var (
@@ -386,6 +435,9 @@ var worldBackupLogsCmd = &cobra.Command{
 }
 
 func init() {
+	// List command flags
+	worldListCmd.Flags().BoolVar(&listFull, "full", false, "Show service status, enabled state, and timer information")
+
 	worldCmd.AddCommand(worldListCmd)
 	worldCmd.AddCommand(worldInfoCmd)
 	worldCmd.AddCommand(worldCreateCmd)
