@@ -1,4 +1,4 @@
-.PHONY: build test clean install build-linux-amd64 build-all dist
+.PHONY: build test clean install build-linux-amd64 build-all dist docs clean-docs install-man
 
 BINARY_NAME=minecraftctl
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -26,7 +26,7 @@ dist: build-all
 test:
 	go test ./...
 
-clean:
+clean: clean-docs
 	rm -f $(BINARY_NAME) $(BINARY_NAME)-*
 	rm -rf $(DIST_DIR)
 
@@ -40,4 +40,17 @@ vet:
 	go vet ./...
 
 lint: fmt vet
+
+docs:
+	@echo "Generating documentation..."
+	go run ./cmd/gendocs
+	@echo "Documentation generated in man/ and completions/"
+
+clean-docs:
+	rm -rf man/ completions/
+
+install-man: docs
+	install -d /usr/local/share/man/man1
+	install -m 644 man/man1/*.1 /usr/local/share/man/man1/
+	@echo "Man pages installed. Run 'man minecraftctl' to view."
 

@@ -23,7 +23,8 @@ func worldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-var worldCmd = &cobra.Command{
+// WorldCmd is the parent command for world management
+var WorldCmd = &cobra.Command{
 	Use:   "world",
 	Short: "Manage Minecraft worlds",
 	Long:  "Commands for listing and inspecting Minecraft worlds",
@@ -438,23 +439,23 @@ func init() {
 	// List command flags
 	worldListCmd.Flags().BoolVar(&listFull, "full", false, "Show service status, enabled state, and timer information")
 
-	worldCmd.AddCommand(worldListCmd)
-	worldCmd.AddCommand(worldInfoCmd)
-	worldCmd.AddCommand(worldCreateCmd)
-	worldCmd.AddCommand(worldRegisterCmd)
-	worldCmd.AddCommand(worldUpgradeCmd)
+	WorldCmd.AddCommand(worldListCmd)
+	WorldCmd.AddCommand(worldInfoCmd)
+	WorldCmd.AddCommand(worldCreateCmd)
+	WorldCmd.AddCommand(worldRegisterCmd)
+	WorldCmd.AddCommand(worldUpgradeCmd)
 
 	// Service management commands
-	worldCmd.AddCommand(worldStatusCmd)
-	worldCmd.AddCommand(worldStartCmd)
-	worldCmd.AddCommand(worldStopCmd)
-	worldCmd.AddCommand(worldRestartCmd)
-	worldCmd.AddCommand(worldEnableCmd)
-	worldCmd.AddCommand(worldDisableCmd)
-	worldCmd.AddCommand(worldLogsCmd)
+	WorldCmd.AddCommand(worldStatusCmd)
+	WorldCmd.AddCommand(worldStartCmd)
+	WorldCmd.AddCommand(worldStopCmd)
+	WorldCmd.AddCommand(worldRestartCmd)
+	WorldCmd.AddCommand(worldEnableCmd)
+	WorldCmd.AddCommand(worldDisableCmd)
+	WorldCmd.AddCommand(worldLogsCmd)
 
 	// World backup commands
-	worldCmd.AddCommand(worldBackupCmd)
+	WorldCmd.AddCommand(worldBackupCmd)
 	worldBackupCmd.AddCommand(worldBackupStatusCmd)
 	worldBackupCmd.AddCommand(worldBackupStartCmd)
 	worldBackupCmd.AddCommand(worldBackupStopCmd)

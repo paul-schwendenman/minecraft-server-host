@@ -49,7 +49,8 @@ func mapSingleWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete 
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-var mapCmd = &cobra.Command{
+// MapCmd is the parent command for map management
+var MapCmd = &cobra.Command{
 	Use:   "map",
 	Short: "Manage maps",
 	Long:  "Commands for building and managing Minecraft world maps",
@@ -777,20 +778,20 @@ func init() {
 
 	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
-	mapCmd.AddCommand(mapBuildCmd)
-	mapCmd.AddCommand(mapPreviewCmd)
-	mapCmd.AddCommand(mapManifestCmd)
-	mapCmd.AddCommand(mapIndexCmd)
+	MapCmd.AddCommand(mapBuildCmd)
+	MapCmd.AddCommand(mapPreviewCmd)
+	MapCmd.AddCommand(mapManifestCmd)
+	MapCmd.AddCommand(mapIndexCmd)
 
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)
 	mapConfigCmd.AddCommand(mapConfigSetCmd)
 	mapConfigCmd.AddCommand(mapConfigValidateCmd)
 	mapConfigCmd.AddCommand(mapConfigEditCmd)
-	mapCmd.AddCommand(mapConfigCmd)
+	MapCmd.AddCommand(mapConfigCmd)
 
 	// Map backup service commands
-	mapCmd.AddCommand(mapBackupCmd)
+	MapCmd.AddCommand(mapBackupCmd)
 	mapBackupCmd.AddCommand(mapBackupStatusCmd)
 	mapBackupCmd.AddCommand(mapBackupStartCmd)
 	mapBackupCmd.AddCommand(mapBackupStopCmd)
@@ -799,7 +800,7 @@ func init() {
 	mapBackupCmd.AddCommand(mapBackupLogsCmd)
 
 	// Map rebuild service commands
-	mapCmd.AddCommand(mapRebuildCmd)
+	MapCmd.AddCommand(mapRebuildCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStatusCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStartCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStopCmd)
@@ -808,7 +809,7 @@ func init() {
 	mapRebuildCmd.AddCommand(mapRebuildLogsCmd)
 
 	// Map refresh service commands
-	mapCmd.AddCommand(mapRefreshCmd)
+	MapCmd.AddCommand(mapRefreshCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStatusCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStartCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStopCmd)

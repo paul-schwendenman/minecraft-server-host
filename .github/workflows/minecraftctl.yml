@@ -78,6 +78,12 @@ jobs:
           cd ./minecraftctl
           go test ./...
 
+      - name: Generate documentation
+        run: |
+          cd ./minecraftctl
+          make docs
+          tar -czvf minecraftctl-man.tar.gz man/
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -88,6 +94,10 @@ jobs:
             minecraftctl/minecraftctl-darwin-amd64
             minecraftctl/minecraftctl-darwin-arm64
             minecraftctl/checksums.txt
+            minecraftctl/minecraftctl-man.tar.gz
+            minecraftctl/completions/minecraftctl.bash
+            minecraftctl/completions/minecraftctl.zsh
+            minecraftctl/completions/minecraftctl.fish
           generate_release_notes: true
           draft: false
           prerelease: false

@@ -12,7 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configCmd = &cobra.Command{
+// ConfigCmd is the parent command for server configuration management
+var ConfigCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Server configuration management",
 	Long:  "Manage Minecraft server.properties configuration files",
@@ -279,9 +280,9 @@ func init() {
 	configSyncCmd.Flags().Bool("dry-run", false, "show what would change without modifying files")
 	configListCmd.Flags().Bool("show-passwords", false, "show password values (default: masked)")
 
-	configCmd.AddCommand(configCheckCmd)
-	configCmd.AddCommand(configSyncCmd)
-	configCmd.AddCommand(configGetCmd)
-	configCmd.AddCommand(configSetCmd)
-	configCmd.AddCommand(configListCmd)
+	ConfigCmd.AddCommand(configCheckCmd)
+	ConfigCmd.AddCommand(configSyncCmd)
+	ConfigCmd.AddCommand(configGetCmd)
+	ConfigCmd.AddCommand(configSetCmd)
+	ConfigCmd.AddCommand(configListCmd)
 }

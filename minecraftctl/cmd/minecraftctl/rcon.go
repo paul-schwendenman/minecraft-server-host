@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rconCmd = &cobra.Command{
+// RconCmd is the parent command for RCON operations
+var RconCmd = &cobra.Command{
 	Use:   "rcon",
 	Short: "RCON commands",
 	Long:  "Execute RCON commands on the Minecraft server",
@@ -103,7 +104,7 @@ var rconExecCmd = &cobra.Command{
 }
 
 func init() {
-	rconCmd.AddCommand(rconStatusCmd)
-	rconCmd.AddCommand(rconSendCmd)
-	rconCmd.AddCommand(rconExecCmd)
+	RconCmd.AddCommand(rconStatusCmd)
+	RconCmd.AddCommand(rconSendCmd)
+	RconCmd.AddCommand(rconExecCmd)
 }
