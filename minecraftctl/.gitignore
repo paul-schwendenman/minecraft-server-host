@@ -4,3 +4,7 @@
 
 # Distribution directory
 dist/
+
+# Generated documentation
+man/
+completions/

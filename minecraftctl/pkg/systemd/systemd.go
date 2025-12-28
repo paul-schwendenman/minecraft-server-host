@@ -86,6 +86,34 @@ func IsActive(unit string) (bool, error) {
 	return true, nil
 }
 
+// IsEnabled checks if a unit is enabled (returns true if enabled, false otherwise)
+func IsEnabled(unit string) (bool, error) {
+	cmd := exec.Command("systemctl", "is-enabled", "--quiet", unit)
+	err := cmd.Run()
+	if err != nil {
+		if _, ok := err.(*exec.ExitError); ok {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check enabled status: %w", err)
+	}
+	return true, nil
+}
+
+// GetActiveState returns the active state of a unit (active, inactive, failed, etc.)
+func GetActiveState(unit string) string {
+	cmd := exec.Command("systemctl", "show", "-p", "ActiveState", "--value", unit)
+	output, err := cmd.Output()
+	if err != nil {
+		return "unknown"
+	}
+	// Trim newline
+	state := string(output)
+	if len(state) > 0 && state[len(state)-1] == '\n' {
+		state = state[:len(state)-1]
+	}
+	return state
+}
+
 // Logs runs journalctl for a unit with the given options
 func Logs(unit string, opts LogOptions) error {
 	args := []string{"-u", unit}

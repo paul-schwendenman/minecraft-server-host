@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/paul/minecraftctl/pkg/properties"
@@ -12,11 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "Server configuration management",
-	Long:  "Manage Minecraft server.properties configuration files",
-}
+// ConfigCmd is an alias for the command defined in internal/commands
+var ConfigCmd = commands.ConfigCmd
 
 var configCheckCmd = &cobra.Command{
 	Use:   "check <world>",
@@ -279,9 +277,9 @@ func init() {
 	configSyncCmd.Flags().Bool("dry-run", false, "show what would change without modifying files")
 	configListCmd.Flags().Bool("show-passwords", false, "show password values (default: masked)")
 
-	configCmd.AddCommand(configCheckCmd)
-	configCmd.AddCommand(configSyncCmd)
-	configCmd.AddCommand(configGetCmd)
-	configCmd.AddCommand(configSetCmd)
-	configCmd.AddCommand(configListCmd)
+	ConfigCmd.AddCommand(configCheckCmd)
+	ConfigCmd.AddCommand(configSyncCmd)
+	ConfigCmd.AddCommand(configGetCmd)
+	ConfigCmd.AddCommand(configSetCmd)
+	ConfigCmd.AddCommand(configListCmd)
 }

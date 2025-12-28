@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/maps"
 	"github.com/paul/minecraftctl/pkg/systemd"
@@ -27,16 +28,36 @@ var (
 	mapLogsNoPager bool
 )
 
-var mapCmd = &cobra.Command{
-	Use:   "map",
-	Short: "Manage maps",
-	Long:  "Commands for building and managing Minecraft world maps",
+// mapWorldCompletionFunc provides tab completion for world names in map commands
+func mapWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	// For commands that accept multiple worlds, always complete world names
+	names, err := worlds.GetWorldNames()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
+// mapSingleWorldCompletionFunc provides tab completion for first world arg only
+func mapSingleWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	names, err := worlds.GetWorldNames()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
+}
+
+// MapCmd is an alias for the command defined in internal/commands
+var MapCmd = commands.MapCmd
+
 var mapBuildCmd = &cobra.Command{
-	Use:   "build <world> [worlds...]",
-	Short: "Build maps for one or more worlds",
-	Args:  cobra.MinimumNArgs(1),
+	Use:               "build <world> [worlds...]",
+	Short:             "Build maps for one or more worlds",
+	Args:              cobra.MinimumNArgs(1),
+	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mapName, _ := cmd.Flags().GetString("map")
 		force, _ := cmd.Flags().GetBool("force")
@@ -92,9 +113,10 @@ var mapBuildCmd = &cobra.Command{
 }
 
 var mapPreviewCmd = &cobra.Command{
-	Use:   "preview <world> <map>",
-	Short: "Generate preview image for a map",
-	Args:  cobra.ExactArgs(2),
+	Use:               "preview <world> <map>",
+	Short:             "Generate preview image for a map",
+	Args:              cobra.ExactArgs(2),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		mapName := args[1]
@@ -106,9 +128,10 @@ var mapPreviewCmd = &cobra.Command{
 }
 
 var mapManifestCmd = &cobra.Command{
-	Use:   "manifest <world> [worlds...]",
-	Short: "Build manifests for all maps in one or more worlds",
-	Args:  cobra.MinimumNArgs(1),
+	Use:               "manifest <world> [worlds...]",
+	Short:             "Build manifests for all maps in one or more worlds",
+	Args:              cobra.MinimumNArgs(1),
+	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		noPreview, _ := cmd.Flags().GetBool("no-preview")
 		previewOnly, _ := cmd.Flags().GetBool("preview-only")
@@ -183,10 +206,11 @@ var mapConfigCmd = &cobra.Command{
 }
 
 var mapConfigGenerateCmd = &cobra.Command{
-	Use:   "generate <world>",
-	Short: "Generate a basic map-config.yml file for a world",
-	Long:  "Creates a map-config.yml file with default settings and a spawn area zoom region based on NBT spawn coordinates",
-	Args:  cobra.ExactArgs(1),
+	Use:               "generate <world>",
+	Short:             "Generate a basic map-config.yml file for a world",
+	Long:              "Creates a map-config.yml file with default settings and a spawn area zoom region based on NBT spawn coordinates",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		force, _ := cmd.Flags().GetBool("force")
@@ -287,10 +311,11 @@ var mapConfigGenerateCmd = &cobra.Command{
 }
 
 var mapConfigGetCmd = &cobra.Command{
-	Use:   "get <world> [path]",
-	Short: "Get config value(s) from map-config.yml",
-	Long:  "Display config values. If path is specified, shows that field. Otherwise shows full config.",
-	Args:  cobra.RangeArgs(1, 2),
+	Use:               "get <world> [path]",
+	Short:             "Get config value(s) from map-config.yml",
+	Long:              "Display config values. If path is specified, shows that field. Otherwise shows full config.",
+	Args:              cobra.RangeArgs(1, 2),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		var path string
@@ -339,10 +364,11 @@ var mapConfigGetCmd = &cobra.Command{
 }
 
 var mapConfigSetCmd = &cobra.Command{
-	Use:   "set <world> <path> <value>",
-	Short: "Set a config value in map-config.yml",
-	Long:  "Set a specific field value using dot notation path (e.g., defaults.zoomout)",
-	Args:  cobra.ExactArgs(3),
+	Use:               "set <world> <path> <value>",
+	Short:             "Set a config value in map-config.yml",
+	Long:              "Set a specific field value using dot notation path (e.g., defaults.zoomout)",
+	Args:              cobra.ExactArgs(3),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		path := args[1]
@@ -386,10 +412,11 @@ var mapConfigSetCmd = &cobra.Command{
 }
 
 var mapConfigValidateCmd = &cobra.Command{
-	Use:   "validate <world>",
-	Short: "Validate map-config.yml structure and values",
-	Long:  "Checks that the map-config.yml file is valid and all values are within acceptable ranges",
-	Args:  cobra.ExactArgs(1),
+	Use:               "validate <world>",
+	Short:             "Validate map-config.yml structure and values",
+	Long:              "Checks that the map-config.yml file is valid and all values are within acceptable ranges",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -421,10 +448,11 @@ var mapConfigValidateCmd = &cobra.Command{
 }
 
 var mapConfigEditCmd = &cobra.Command{
-	Use:   "edit <world>",
-	Short: "Interactively edit map-config.yml",
-	Long:  "Opens an interactive menu-driven editor for map-config.yml",
-	Args:  cobra.ExactArgs(1),
+	Use:               "edit <world>",
+	Short:             "Interactively edit map-config.yml",
+	Long:              "Opens an interactive menu-driven editor for map-config.yml",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -473,9 +501,10 @@ var mapBackupCmd = &cobra.Command{
 }
 
 var mapBackupStatusCmd = &cobra.Command{
-	Use:   "status <world>",
-	Short: "Show status of the map backup service and timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "status <world>",
+	Short:             "Show status of the map backup service and timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
@@ -489,9 +518,10 @@ var mapBackupStatusCmd = &cobra.Command{
 }
 
 var mapBackupStartCmd = &cobra.Command{
-	Use:   "start <world>",
-	Short: "Trigger a map backup now",
-	Args:  cobra.ExactArgs(1),
+	Use:               "start <world>",
+	Short:             "Trigger a map backup now",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -499,9 +529,10 @@ var mapBackupStartCmd = &cobra.Command{
 }
 
 var mapBackupStopCmd = &cobra.Command{
-	Use:   "stop <world>",
-	Short: "Stop a running map backup",
-	Args:  cobra.ExactArgs(1),
+	Use:               "stop <world>",
+	Short:             "Stop a running map backup",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -509,9 +540,10 @@ var mapBackupStopCmd = &cobra.Command{
 }
 
 var mapBackupEnableCmd = &cobra.Command{
-	Use:   "enable <world>",
-	Short: "Enable the map backup timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "enable <world>",
+	Short:             "Enable the map backup timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -519,9 +551,10 @@ var mapBackupEnableCmd = &cobra.Command{
 }
 
 var mapBackupDisableCmd = &cobra.Command{
-	Use:   "disable <world>",
-	Short: "Disable the map backup timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "disable <world>",
+	Short:             "Disable the map backup timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -529,9 +562,10 @@ var mapBackupDisableCmd = &cobra.Command{
 }
 
 var mapBackupLogsCmd = &cobra.Command{
-	Use:   "logs <world>",
-	Short: "View logs for the map backup service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs <world>",
+	Short:             "View logs for the map backup service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -552,9 +586,10 @@ var mapRebuildCmd = &cobra.Command{
 }
 
 var mapRebuildStatusCmd = &cobra.Command{
-	Use:   "status <world>",
-	Short: "Show status of the map rebuild service and timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "status <world>",
+	Short:             "Show status of the map rebuild service and timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
@@ -568,9 +603,10 @@ var mapRebuildStatusCmd = &cobra.Command{
 }
 
 var mapRebuildStartCmd = &cobra.Command{
-	Use:   "start <world>",
-	Short: "Trigger a map rebuild now",
-	Args:  cobra.ExactArgs(1),
+	Use:               "start <world>",
+	Short:             "Trigger a map rebuild now",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -578,9 +614,10 @@ var mapRebuildStartCmd = &cobra.Command{
 }
 
 var mapRebuildStopCmd = &cobra.Command{
-	Use:   "stop <world>",
-	Short: "Stop a running map rebuild",
-	Args:  cobra.ExactArgs(1),
+	Use:               "stop <world>",
+	Short:             "Stop a running map rebuild",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -588,9 +625,10 @@ var mapRebuildStopCmd = &cobra.Command{
 }
 
 var mapRebuildEnableCmd = &cobra.Command{
-	Use:   "enable <world>",
-	Short: "Enable the map rebuild timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "enable <world>",
+	Short:             "Enable the map rebuild timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -598,9 +636,10 @@ var mapRebuildEnableCmd = &cobra.Command{
 }
 
 var mapRebuildDisableCmd = &cobra.Command{
-	Use:   "disable <world>",
-	Short: "Disable the map rebuild timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "disable <world>",
+	Short:             "Disable the map rebuild timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -608,9 +647,10 @@ var mapRebuildDisableCmd = &cobra.Command{
 }
 
 var mapRebuildLogsCmd = &cobra.Command{
-	Use:   "logs <world>",
-	Short: "View logs for the map rebuild service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs <world>",
+	Short:             "View logs for the map rebuild service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -631,9 +671,10 @@ var mapRefreshCmd = &cobra.Command{
 }
 
 var mapRefreshStatusCmd = &cobra.Command{
-	Use:   "status <world>",
-	Short: "Show status of the map refresh service and timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "status <world>",
+	Short:             "Show status of the map refresh service and timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
@@ -647,9 +688,10 @@ var mapRefreshStatusCmd = &cobra.Command{
 }
 
 var mapRefreshStartCmd = &cobra.Command{
-	Use:   "start <world>",
-	Short: "Trigger a map refresh now",
-	Args:  cobra.ExactArgs(1),
+	Use:               "start <world>",
+	Short:             "Trigger a map refresh now",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -657,9 +699,10 @@ var mapRefreshStartCmd = &cobra.Command{
 }
 
 var mapRefreshStopCmd = &cobra.Command{
-	Use:   "stop <world>",
-	Short: "Stop a running map refresh",
-	Args:  cobra.ExactArgs(1),
+	Use:               "stop <world>",
+	Short:             "Stop a running map refresh",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -667,9 +710,10 @@ var mapRefreshStopCmd = &cobra.Command{
 }
 
 var mapRefreshEnableCmd = &cobra.Command{
-	Use:   "enable <world>",
-	Short: "Enable the map refresh timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "enable <world>",
+	Short:             "Enable the map refresh timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -677,9 +721,10 @@ var mapRefreshEnableCmd = &cobra.Command{
 }
 
 var mapRefreshDisableCmd = &cobra.Command{
-	Use:   "disable <world>",
-	Short: "Disable the map refresh timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "disable <world>",
+	Short:             "Disable the map refresh timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -687,9 +732,10 @@ var mapRefreshDisableCmd = &cobra.Command{
 }
 
 var mapRefreshLogsCmd = &cobra.Command{
-	Use:   "logs <world>",
-	Short: "View logs for the map refresh service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs <world>",
+	Short:             "View logs for the map refresh service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -729,20 +775,20 @@ func init() {
 
 	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
-	mapCmd.AddCommand(mapBuildCmd)
-	mapCmd.AddCommand(mapPreviewCmd)
-	mapCmd.AddCommand(mapManifestCmd)
-	mapCmd.AddCommand(mapIndexCmd)
+	MapCmd.AddCommand(mapBuildCmd)
+	MapCmd.AddCommand(mapPreviewCmd)
+	MapCmd.AddCommand(mapManifestCmd)
+	MapCmd.AddCommand(mapIndexCmd)
 
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)
 	mapConfigCmd.AddCommand(mapConfigSetCmd)
 	mapConfigCmd.AddCommand(mapConfigValidateCmd)
 	mapConfigCmd.AddCommand(mapConfigEditCmd)
-	mapCmd.AddCommand(mapConfigCmd)
+	MapCmd.AddCommand(mapConfigCmd)
 
 	// Map backup service commands
-	mapCmd.AddCommand(mapBackupCmd)
+	MapCmd.AddCommand(mapBackupCmd)
 	mapBackupCmd.AddCommand(mapBackupStatusCmd)
 	mapBackupCmd.AddCommand(mapBackupStartCmd)
 	mapBackupCmd.AddCommand(mapBackupStopCmd)
@@ -751,7 +797,7 @@ func init() {
 	mapBackupCmd.AddCommand(mapBackupLogsCmd)
 
 	// Map rebuild service commands
-	mapCmd.AddCommand(mapRebuildCmd)
+	MapCmd.AddCommand(mapRebuildCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStatusCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStartCmd)
 	mapRebuildCmd.AddCommand(mapRebuildStopCmd)
@@ -760,7 +806,7 @@ func init() {
 	mapRebuildCmd.AddCommand(mapRebuildLogsCmd)
 
 	// Map refresh service commands
-	mapCmd.AddCommand(mapRefreshCmd)
+	MapCmd.AddCommand(mapRefreshCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStatusCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStartCmd)
 	mapRefreshCmd.AddCommand(mapRefreshStopCmd)

@@ -6,20 +6,31 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/paul/minecraftctl/internal/commands"
 	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/paul/minecraftctl/pkg/worlds"
 	"github.com/spf13/cobra"
 )
 
-var worldCmd = &cobra.Command{
-	Use:   "world",
-	Short: "Manage Minecraft worlds",
-	Long:  "Commands for listing and inspecting Minecraft worlds",
+// worldCompletionFunc provides tab completion for world names
+func worldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	names, err := worlds.GetWorldNames()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	return names, cobra.ShellCompDirectiveNoFileComp
 }
+
+// WorldCmd is an alias for the command defined in internal/commands
+var WorldCmd = commands.WorldCmd
 
 var worldListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all worlds",
+	Long:  "List all worlds. Use --full to show service status, enabled state, and timer information.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldList, err := worlds.ListWorlds()
 		if err != nil {
@@ -32,13 +43,58 @@ var worldListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG")
-		for _, world := range worldList {
-			mapCfg := "no"
-			if world.HasMapConfig {
-				mapCfg = "yes"
+
+		if listFull {
+			fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG\tSERVICE\tENABLED\tTIMERS")
+			for _, world := range worldList {
+				mapCfg := "no"
+				if world.HasMapConfig {
+					mapCfg = "yes"
+				}
+
+				// Get service status
+				serviceUnit := systemd.FormatUnitName("minecraft", world.Name, systemd.UnitService)
+				serviceState := systemd.GetActiveState(serviceUnit)
+
+				// Get enabled status
+				enabled, _ := systemd.IsEnabled(serviceUnit)
+				enabledStr := "no"
+				if enabled {
+					enabledStr = "yes"
+				}
+
+				// Get timer statuses
+				rebuildTimer := systemd.FormatUnitName("minecraft-map-rebuild", world.Name, systemd.UnitTimer)
+				backupTimer := systemd.FormatUnitName("minecraft-world-backup", world.Name, systemd.UnitTimer)
+
+				rebuildEnabled, _ := systemd.IsEnabled(rebuildTimer)
+				backupEnabled, _ := systemd.IsEnabled(backupTimer)
+
+				timers := ""
+				if rebuildEnabled {
+					timers += "✓ rebuild "
+				} else {
+					timers += "✗ rebuild "
+				}
+				if backupEnabled {
+					timers += "✓ backup"
+				} else {
+					timers += "✗ backup"
+				}
+
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+					world.Name, world.Version, world.Difficulty, mapCfg,
+					serviceState, enabledStr, timers)
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", world.Name, world.Version, world.Difficulty, mapCfg)
+		} else {
+			fmt.Fprintln(w, "NAME\tVERSION\tDIFFICULTY\tMAP CONFIG")
+			for _, world := range worldList {
+				mapCfg := "no"
+				if world.HasMapConfig {
+					mapCfg = "yes"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", world.Name, world.Version, world.Difficulty, mapCfg)
+			}
 		}
 		w.Flush()
 
@@ -47,9 +103,10 @@ var worldListCmd = &cobra.Command{
 }
 
 var worldInfoCmd = &cobra.Command{
-	Use:   "info <world>",
-	Short: "Show detailed information about a world",
-	Args:  cobra.ExactArgs(1),
+	Use:               "info <world>",
+	Short:             "Show detailed information about a world",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		info, err := worlds.GetWorldInfo(worldName)
@@ -89,6 +146,9 @@ var (
 	upgradeVersion string
 	upgradeStop    bool
 )
+
+// List command flags
+var listFull bool
 
 // Logs command flags
 var (
@@ -135,10 +195,11 @@ var worldCreateCmd = &cobra.Command{
 }
 
 var worldRegisterCmd = &cobra.Command{
-	Use:   "register <world-name>",
-	Short: "Register an existing world with systemd services",
-	Long:  "Register an existing world by enabling systemd services and timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance.",
-	Args:  cobra.ExactArgs(1),
+	Use:               "register <world-name>",
+	Short:             "Register an existing world with systemd services",
+	Long:              "Register an existing world by enabling systemd services and timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance.",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -170,7 +231,8 @@ This command:
 Note: This only updates the JAR symlink. Minecraft will automatically upgrade
 world data when the server starts with the new version. World upgrades are
 one-way and cannot be reverted.`,
-	Args: cobra.ExactArgs(1),
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -202,9 +264,10 @@ one-way and cannot be reverted.`,
 
 // Service management commands
 var worldStatusCmd = &cobra.Command{
-	Use:   "status <world>",
-	Short: "Show status of the Minecraft server service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "status <world>",
+	Short:             "Show status of the Minecraft server service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Status(unit)
@@ -212,9 +275,10 @@ var worldStatusCmd = &cobra.Command{
 }
 
 var worldStartCmd = &cobra.Command{
-	Use:   "start <world>",
-	Short: "Start the Minecraft server service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "start <world>",
+	Short:             "Start the Minecraft server service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -222,9 +286,10 @@ var worldStartCmd = &cobra.Command{
 }
 
 var worldStopCmd = &cobra.Command{
-	Use:   "stop <world>",
-	Short: "Stop the Minecraft server service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "stop <world>",
+	Short:             "Stop the Minecraft server service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -232,9 +297,10 @@ var worldStopCmd = &cobra.Command{
 }
 
 var worldRestartCmd = &cobra.Command{
-	Use:   "restart <world>",
-	Short: "Restart the Minecraft server service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "restart <world>",
+	Short:             "Restart the Minecraft server service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Restart(unit)
@@ -242,9 +308,10 @@ var worldRestartCmd = &cobra.Command{
 }
 
 var worldEnableCmd = &cobra.Command{
-	Use:   "enable <world>",
-	Short: "Enable the Minecraft server service to start on boot",
-	Args:  cobra.ExactArgs(1),
+	Use:               "enable <world>",
+	Short:             "Enable the Minecraft server service to start on boot",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Enable(unit)
@@ -252,9 +319,10 @@ var worldEnableCmd = &cobra.Command{
 }
 
 var worldDisableCmd = &cobra.Command{
-	Use:   "disable <world>",
-	Short: "Disable the Minecraft server service from starting on boot",
-	Args:  cobra.ExactArgs(1),
+	Use:               "disable <world>",
+	Short:             "Disable the Minecraft server service from starting on boot",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Disable(unit)
@@ -262,9 +330,10 @@ var worldDisableCmd = &cobra.Command{
 }
 
 var worldLogsCmd = &cobra.Command{
-	Use:   "logs <world>",
-	Short: "View logs for the Minecraft server service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs <world>",
+	Short:             "View logs for the Minecraft server service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -285,9 +354,10 @@ var worldBackupCmd = &cobra.Command{
 }
 
 var worldBackupStatusCmd = &cobra.Command{
-	Use:   "status <world>",
-	Short: "Show status of the world backup service and timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "status <world>",
+	Short:             "Show status of the world backup service and timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
@@ -301,9 +371,10 @@ var worldBackupStatusCmd = &cobra.Command{
 }
 
 var worldBackupStartCmd = &cobra.Command{
-	Use:   "start <world>",
-	Short: "Trigger a world backup now",
-	Args:  cobra.ExactArgs(1),
+	Use:               "start <world>",
+	Short:             "Trigger a world backup now",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -311,9 +382,10 @@ var worldBackupStartCmd = &cobra.Command{
 }
 
 var worldBackupStopCmd = &cobra.Command{
-	Use:   "stop <world>",
-	Short: "Stop a running world backup",
-	Args:  cobra.ExactArgs(1),
+	Use:               "stop <world>",
+	Short:             "Stop a running world backup",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -321,9 +393,10 @@ var worldBackupStopCmd = &cobra.Command{
 }
 
 var worldBackupEnableCmd = &cobra.Command{
-	Use:   "enable <world>",
-	Short: "Enable the world backup timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "enable <world>",
+	Short:             "Enable the world backup timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -331,9 +404,10 @@ var worldBackupEnableCmd = &cobra.Command{
 }
 
 var worldBackupDisableCmd = &cobra.Command{
-	Use:   "disable <world>",
-	Short: "Disable the world backup timer",
-	Args:  cobra.ExactArgs(1),
+	Use:               "disable <world>",
+	Short:             "Disable the world backup timer",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -341,9 +415,10 @@ var worldBackupDisableCmd = &cobra.Command{
 }
 
 var worldBackupLogsCmd = &cobra.Command{
-	Use:   "logs <world>",
-	Short: "View logs for the world backup service",
-	Args:  cobra.ExactArgs(1),
+	Use:               "logs <world>",
+	Short:             "View logs for the world backup service",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -358,23 +433,26 @@ var worldBackupLogsCmd = &cobra.Command{
 }
 
 func init() {
-	worldCmd.AddCommand(worldListCmd)
-	worldCmd.AddCommand(worldInfoCmd)
-	worldCmd.AddCommand(worldCreateCmd)
-	worldCmd.AddCommand(worldRegisterCmd)
-	worldCmd.AddCommand(worldUpgradeCmd)
+	// List command flags
+	worldListCmd.Flags().BoolVar(&listFull, "full", false, "Show service status, enabled state, and timer information")
+
+	WorldCmd.AddCommand(worldListCmd)
+	WorldCmd.AddCommand(worldInfoCmd)
+	WorldCmd.AddCommand(worldCreateCmd)
+	WorldCmd.AddCommand(worldRegisterCmd)
+	WorldCmd.AddCommand(worldUpgradeCmd)
 
 	// Service management commands
-	worldCmd.AddCommand(worldStatusCmd)
-	worldCmd.AddCommand(worldStartCmd)
-	worldCmd.AddCommand(worldStopCmd)
-	worldCmd.AddCommand(worldRestartCmd)
-	worldCmd.AddCommand(worldEnableCmd)
-	worldCmd.AddCommand(worldDisableCmd)
-	worldCmd.AddCommand(worldLogsCmd)
+	WorldCmd.AddCommand(worldStatusCmd)
+	WorldCmd.AddCommand(worldStartCmd)
+	WorldCmd.AddCommand(worldStopCmd)
+	WorldCmd.AddCommand(worldRestartCmd)
+	WorldCmd.AddCommand(worldEnableCmd)
+	WorldCmd.AddCommand(worldDisableCmd)
+	WorldCmd.AddCommand(worldLogsCmd)
 
 	// World backup commands
-	worldCmd.AddCommand(worldBackupCmd)
+	WorldCmd.AddCommand(worldBackupCmd)
 	worldBackupCmd.AddCommand(worldBackupStatusCmd)
 	worldBackupCmd.AddCommand(worldBackupStartCmd)
 	worldBackupCmd.AddCommand(worldBackupStopCmd)

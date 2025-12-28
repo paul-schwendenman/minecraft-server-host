@@ -266,14 +266,14 @@ func TestWorldCmdStructure(t *testing.T) {
 		subcommands := []string{"list", "info", "create", "register", "upgrade"}
 		for _, name := range subcommands {
 			found := false
-			for _, cmd := range worldCmd.Commands() {
+			for _, cmd := range WorldCmd.Commands() {
 				if cmd.Name() == name {
 					found = true
 					break
 				}
 			}
 			if !found {
-				t.Errorf("worldCmd missing subcommand %q", name)
+				t.Errorf("WorldCmd missing subcommand %q", name)
 			}
 		}
 	})
@@ -346,11 +346,11 @@ func TestWorldCmdStructure(t *testing.T) {
 	})
 
 	t.Run("world cmd has description", func(t *testing.T) {
-		if worldCmd.Short == "" {
-			t.Error("worldCmd should have Short description")
+		if WorldCmd.Short == "" {
+			t.Error("WorldCmd should have Short description")
 		}
-		if worldCmd.Long == "" {
-			t.Error("worldCmd should have Long description")
+		if WorldCmd.Long == "" {
+			t.Error("WorldCmd should have Long description")
 		}
 	})
 }
