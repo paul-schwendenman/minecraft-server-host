@@ -41,9 +41,10 @@ func GetRootCmd() *cobra.Command {
 // newRootCmd creates the root command for minecraftctl
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "minecraftctl",
-		Short: "Minecraft server management tool",
-		Long:  "A CLI tool for managing Minecraft worlds, maps, and RCON commands",
+		Use:          "minecraftctl",
+		Short:        "Minecraft server management tool",
+		Long:         "A CLI tool for managing Minecraft worlds, maps, and RCON commands",
+		SilenceUsage: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			// Set up logging level
 			if verbose {
