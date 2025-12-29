@@ -86,20 +86,17 @@ The workflow detects which lambdas need rebuilding/deploying:
 
 **File:** `worlds-deploy.yml`
 
-Builds and deploys the Worlds SvelteKit app (map viewer) to S3 and CloudFront.
+Builds and deploys the Worlds SvelteKit app (map viewer) to S3 and CloudFront at `maps.{zone}`.
 
 **Triggers:**
-- Push to `master` when files in `minecraft-ui/` change
+- Push to `master` when files in `minecraft-ui/apps/worlds/` or `minecraft-ui/libs/` change
 - Manual via `workflow_dispatch`
 
-**Manual Trigger Options:**
-| Input | Default | Description |
-|-------|---------|-------------|
-| `force_deploy` | `true` | Force deployment even without changes |
-
-**Target Resources (Test Environment):**
-- S3 Bucket: `minecraft-test-webapp`
-- CloudFront Distribution: `E35JG9QWEEVI98`
+**Environment Variables (per GitHub environment):**
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET_MAPS` | S3 bucket for worlds app (e.g., `minecraft-test-webapp-maps`) |
+| `CLOUDFRONT_MAPS` | CloudFront distribution ID for maps.{zone} |
 
 **AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
 
@@ -107,16 +104,17 @@ Builds and deploys the Worlds SvelteKit app (map viewer) to S3 and CloudFront.
 
 **File:** `manager-deploy.yml`
 
-Builds and deploys the Manager Vite/Svelte app (legacy control panel) to S3 and CloudFront. Manual trigger only.
+Builds and deploys the Manager Vite/Svelte app (EC2 control panel) to S3 and CloudFront at `www.{zone}`.
 
 **Triggers:**
-- Manual via `workflow_dispatch` only
+- Push to `master` when files in `minecraft-ui/apps/manager/` or `minecraft-ui/libs/` change
+- Manual via `workflow_dispatch`
 
-**Manual Trigger Options:**
-| Input | Default | Description |
-|-------|---------|-------------|
-| `s3_bucket` | `minecraft-test-webapp` | S3 bucket to deploy to |
-| `cloudfront_dist` | `E35JG9QWEEVI98` | CloudFront distribution ID |
+**Environment Variables (per GitHub environment):**
+| Variable | Description |
+|----------|-------------|
+| `S3_BUCKET_WWW` | S3 bucket for manager app (e.g., `minecraft-test-webapp`) |
+| `CLOUDFRONT_WWW` | CloudFront distribution ID for www.{zone} |
 
 **AWS Authentication:** Uses OIDC. See [github-actions-aws-oidc.md](github-actions-aws-oidc.md).
 

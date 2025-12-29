@@ -16,19 +16,26 @@ Terraform configuration for the Minecraft server infrastructure on AWS.
 | Domain | Service | Notes |
 |--------|---------|-------|
 | `{zone}` | EC2 (game server) | A/AAAA records |
-| `www.{zone}` | CloudFront | Main web UI |
+| `www.{zone}` | CloudFront (www) | Manager app |
+| `maps.{zone}` | CloudFront (maps) | Worlds app + map viewer |
 
 ### Test
 | Domain | Service | Notes |
 |--------|---------|-------|
-| `testmc.{zone}` | EC2 (game server) | A record |
-| (CloudFront default) | CloudFront | No custom domain by default |
+| `test.{zone}` | EC2 (game server) | A record |
+| `www.test.{zone}` | CloudFront (www) | Manager app |
+| `maps.test.{zone}` | CloudFront (maps) | Worlds app + map viewer |
 
 ### CloudFront Routes
-- `/` → Landing page (webapp S3 bucket)
+
+**www.* distribution (manager app):**
+- `/` → Manager app (webapp bucket)
+- `/api/*` → API Gateway (Lambda functions)
+
+**maps.* distribution (worlds app):**
+- `/` → Worlds app (webapp-maps bucket)
 - `/api/*` → API Gateway (Lambda functions)
 - `/maps/*` → Maps S3 bucket (uNmINeD exports)
-- `/worlds/*` → Worlds app (webapp S3 bucket)
 
 ## Modules
 
@@ -87,19 +94,26 @@ terraform output
 
 ## S3 Buckets
 
-Each environment creates three buckets:
+Each environment creates four buckets:
 
 | Bucket | Purpose | Features |
 |--------|---------|----------|
-| `{name}-webapp` | Svelte UI static files | Website config, CloudFront access |
+| `{name}-webapp` | Manager app (www.*) | Website config, CloudFront access |
+| `{name}-webapp-maps` | Worlds app (maps.*) | Website config, CloudFront access |
 | `{name}-maps` | uNmINeD map exports | Versioning, encryption, CloudFront access |
 | `{name}-backups` | World backups | Versioning, encryption, lifecycle (Glacier 30d, delete 90d) |
 
 ## CloudFront
 
-Single distribution per environment with multiple origins:
-1. **webapp-origin** → S3 webapp bucket (OAC access)
-2. **api-origin** → API Gateway (HTTPS only)
-3. **maps-origin** → S3 maps bucket (OAC access)
+Two distributions per environment:
+
+**www.* distribution:**
+- **webapp-origin** → S3 webapp bucket (OAC access)
+- **api-origin** → API Gateway (HTTPS only)
+
+**maps.* distribution:**
+- **webapp-origin** → S3 webapp-maps bucket (OAC access)
+- **api-origin** → API Gateway (HTTPS only)
+- **maps-origin** → S3 maps bucket (OAC access)
 
 CloudFront function `maps-append-index.js` handles directory-style requests under `/maps/*`.

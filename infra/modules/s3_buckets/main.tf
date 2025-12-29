@@ -2,7 +2,7 @@ locals {
   prefix = lower(var.name)
 }
 
-# Web app
+# Web app - www (manager app)
 resource "aws_s3_bucket" "webapp" {
   bucket        = "${var.name}-webapp"
   force_destroy = true
@@ -10,6 +10,19 @@ resource "aws_s3_bucket" "webapp" {
 
 resource "aws_s3_bucket_website_configuration" "webapp" {
   bucket = aws_s3_bucket.webapp.id
+  index_document {
+    suffix = "index.html"
+  }
+}
+
+# Web app - maps (worlds app)
+resource "aws_s3_bucket" "webapp_maps" {
+  bucket        = "${var.name}-webapp-maps"
+  force_destroy = true
+}
+
+resource "aws_s3_bucket_website_configuration" "webapp_maps" {
+  bucket = aws_s3_bucket.webapp_maps.id
   index_document {
     suffix = "index.html"
   }

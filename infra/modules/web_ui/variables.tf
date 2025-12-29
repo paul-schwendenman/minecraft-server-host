@@ -36,14 +36,22 @@ variable "webapp_bucket_domain_name" {
   type        = string
 }
 
+variable "include_maps" {
+  description = "Include maps S3 bucket origin and /maps/* route"
+  type        = bool
+  default     = false
+}
+
 variable "map_bucket_name" {
-  description = "Name of the S3 bucket that stores rendered maps"
+  description = "Name of the S3 bucket that stores rendered maps (required if include_maps = true)"
   type        = string
+  default     = ""
 }
 
 variable "map_bucket_domain_name" {
-  description = "The regional domain name of the map S3 bucket"
+  description = "The regional domain name of the map S3 bucket (required if include_maps = true)"
   type        = string
+  default     = ""
 }
 
 variable "custom_domain" {

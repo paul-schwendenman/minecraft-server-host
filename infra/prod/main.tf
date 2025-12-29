@@ -100,22 +100,39 @@ module "api_lambda" {
   cors_origin     = "*"
 }
 
-module "web_ui" {
+# Manager app (www.*)
+module "web_ui_www" {
   source = "../modules/web_ui"
-  name   = "minecraft-prod"
+  name   = "minecraft-prod-www"
 
   api_endpoint              = module.api_lambda.api_endpoint
   webapp_bucket_name        = module.s3_buckets.webapp_bucket_name
   webapp_bucket_domain_name = module.s3_buckets.webapp_bucket_domain_name
-  map_bucket_name           = module.s3_buckets.map_bucket_name
-  map_bucket_domain_name    = module.s3_buckets.map_bucket_domain_name
 
-  # Custom domain configuration
   custom_domain       = "www.minecraft.paulandsierra.com"
   acm_certificate_arn = module.acm_certificate.certificate_arn
   zone_id             = aws_route53_zone.prod.zone_id
 
-  # No geo restrictions for production
+  include_maps  = false
+  geo_whitelist = []
+}
+
+# Worlds app (maps.*)
+module "web_ui_maps" {
+  source = "../modules/web_ui"
+  name   = "minecraft-prod-maps"
+
+  api_endpoint              = module.api_lambda.api_endpoint
+  webapp_bucket_name        = module.s3_buckets.webapp_maps_bucket_name
+  webapp_bucket_domain_name = module.s3_buckets.webapp_maps_bucket_domain_name
+  map_bucket_name           = module.s3_buckets.map_bucket_name
+  map_bucket_domain_name    = module.s3_buckets.map_bucket_domain_name
+
+  custom_domain       = "maps.minecraft.paulandsierra.com"
+  acm_certificate_arn = module.acm_certificate.certificate_arn
+  zone_id             = aws_route53_zone.prod.zone_id
+
+  include_maps  = true
   geo_whitelist = []
 }
 
@@ -147,8 +164,28 @@ output "api_endpoint" {
   value = module.api_lambda.api_endpoint
 }
 
-output "webapp_url" {
-  value = module.web_ui.webapp_url
+output "webapp_www_url" {
+  value = module.web_ui_www.webapp_url
+}
+
+output "webapp_maps_url" {
+  value = module.web_ui_maps.webapp_url
+}
+
+output "cloudfront_www_distribution_id" {
+  value = module.web_ui_www.distribution_id
+}
+
+output "cloudfront_maps_distribution_id" {
+  value = module.web_ui_maps.distribution_id
+}
+
+output "webapp_bucket_name" {
+  value = module.s3_buckets.webapp_bucket_name
+}
+
+output "webapp_maps_bucket_name" {
+  value = module.s3_buckets.webapp_maps_bucket_name
 }
 
 output "map_bucket_name" {
