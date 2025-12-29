@@ -8,6 +8,7 @@ Terraform configuration for the Minecraft server infrastructure on AWS.
 |-------------|-----------|---------|
 | `prod/` | Production | Live server |
 | `test/` | Testing | Test server |
+| `global/` | Shared | Account-wide resources (GitHub Actions IAM role) |
 | `minimal/` | Starter | Minimal config for new deployments |
 
 ## Domain Structure
@@ -42,13 +43,14 @@ Terraform configuration for the Minecraft server infrastructure on AWS.
 | Module | Purpose |
 |--------|---------|
 | `networking/` | VPC, subnets, internet gateway, route tables |
-| `s3_buckets/` | Three buckets: webapp, maps, backups |
+| `s3_buckets/` | Four buckets: webapp, webapp-maps, maps, backups |
 | `ec2_role/` | IAM role for EC2 (S3 + Route53 access) |
 | `mc_stack/` | EC2 instance, security groups, EBS volumes |
 | `api_lambda/` | Lambda functions + API Gateway + Route53 DNS |
 | `web_ui/` | CloudFront distribution + S3 bucket policies |
 | `acm_certificate/` | ACM wildcard certificate with DNS validation |
 | `dns_records/` | Route53 A/AAAA records |
+| `github_actions_role/` | IAM role + OIDC for GitHub Actions CI/CD |
 
 ## Module Dependencies
 
