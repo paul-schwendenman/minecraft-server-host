@@ -251,215 +251,67 @@ Replace:
 4. Name: `AWS_ROLE_ARN`
 5. Value: `arn:aws:iam::ACCOUNT_ID:role/GitHubActionsRole`
 
-## Terraform Module (Optional)
+## Terraform Module
 
-If you manage infrastructure with Terraform, here's a complete module:
+The GitHub Actions IAM role is managed by Terraform in `infra/global/` using the `github_actions_role` module.
 
-```hcl
-variable "github_repo" {
-  description = "GitHub repository in format 'org/repo'"
-  type        = string
-}
+### Module Location
 
-variable "test_lambda_prefix" {
-  description = "Prefix for test Lambda functions"
-  type        = string
-  default     = "minecraft-test"
-}
+- **Module:** `infra/modules/github_actions_role/`
+- **Usage:** `infra/global/main.tf`
 
-variable "test_s3_bucket" {
-  description = "S3 bucket name for test webapp"
-  type        = string
-  default     = "minecraft-test-webapp"
-}
+### What the Module Creates
 
-variable "test_cloudfront_distribution_id" {
-  description = "CloudFront distribution ID for test environment"
-  type        = string
-}
+- OIDC identity provider for GitHub Actions
+- IAM role with trust policy for your repository
+- Dynamic policies for:
+  - **S3:** Deploy to webapp buckets
+  - **CloudFront:** Cache invalidation
+  - **Lambda:** Function code updates
+  - **EC2/AMI:** Packer builds (optional)
 
-variable "prod_lambda_prefix" {
-  description = "Prefix for prod Lambda functions"
-  type        = string
-  default     = "minecraft-prod"
-}
+### Usage
 
-variable "prod_s3_bucket" {
-  description = "S3 bucket name for prod webapp"
-  type        = string
-  default     = "minecraft-prod-webapp"
-}
+The `infra/global/main.tf` reads outputs from test and prod environments via `terraform_remote_state` and automatically configures permissions for all S3 buckets and CloudFront distributions.
 
-variable "prod_cloudfront_distribution_id" {
-  description = "CloudFront distribution ID for prod environment"
-  type        = string
-  default     = ""
-}
-
-data "aws_caller_identity" "current" {}
-
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
-}
-
-resource "aws_iam_role" "github_actions" {
-  name = "GitHubActionsRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Federated = aws_iam_openid_connect_provider.github.arn
-        }
-        Action = "sts:AssumeRoleWithWebIdentity"
-        Condition = {
-          StringEquals = {
-            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-          }
-          StringLike = {
-            "token.actions.githubusercontent.com:sub" = "repo:${var.github_repo}:*"
-          }
-        }
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "packer" {
-  name = "PackerBuildPolicy"
-  role = aws_iam_role.github_actions.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "PackerEC2"
-        Effect = "Allow"
-        Action = [
-          "ec2:AttachVolume",
-          "ec2:AuthorizeSecurityGroupIngress",
-          "ec2:CopyImage",
-          "ec2:CreateImage",
-          "ec2:CreateKeyPair",
-          "ec2:CreateSecurityGroup",
-          "ec2:CreateSnapshot",
-          "ec2:CreateTags",
-          "ec2:CreateVolume",
-          "ec2:DeleteKeyPair",
-          "ec2:DeleteSecurityGroup",
-          "ec2:DeleteSnapshot",
-          "ec2:DeleteVolume",
-          "ec2:DeregisterImage",
-          "ec2:DescribeImageAttribute",
-          "ec2:DescribeImages",
-          "ec2:DescribeInstances",
-          "ec2:DescribeInstanceStatus",
-          "ec2:DescribeRegions",
-          "ec2:DescribeSecurityGroups",
-          "ec2:DescribeSnapshots",
-          "ec2:DescribeSubnets",
-          "ec2:DescribeTags",
-          "ec2:DescribeVolumes",
-          "ec2:DetachVolume",
-          "ec2:GetPasswordData",
-          "ec2:ModifyImageAttribute",
-          "ec2:ModifyInstanceAttribute",
-          "ec2:ModifySnapshotAttribute",
-          "ec2:RegisterImage",
-          "ec2:RunInstances",
-          "ec2:StopInstances",
-          "ec2:TerminateInstances"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy" "test_deploy" {
-  name = "TestDeployPolicy"
-  role = aws_iam_role.github_actions.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid      = "LambdaDeployTest"
-        Effect   = "Allow"
-        Action   = ["lambda:UpdateFunctionCode"]
-        Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.test_lambda_prefix}-*"
-      },
-      {
-        Sid    = "S3WebappDeployTest"
-        Effect = "Allow"
-        Action = [
-          "s3:ListBucket",
-          "s3:GetObject",
-          "s3:PutObject",
-          "s3:DeleteObject"
-        ]
-        Resource = [
-          "arn:aws:s3:::${var.test_s3_bucket}",
-          "arn:aws:s3:::${var.test_s3_bucket}/*"
-        ]
-      },
-      {
-        Sid      = "CloudFrontInvalidateTest"
-        Effect   = "Allow"
-        Action   = ["cloudfront:CreateInvalidation"]
-        Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.test_cloudfront_distribution_id}"
-      }
-    ]
-  })
-}
-
-# Uncomment when prod environment exists
-# resource "aws_iam_role_policy" "prod_deploy" {
-#   name = "ProdDeployPolicy"
-#   role = aws_iam_role.github_actions.id
-#
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Sid      = "LambdaDeployProd"
-#         Effect   = "Allow"
-#         Action   = ["lambda:UpdateFunctionCode"]
-#         Resource = "arn:aws:lambda:us-east-2:${data.aws_caller_identity.current.account_id}:function:${var.prod_lambda_prefix}-*"
-#       },
-#       {
-#         Sid    = "S3WebappDeployProd"
-#         Effect = "Allow"
-#         Action = [
-#           "s3:ListBucket",
-#           "s3:GetObject",
-#           "s3:PutObject",
-#           "s3:DeleteObject"
-#         ]
-#         Resource = [
-#           "arn:aws:s3:::${var.prod_s3_bucket}",
-#           "arn:aws:s3:::${var.prod_s3_bucket}/*"
-#         ]
-#       },
-#       {
-#         Sid      = "CloudFrontInvalidateProd"
-#         Effect   = "Allow"
-#         Action   = ["cloudfront:CreateInvalidation"]
-#         Resource = "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${var.prod_cloudfront_distribution_id}"
-#       }
-#     ]
-#   })
-# }
-
-output "role_arn" {
-  description = "Add this to GitHub Secrets as AWS_ROLE_ARN"
-  value       = aws_iam_role.github_actions.arn
-}
+```bash
+# After applying test and prod environments
+cd infra/global
+terraform init
+terraform apply
 ```
+
+### Updating Permissions
+
+When you add new CloudFront distributions or S3 buckets in test/prod, re-run:
+
+```bash
+cd infra/global
+terraform apply
+```
+
+This automatically updates the IAM policies.
+
+### Importing Existing Resources
+
+If the OIDC provider and role already exist:
+
+```bash
+cd infra/global
+terraform import module.github_actions_role.aws_iam_openid_connect_provider.github \
+  arn:aws:iam::ACCOUNT_ID:oidc-provider/token.actions.githubusercontent.com
+terraform import module.github_actions_role.aws_iam_role.github_actions GitHubActionsRole
+```
+
+### Module Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `github_repo` | Repository in format `org/repo` | (required) |
+| `s3_buckets` | List of S3 bucket names | `[]` |
+| `cloudfront_distribution_arns` | List of CloudFront ARNs | `[]` |
+| `lambda_prefixes` | List of Lambda prefixes | `[]` |
+| `include_packer_permissions` | Include EC2/AMI permissions | `true` |
 
 ## Restricting Access Further
 
