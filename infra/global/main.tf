@@ -1,9 +1,3 @@
-variable "aws_profile" {
-  description = "AWS CLI profile to use"
-  type        = string
-  default     = "minecraft"
-}
-
 provider "aws" {
   region  = "us-east-2"
   profile = var.aws_profile
@@ -28,7 +22,7 @@ data "terraform_remote_state" "prod" {
 module "github_actions_role" {
   source = "../modules/github_actions_role"
 
-  github_repo = "paul-schwendenman/minecraft-server-host"
+  github_repo = var.github_repo
 
   # S3 buckets from both environments
   s3_buckets = [
@@ -50,11 +44,7 @@ module "github_actions_role" {
     "arn:aws:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/${data.terraform_remote_state.prod.outputs.cloudfront_maps_distribution_id}",
   ]
 
-  # Lambda prefixes for both environments
-  lambda_prefixes = [
-    "minecraft-test",
-    "minecraft-prod",
-  ]
+  lambda_prefixes = var.lambda_prefixes
 }
 
 data "aws_caller_identity" "current" {}
