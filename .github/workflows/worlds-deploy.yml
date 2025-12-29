@@ -4,7 +4,8 @@ on:
   push:
     branches: [master]
     paths:
-      - 'minecraft-ui/**'
+      - 'minecraft-ui/apps/worlds/**'
+      - 'minecraft-ui/libs/**'
       - '.github/workflows/worlds-deploy.yml'
   workflow_dispatch:
     inputs:
@@ -75,20 +76,20 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync build/ s3://${{ vars.S3_BUCKET }}/worlds/ --delete
-          echo "Deployed to s3://${{ vars.S3_BUCKET }}/worlds/"
+          aws s3 sync build/ s3://${{ vars.S3_BUCKET_MAPS }}/ --delete
+          echo "Deployed to s3://${{ vars.S3_BUCKET_MAPS }}/"
 
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation \
-            --distribution-id ${{ vars.CLOUDFRONT_DIST }} \
-            --paths '/worlds/*'
+            --distribution-id ${{ vars.CLOUDFRONT_MAPS }} \
+            --paths '/*'
           echo "CloudFront cache invalidated"
 
       - name: Summary
         run: |
           echo "## Worlds App Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Environment:** ${{ inputs.environment || 'test' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **S3 Bucket:** ${{ vars.S3_BUCKET }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront:** ${{ vars.CLOUDFRONT_DIST }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **S3 Bucket:** ${{ vars.S3_BUCKET_MAPS }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **CloudFront:** ${{ vars.CLOUDFRONT_MAPS }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY

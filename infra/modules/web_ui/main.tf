@@ -11,6 +11,7 @@ resource "aws_cloudfront_origin_access_control" "webapp" {
 }
 
 resource "aws_cloudfront_function" "maps_index" {
+  count   = var.include_maps ? 1 : 0
   name    = "${var.name}-maps-append-index"
   runtime = "cloudfront-js-1.0"
   comment = "Append index.html for directory-style requests under /maps/*"
@@ -52,12 +53,15 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # Origin 3: Maps bucket (uNmINeD exports)
-  origin {
-    domain_name = var.map_bucket_domain_name
-    origin_id   = "maps-origin"
+  # Origin 3: Maps bucket (uNmINeD exports) - conditional
+  dynamic "origin" {
+    for_each = var.include_maps ? [1] : []
+    content {
+      domain_name = var.map_bucket_domain_name
+      origin_id   = "maps-origin"
 
-    origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
+      origin_access_control_id = aws_cloudfront_origin_access_control.webapp.id
+    }
   }
 
   ##########################################
@@ -80,41 +84,27 @@ resource "aws_cloudfront_distribution" "webapp" {
     }
   }
 
-  # --- /maps/* → Maps S3 bucket
-  ordered_cache_behavior {
-    path_pattern           = "/maps/*"
-    target_origin_id       = "maps-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
+  # --- /maps/* → Maps S3 bucket (conditional)
+  dynamic "ordered_cache_behavior" {
+    for_each = var.include_maps ? [1] : []
+    content {
+      path_pattern           = "/maps/*"
+      target_origin_id       = "maps-origin"
+      viewer_protocol_policy = "redirect-to-https"
+      allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+      cached_methods         = ["GET", "HEAD"]
+      compress               = true
 
-    function_association {
-      event_type   = "viewer-request"
-      function_arn = aws_cloudfront_function.maps_index.arn
-    }
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
+      function_association {
+        event_type   = "viewer-request"
+        function_arn = aws_cloudfront_function.maps_index[0].arn
       }
-    }
-  }
 
-  # --- /worlds/* → Worlds S3 bucket (SvelteKit static pages)
-  ordered_cache_behavior {
-    path_pattern           = "/worlds/*"
-    target_origin_id       = "webapp-origin"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-    compress               = true
-
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
+      forwarded_values {
+        query_string = false
+        cookies {
+          forward = "none"
+        }
       }
     }
   }
@@ -208,8 +198,9 @@ resource "aws_s3_bucket_policy" "webapp" {
   })
 }
 
-# Maps bucket (Unmined exports)
+# Maps bucket (Unmined exports) - conditional
 resource "aws_s3_bucket_policy" "maps" {
+  count  = var.include_maps ? 1 : 0
   bucket = var.map_bucket_name
 
   policy = jsonencode({

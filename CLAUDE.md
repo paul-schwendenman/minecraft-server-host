@@ -49,4 +49,6 @@ Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md
 - `minecraft-ui/` - pnpm monorepo with Svelte 5 apps (`@minecraft/*` packages)
 - `minecraftctl/` - Go CLI for server-side world/map management (see `minecraftctl/CLAUDE.md`)
 - `packer/` - AMI builds: base.pkr.hcl (foundation) → minecraft.pkr.hcl (server)
-- `infra/` - Terraform modules (test/ and prod/ environments)
+- `infra/` - Terraform infrastructure (see `infra/README.md`)
+  - `test/` and `prod/` environments with separate VPCs
+  - `modules/` - Shared: networking, s3_buckets, ec2_role, mc_stack, api_lambda, web_ui, acm_certificate, dns_records
