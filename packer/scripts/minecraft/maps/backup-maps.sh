@@ -39,6 +39,15 @@ backup_world() {
   fi
 }
 
+backup_root_files() {
+  for f in "${BASE_DIR}/world_manifest.json" "${BASE_DIR}/index.html"; do
+    if [[ -f "$f" ]]; then
+      echo "Backing up $(basename "$f") → s3://$BUCKET/maps/"
+      aws s3 cp "$f" "s3://$BUCKET/maps/$(basename "$f")" --no-progress
+    fi
+  done
+}
+
 if [[ "$WORLD" == "all" ]]; then
   echo "Backing up all maps under $BASE_DIR"
   for d in "${BASE_DIR}"/*; do
@@ -46,16 +55,10 @@ if [[ "$WORLD" == "all" ]]; then
       backup_world "$(basename "$d")"
     fi
   done
-
-  # Backup root-level files (manifest and index)
-  for f in "${BASE_DIR}/world_manifest.json" "${BASE_DIR}/index.html"; do
-    if [[ -f "$f" ]]; then
-      echo "Backing up $(basename "$f") → s3://$BUCKET/maps/"
-      aws s3 cp "$f" "s3://$BUCKET/maps/$(basename "$f")" --no-progress
-    fi
-  done
-
   echo "All map backups complete."
 else
   backup_world "$WORLD"
 fi
+
+# Always sync root-level manifest files (small files, updated after each rebuild)
+backup_root_files
