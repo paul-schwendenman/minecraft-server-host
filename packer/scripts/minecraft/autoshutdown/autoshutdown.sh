@@ -15,16 +15,9 @@ fi
 RUNNING_SERVICES=$(systemctl list-units --type=service --state=running 'minecraft@*.service' --no-legend 2>/dev/null | wc -l)
 
 if [[ "${RUNNING_SERVICES}" -eq 0 ]]; then
-  logger -t autoshutdown "No minecraft services running"
-  if [ -f "${TOUCH_FILE}" ]; then
-    logger -t autoshutdown "No services - second check, shutting down now"
-    rm -f "${TOUCH_FILE}"
-    sudo /sbin/poweroff
-  else
-    logger -t autoshutdown "No services — first check, will shut down next time"
-    touch "${TOUCH_FILE}"
-  fi
-  exit 0
+  logger -t autoshutdown "No minecraft services running, shutting down now"
+  rm -f "${TOUCH_FILE}"
+  sudo /sbin/poweroff
 fi
 
 # Load shared RCON settings for minecraftctl
