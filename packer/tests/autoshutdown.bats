@@ -20,6 +20,8 @@ teardown() {
 
 @test "autoshutdown: exits with error when minecraft.env missing" {
     rm -f "${MINECRAFT_ENV}"
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
 
@@ -29,6 +31,8 @@ teardown() {
 
 @test "autoshutdown: exits with error when minecraftctl not found" {
     # Don't create minecraftctl mock
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
 
@@ -51,6 +55,7 @@ teardown() {
 @test "autoshutdown: creates touch file on first zero-player check" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
     create_mock "who" 0 ""  # No SSH sessions
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
 
@@ -63,6 +68,7 @@ teardown() {
 @test "autoshutdown: shuts down on second consecutive zero-player check" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
     create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file to simulate first check already happened
     touch "${MINECRAFT_HOME}/no_one_playing"
@@ -79,6 +85,7 @@ teardown() {
 @test "autoshutdown: removes touch file when players are online" {
     create_mock "minecraftctl" 0 "There are 5 of a max of 20 players online"
     create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file from previous check
     touch "${MINECRAFT_HOME}/no_one_playing"
@@ -95,6 +102,7 @@ teardown() {
 @test "autoshutdown: handles RCON failure gracefully" {
     create_mock "minecraftctl" 1 ""  # RCON fails
     create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
 
@@ -106,6 +114,7 @@ teardown() {
     # Test with different player counts
     create_mock "minecraftctl" 0 "There are 12 of a max of 20 players online"
     create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
 
@@ -126,4 +135,41 @@ teardown() {
     [ "$status" -eq 0 ]
     # Touch file should be removed due to SSH session
     [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+}
+
+@test "autoshutdown: shuts down immediately when no minecraft services running" {
+    create_mock "who" 0 ""
+    # Create a mock that outputs nothing (not even a newline) to simulate no services
+    cat > "${MOCK_BIN}/systemctl" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_BIN}/systemctl"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    # poweroff should be called immediately
+    assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: cleans up touch file when no minecraft services running" {
+    create_mock "who" 0 ""
+    # Create a mock that outputs nothing (not even a newline) to simulate no services
+    cat > "${MOCK_BIN}/systemctl" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_BIN}/systemctl"
+
+    # Create touch file from previous check
+    touch "${MINECRAFT_HOME}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    # Touch file should be removed
+    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    # poweroff should be called
+    assert_mock_called_with "poweroff"
 }

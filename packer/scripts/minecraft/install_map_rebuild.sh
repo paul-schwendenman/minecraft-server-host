@@ -15,4 +15,3 @@ sudo install -Dm644 "${SRC_DIR}/minecraft-override-rebuild.conf" /etc/systemd/sy
 
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable minecraft-map-rebuild@world.timer || true

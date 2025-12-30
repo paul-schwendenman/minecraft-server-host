@@ -38,10 +38,11 @@ fi
 
 # 4. Map rebuild timers --------------------------------------------------------
 echo "[*] Checking map rebuild timers..."
-if systemctl list-unit-files | grep -q minecraft-map-rebuild@; then
-    systemctl list-timers --all | grep minecraft-map-rebuild || echo "  (no active timers)"
+REBUILD_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-rebuild || true)
+if [[ -n "$REBUILD_TIMERS" ]]; then
+    echo "$REBUILD_TIMERS" | while read -r line; do echo "  $line"; done
 else
-    echo "  ✘ minecraft-map-rebuild units not installed"
+    echo "  (no map rebuild timers active)"
 fi
 
 # 5. Symlink + directories -----------------------------------------------------
@@ -79,17 +80,19 @@ fi
 
 # 8. Backups -------------------------------------------------------------
 echo "[*] Checking backup timers..."
-for unit in minecraft-map-backup.timer minecraft-world-backup.timer; do
-  if systemctl list-unit-files | grep -q "$unit"; then
-    if systemctl is-enabled --quiet "$unit"; then
-      echo "  ✔ $unit enabled"
-    else
-      echo "  ⚠️ $unit present but not enabled"
-    fi
-  else
-    echo "  ✘ $unit missing"
-  fi
-done
+MAP_BACKUP_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-backup || true)
+if [[ -n "$MAP_BACKUP_TIMERS" ]]; then
+    echo "$MAP_BACKUP_TIMERS" | while read -r line; do echo "  $line"; done
+else
+    echo "  ⚠️ No map backup timers active"
+fi
+
+WORLD_BACKUP_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-world-backup || true)
+if [[ -n "$WORLD_BACKUP_TIMERS" ]]; then
+    echo "$WORLD_BACKUP_TIMERS" | while read -r line; do echo "  $line"; done
+else
+    echo "  ⚠️ No world backup timers active"
+fi
 
 # 9. EBS Mount -----------------------------------------------------------
 echo "[*] Checking EBS mount (/srv/minecraft-server)..."
