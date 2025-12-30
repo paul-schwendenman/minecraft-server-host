@@ -136,3 +136,40 @@ teardown() {
     # Touch file should be removed due to SSH session
     [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
 }
+
+@test "autoshutdown: shuts down immediately when no minecraft services running" {
+    create_mock "who" 0 ""
+    # Create a mock that outputs nothing (not even a newline) to simulate no services
+    cat > "${MOCK_BIN}/systemctl" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_BIN}/systemctl"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    # poweroff should be called immediately
+    assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: cleans up touch file when no minecraft services running" {
+    create_mock "who" 0 ""
+    # Create a mock that outputs nothing (not even a newline) to simulate no services
+    cat > "${MOCK_BIN}/systemctl" << 'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+    chmod +x "${MOCK_BIN}/systemctl"
+
+    # Create touch file from previous check
+    touch "${MINECRAFT_HOME}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    # Touch file should be removed
+    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    # poweroff should be called
+    assert_mock_called_with "poweroff"
+}

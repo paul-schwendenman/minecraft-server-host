@@ -18,6 +18,7 @@ if [[ "${RUNNING_SERVICES}" -eq 0 ]]; then
   logger -t autoshutdown "No minecraft services running, shutting down now"
   rm -f "${TOUCH_FILE}"
   sudo /sbin/poweroff
+  exit 0
 fi
 
 # Load shared RCON settings for minecraftctl
@@ -43,6 +44,7 @@ if [[ "${COUNT}" -eq 0 ]]; then
     logger -t autoshutdown "No players - second check, shutting down now"
     rm -f "${TOUCH_FILE}"
     sudo /sbin/poweroff
+    exit 0
   else
     logger -t autoshutdown "No players — first check, will shut down next time"
     touch "${TOUCH_FILE}"
