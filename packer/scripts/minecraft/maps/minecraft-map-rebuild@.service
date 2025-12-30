@@ -4,5 +4,7 @@ After=minecraft@%i.service
 
 [Service]
 Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
 ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
 ExecStartPost=/usr/local/bin/build-map-manifests.sh /srv/minecraft-server/%i
