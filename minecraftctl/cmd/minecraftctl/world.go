@@ -64,17 +64,17 @@ var worldListCmd = &cobra.Command{
 				}
 
 				// Get timer statuses
-				rebuildTimer := systemd.FormatUnitName("minecraft-map-rebuild", world.Name, systemd.UnitTimer)
+				updateTimer := systemd.FormatUnitName("minecraft-map-update", world.Name, systemd.UnitTimer)
 				backupTimer := systemd.FormatUnitName("minecraft-world-backup", world.Name, systemd.UnitTimer)
 
-				rebuildEnabled, _ := systemd.IsEnabled(rebuildTimer)
+				updateEnabled, _ := systemd.IsEnabled(updateTimer)
 				backupEnabled, _ := systemd.IsEnabled(backupTimer)
 
 				timers := ""
-				if rebuildEnabled {
-					timers += "✓ rebuild "
+				if updateEnabled {
+					timers += "✓ update "
 				} else {
-					timers += "✗ rebuild "
+					timers += "✗ update "
 				}
 				if backupEnabled {
 					timers += "✓ backup"
@@ -209,7 +209,7 @@ var worldRegisterCmd = &cobra.Command{
 
 		fmt.Printf("World '%s' registered successfully\n", worldName)
 		fmt.Printf("Systemd service minecraft@%s.service enabled and started\n", worldName)
-		fmt.Printf("Timers enabled: minecraft-map-rebuild@%s.timer, minecraft-world-backup@%s.timer, minecraft-map-backup@%s.timer\n",
+		fmt.Printf("Timers enabled: minecraft-map-update@%s.timer, minecraft-world-backup@%s.timer, minecraft-map-backup@%s.timer\n",
 			worldName, worldName, worldName)
 
 		return nil

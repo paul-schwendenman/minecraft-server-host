@@ -579,20 +579,20 @@ var mapBackupLogsCmd = &cobra.Command{
 	},
 }
 
-// Map rebuild service commands
-var mapRebuildCmd = &cobra.Command{
-	Use:   "rebuild",
-	Short: "Manage map rebuild service",
+// Map update service commands
+var mapUpdateCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Manage map update service",
 }
 
-var mapRebuildStatusCmd = &cobra.Command{
+var mapUpdateStatusCmd = &cobra.Command{
 	Use:               "status <world>",
-	Short:             "Show status of the map rebuild service and timer",
+	Short:             "Show status of the map update service and timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		service := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
-		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
+		service := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
+		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
 		fmt.Println("=== Service ===")
 		if err := systemd.Status(service); err != nil {
 			// Continue to show timer status even if service status fails
@@ -602,142 +602,57 @@ var mapRebuildStatusCmd = &cobra.Command{
 	},
 }
 
-var mapRebuildStartCmd = &cobra.Command{
+var mapUpdateStartCmd = &cobra.Command{
 	Use:               "start <world>",
-	Short:             "Trigger a map rebuild now",
+	Short:             "Trigger a map update now",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
 		return systemd.Start(unit)
 	},
 }
 
-var mapRebuildStopCmd = &cobra.Command{
+var mapUpdateStopCmd = &cobra.Command{
 	Use:               "stop <world>",
-	Short:             "Stop a running map rebuild",
+	Short:             "Stop a running map update",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
 	},
 }
 
-var mapRebuildEnableCmd = &cobra.Command{
+var mapUpdateEnableCmd = &cobra.Command{
 	Use:               "enable <world>",
-	Short:             "Enable the map rebuild timer",
+	Short:             "Enable the map update timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
+		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
 	},
 }
 
-var mapRebuildDisableCmd = &cobra.Command{
+var mapUpdateDisableCmd = &cobra.Command{
 	Use:               "disable <world>",
-	Short:             "Disable the map rebuild timer",
+	Short:             "Disable the map update timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitTimer)
+		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
 	},
 }
 
-var mapRebuildLogsCmd = &cobra.Command{
+var mapUpdateLogsCmd = &cobra.Command{
 	Use:               "logs <world>",
-	Short:             "View logs for the map rebuild service",
+	Short:             "View logs for the map update service",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-rebuild", args[0], systemd.UnitService)
-		opts := systemd.LogOptions{
-			Follow:  mapLogsFollow,
-			Lines:   mapLogsLines,
-			Since:   mapLogsSince,
-			Output:  mapLogsOutput,
-			NoPager: mapLogsNoPager,
-		}
-		return systemd.Logs(unit, opts)
-	},
-}
-
-// Map refresh service commands
-var mapRefreshCmd = &cobra.Command{
-	Use:   "refresh",
-	Short: "Manage map refresh service",
-}
-
-var mapRefreshStatusCmd = &cobra.Command{
-	Use:               "status <world>",
-	Short:             "Show status of the map refresh service and timer",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		service := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
-		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
-		fmt.Println("=== Service ===")
-		if err := systemd.Status(service); err != nil {
-			// Continue to show timer status even if service status fails
-		}
-		fmt.Println("\n=== Timer ===")
-		return systemd.Status(timer)
-	},
-}
-
-var mapRefreshStartCmd = &cobra.Command{
-	Use:               "start <world>",
-	Short:             "Trigger a map refresh now",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
-		return systemd.Start(unit)
-	},
-}
-
-var mapRefreshStopCmd = &cobra.Command{
-	Use:               "stop <world>",
-	Short:             "Stop a running map refresh",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
-		return systemd.Stop(unit)
-	},
-}
-
-var mapRefreshEnableCmd = &cobra.Command{
-	Use:               "enable <world>",
-	Short:             "Enable the map refresh timer",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
-		return systemd.EnableNow(timer)
-	},
-}
-
-var mapRefreshDisableCmd = &cobra.Command{
-	Use:               "disable <world>",
-	Short:             "Disable the map refresh timer",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitTimer)
-		return systemd.Disable(timer)
-	},
-}
-
-var mapRefreshLogsCmd = &cobra.Command{
-	Use:               "logs <world>",
-	Short:             "View logs for the map refresh service",
-	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-refresh", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
 			Follow:  mapLogsFollow,
 			Lines:   mapLogsLines,
@@ -796,23 +711,14 @@ func init() {
 	mapBackupCmd.AddCommand(mapBackupDisableCmd)
 	mapBackupCmd.AddCommand(mapBackupLogsCmd)
 
-	// Map rebuild service commands
-	MapCmd.AddCommand(mapRebuildCmd)
-	mapRebuildCmd.AddCommand(mapRebuildStatusCmd)
-	mapRebuildCmd.AddCommand(mapRebuildStartCmd)
-	mapRebuildCmd.AddCommand(mapRebuildStopCmd)
-	mapRebuildCmd.AddCommand(mapRebuildEnableCmd)
-	mapRebuildCmd.AddCommand(mapRebuildDisableCmd)
-	mapRebuildCmd.AddCommand(mapRebuildLogsCmd)
-
-	// Map refresh service commands
-	MapCmd.AddCommand(mapRefreshCmd)
-	mapRefreshCmd.AddCommand(mapRefreshStatusCmd)
-	mapRefreshCmd.AddCommand(mapRefreshStartCmd)
-	mapRefreshCmd.AddCommand(mapRefreshStopCmd)
-	mapRefreshCmd.AddCommand(mapRefreshEnableCmd)
-	mapRefreshCmd.AddCommand(mapRefreshDisableCmd)
-	mapRefreshCmd.AddCommand(mapRefreshLogsCmd)
+	// Map update service commands
+	MapCmd.AddCommand(mapUpdateCmd)
+	mapUpdateCmd.AddCommand(mapUpdateStatusCmd)
+	mapUpdateCmd.AddCommand(mapUpdateStartCmd)
+	mapUpdateCmd.AddCommand(mapUpdateStopCmd)
+	mapUpdateCmd.AddCommand(mapUpdateEnableCmd)
+	mapUpdateCmd.AddCommand(mapUpdateDisableCmd)
+	mapUpdateCmd.AddCommand(mapUpdateLogsCmd)
 
 	// Logs flags for map backup
 	mapBackupLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
@@ -821,19 +727,12 @@ func init() {
 	mapBackupLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
 	mapBackupLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
 
-	// Logs flags for map rebuild
-	mapRebuildLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
-	mapRebuildLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
-	mapRebuildLogsCmd.Flags().StringVar(&mapLogsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
-	mapRebuildLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
-	mapRebuildLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
-
-	// Logs flags for map refresh
-	mapRefreshLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
-	mapRefreshLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
-	mapRefreshLogsCmd.Flags().StringVar(&mapLogsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
-	mapRefreshLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
-	mapRefreshLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
+	// Logs flags for map update
+	mapUpdateLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
+	mapUpdateLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
+	mapUpdateLogsCmd.Flags().StringVar(&mapLogsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
+	mapUpdateLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
+	mapUpdateLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
 }
 
 // runInteractiveEditor runs the interactive configuration editor

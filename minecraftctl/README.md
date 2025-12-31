@@ -117,7 +117,7 @@ minecraftctl world register <world-name>
 The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
 
 - Enables and starts `minecraft@<world>.service`
-- Enables `minecraft-map-rebuild@<world>.timer`
+- Enables `minecraft-map-update@<world>.timer`
 - Enables `minecraft-world-backup@<world>.timer`
 - Enables `minecraft-map-backup@<world>.timer`
 - Reloads systemd daemon
