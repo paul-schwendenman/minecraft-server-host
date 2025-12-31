@@ -53,9 +53,15 @@ func mapSingleWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete 
 // MapCmd is an alias for the command defined in internal/commands
 var MapCmd = commands.MapCmd
 
+// mapBuildCmd is the parent command for map build operations
 var mapBuildCmd = &cobra.Command{
-	Use:               "build <world> [worlds...]",
-	Short:             "Build maps for one or more worlds",
+	Use:   "build",
+	Short: "Map build commands and service management",
+}
+
+var mapBuildNowCmd = &cobra.Command{
+	Use:               "now <world> [worlds...]",
+	Short:             "Build maps for one or more worlds immediately",
 	Args:              cobra.MinimumNArgs(1),
 	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -579,20 +585,15 @@ var mapBackupLogsCmd = &cobra.Command{
 	},
 }
 
-// Map update service commands
-var mapUpdateCmd = &cobra.Command{
-	Use:   "update",
-	Short: "Manage map update service",
-}
-
-var mapUpdateStatusCmd = &cobra.Command{
+// Map build service subcommands (manages minecraft-map-build systemd service)
+var mapBuildStatusCmd = &cobra.Command{
 	Use:               "status <world>",
-	Short:             "Show status of the map update service and timer",
+	Short:             "Show status of the map build service and timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		service := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
-		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
+		service := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
+		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		fmt.Println("=== Service ===")
 		if err := systemd.Status(service); err != nil {
 			// Continue to show timer status even if service status fails
@@ -602,57 +603,57 @@ var mapUpdateStatusCmd = &cobra.Command{
 	},
 }
 
-var mapUpdateStartCmd = &cobra.Command{
+var mapBuildStartCmd = &cobra.Command{
 	Use:               "start <world>",
-	Short:             "Trigger a map update now",
+	Short:             "Trigger a map build via systemd",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		return systemd.Start(unit)
 	},
 }
 
-var mapUpdateStopCmd = &cobra.Command{
+var mapBuildStopCmd = &cobra.Command{
 	Use:               "stop <world>",
-	Short:             "Stop a running map update",
+	Short:             "Stop a running map build",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
 	},
 }
 
-var mapUpdateEnableCmd = &cobra.Command{
+var mapBuildEnableCmd = &cobra.Command{
 	Use:               "enable <world>",
-	Short:             "Enable the map update timer",
+	Short:             "Enable the map build timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
+		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
 	},
 }
 
-var mapUpdateDisableCmd = &cobra.Command{
+var mapBuildDisableCmd = &cobra.Command{
 	Use:               "disable <world>",
-	Short:             "Disable the map update timer",
+	Short:             "Disable the map build timer",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		timer := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitTimer)
+		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
 	},
 }
 
-var mapUpdateLogsCmd = &cobra.Command{
+var mapBuildLogsCmd = &cobra.Command{
 	Use:               "logs <world>",
-	Short:             "View logs for the map update service",
+	Short:             "View logs for the map build service",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: mapSingleWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		unit := systemd.FormatUnitName("minecraft-map-update", args[0], systemd.UnitService)
+		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
 			Follow:  mapLogsFollow,
 			Lines:   mapLogsLines,
@@ -665,15 +666,16 @@ var mapUpdateLogsCmd = &cobra.Command{
 }
 
 func init() {
-	mapBuildCmd.Flags().String("map", "", "Build only a specific map (by name)")
-	mapBuildCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
-	mapBuildCmd.Flags().String("lock-file", "", "Path to lock file (default: from config)")
-	mapBuildCmd.Flags().Duration("lock-timeout", 0, "Maximum time to wait for lock (0 = block forever)")
-	mapBuildCmd.Flags().Bool("no-lock", false, "Disable file locking")
-	mapBuildCmd.Flags().Bool("non-blocking", false, "Exit immediately if lock is held")
-	mapBuildCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
-	mapBuildCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
-	mapBuildCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
+	// Flags for map build now command
+	mapBuildNowCmd.Flags().String("map", "", "Build only a specific map (by name)")
+	mapBuildNowCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
+	mapBuildNowCmd.Flags().String("lock-file", "", "Path to lock file (default: from config)")
+	mapBuildNowCmd.Flags().Duration("lock-timeout", 0, "Maximum time to wait for lock (0 = block forever)")
+	mapBuildNowCmd.Flags().Bool("no-lock", false, "Disable file locking")
+	mapBuildNowCmd.Flags().Bool("non-blocking", false, "Exit immediately if lock is held")
+	mapBuildNowCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
+	mapBuildNowCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
+	mapBuildNowCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
 	mapPreviewCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
@@ -690,7 +692,16 @@ func init() {
 
 	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
+	// Map build command with subcommands
 	MapCmd.AddCommand(mapBuildCmd)
+	mapBuildCmd.AddCommand(mapBuildNowCmd)
+	mapBuildCmd.AddCommand(mapBuildStatusCmd)
+	mapBuildCmd.AddCommand(mapBuildStartCmd)
+	mapBuildCmd.AddCommand(mapBuildStopCmd)
+	mapBuildCmd.AddCommand(mapBuildEnableCmd)
+	mapBuildCmd.AddCommand(mapBuildDisableCmd)
+	mapBuildCmd.AddCommand(mapBuildLogsCmd)
+
 	MapCmd.AddCommand(mapPreviewCmd)
 	MapCmd.AddCommand(mapManifestCmd)
 	MapCmd.AddCommand(mapIndexCmd)
@@ -711,15 +722,6 @@ func init() {
 	mapBackupCmd.AddCommand(mapBackupDisableCmd)
 	mapBackupCmd.AddCommand(mapBackupLogsCmd)
 
-	// Map update service commands
-	MapCmd.AddCommand(mapUpdateCmd)
-	mapUpdateCmd.AddCommand(mapUpdateStatusCmd)
-	mapUpdateCmd.AddCommand(mapUpdateStartCmd)
-	mapUpdateCmd.AddCommand(mapUpdateStopCmd)
-	mapUpdateCmd.AddCommand(mapUpdateEnableCmd)
-	mapUpdateCmd.AddCommand(mapUpdateDisableCmd)
-	mapUpdateCmd.AddCommand(mapUpdateLogsCmd)
-
 	// Logs flags for map backup
 	mapBackupLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
 	mapBackupLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
@@ -727,12 +729,12 @@ func init() {
 	mapBackupLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
 	mapBackupLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
 
-	// Logs flags for map update
-	mapUpdateLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
-	mapUpdateLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
-	mapUpdateLogsCmd.Flags().StringVar(&mapLogsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
-	mapUpdateLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
-	mapUpdateLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
+	// Logs flags for map build
+	mapBuildLogsCmd.Flags().BoolVarP(&mapLogsFollow, "follow", "f", false, "Follow log output")
+	mapBuildLogsCmd.Flags().IntVarP(&mapLogsLines, "lines", "n", 100, "Number of lines to show")
+	mapBuildLogsCmd.Flags().StringVar(&mapLogsSince, "since", "", "Show logs since timestamp (e.g., '1 hour ago')")
+	mapBuildLogsCmd.Flags().StringVarP(&mapLogsOutput, "output", "o", "", "Output format (short, json, cat)")
+	mapBuildLogsCmd.Flags().BoolVar(&mapLogsNoPager, "no-pager", false, "Disable paging")
 }
 
 // runInteractiveEditor runs the interactive configuration editor

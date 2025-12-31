@@ -1,5 +1,5 @@
 [Unit]
-Description=Update Minecraft map for %i
+Description=Build Minecraft map for %i
 After=minecraft@%i.service
 
 [Service]
@@ -8,7 +8,7 @@ User=minecraft
 EnvironmentFile=-/etc/minecraft.env
 
 # Save world first if Minecraft is running (fails silently if not)
-ExecStartPre=-/usr/local/bin/minecraftctl rcon send "say Saving world before map update..."
+ExecStartPre=-/usr/local/bin/minecraftctl rcon send "say Saving world before map build..."
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "save-all"
 
 # Always rebuild map and manifests

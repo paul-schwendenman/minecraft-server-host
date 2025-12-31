@@ -1,12 +1,12 @@
 [Unit]
-Description=Periodic map update for world %i
+Description=Periodic map build for world %i
 PartOf=minecraft@%i.service
 Requires=minecraft@%i.service
 
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=15min
-Unit=minecraft-map-update@%i.service
+Unit=minecraft-map-build@%i.service
 Persistent=true
 
 [Install]

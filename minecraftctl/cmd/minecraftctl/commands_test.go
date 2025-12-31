@@ -88,7 +88,7 @@ func TestWorldBackupSubcommands(t *testing.T) {
 func TestMapSubcommands(t *testing.T) {
 	subcommands := []string{
 		"build", "preview", "manifest", "index", "config",
-		"backup", "update",
+		"backup",
 	}
 
 	for _, name := range subcommands {
@@ -125,22 +125,22 @@ func TestMapBackupSubcommands(t *testing.T) {
 	}
 }
 
-func TestMapUpdateSubcommands(t *testing.T) {
-	if mapUpdateCmd == nil {
-		t.Fatal("mapUpdateCmd is nil")
+func TestMapBuildSubcommands(t *testing.T) {
+	if mapBuildCmd == nil {
+		t.Fatal("mapBuildCmd is nil")
 	}
 
-	subcommands := []string{"status", "start", "stop", "enable", "disable", "logs"}
+	subcommands := []string{"now", "status", "start", "stop", "enable", "disable", "logs"}
 	for _, name := range subcommands {
 		found := false
-		for _, cmd := range mapUpdateCmd.Commands() {
+		for _, cmd := range mapBuildCmd.Commands() {
 			if cmd.Use == name || cmd.Name() == name {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("map update missing subcommand %q", name)
+			t.Errorf("map build missing subcommand %q", name)
 		}
 	}
 }

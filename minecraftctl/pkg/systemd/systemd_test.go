@@ -16,8 +16,8 @@ func TestFormatUnitName(t *testing.T) {
 		{"minecraft-world-backup", "survival", UnitService, "minecraft-world-backup@survival.service"},
 		{"minecraft-world-backup", "test", UnitTimer, "minecraft-world-backup@test.timer"},
 		{"minecraft-map-backup", "world", UnitService, "minecraft-map-backup@world.service"},
-		{"minecraft-map-update", "survival", UnitTimer, "minecraft-map-update@survival.timer"},
-		{"minecraft-map-update", "creative", UnitService, "minecraft-map-update@creative.service"},
+		{"minecraft-map-build", "survival", UnitTimer, "minecraft-map-build@survival.timer"},
+		{"minecraft-map-build", "creative", UnitService, "minecraft-map-build@creative.service"},
 	}
 
 	for _, tt := range tests {
