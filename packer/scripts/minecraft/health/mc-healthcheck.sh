@@ -36,13 +36,13 @@ else
     echo "  ✘ autoshutdown.timer not enabled"
 fi
 
-# 4. Map rebuild timers --------------------------------------------------------
-echo "[*] Checking map rebuild timers..."
-REBUILD_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-rebuild || true)
-if [[ -n "$REBUILD_TIMERS" ]]; then
-    echo "$REBUILD_TIMERS" | while read -r line; do echo "  $line"; done
+# 4. Map update timers ---------------------------------------------------------
+echo "[*] Checking map update timers..."
+UPDATE_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-update || true)
+if [[ -n "$UPDATE_TIMERS" ]]; then
+    echo "$UPDATE_TIMERS" | while read -r line; do echo "  $line"; done
 else
-    echo "  (no map rebuild timers active)"
+    echo "  (no map update timers active)"
 fi
 
 # 5. Symlink + directories -----------------------------------------------------
