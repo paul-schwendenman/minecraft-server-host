@@ -6,6 +6,8 @@ on:
     paths:
       - 'packer/**'
       - '.github/workflows/packer-build.yml'
+  repository_dispatch:
+    types: [cli-released]
   workflow_dispatch:
     inputs:
       build_base:
@@ -51,6 +53,36 @@ jobs:
           echo "shared=$SHARED" >> $GITHUB_OUTPUT
           echo "Detected changes - base: $BASE, minecraft: $MINECRAFT, shared: $SHARED"
 
+  check-cli-release:
+    runs-on: ubuntu-latest
+    outputs:
+      cli-pending: ${{ steps.check.outputs.pending }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for unreleased CLI changes
+        id: check
+        run: |
+          # Get latest CLI release tag
+          LATEST_TAG=$(git tag -l 'minecraftctl-v*' --sort=-v:refname | head -n1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "pending=true" >> $GITHUB_OUTPUT
+            echo "::warning::No CLI releases found - skipping minecraft AMI build"
+            exit 0
+          fi
+
+          # Check if minecraftctl/ has changes since that tag
+          if git diff --quiet "$LATEST_TAG" HEAD -- minecraftctl/; then
+            echo "pending=false" >> $GITHUB_OUTPUT
+            echo "CLI unchanged since $LATEST_TAG"
+          else
+            echo "pending=true" >> $GITHUB_OUTPUT
+            echo "::warning::CLI has unreleased changes since $LATEST_TAG - skipping minecraft AMI build until CLI is released"
+          fi
+
   build-base:
     needs: detect-changes
     if: needs.detect-changes.outputs.base == 'true' || needs.detect-changes.outputs.shared == 'true' || inputs.build_base
@@ -77,13 +109,15 @@ jobs:
         run: packer build -var-file=minecraft_jars.auto.pkrvars.hcl base.pkr.hcl
 
   build-minecraft:
-    needs: [detect-changes, build-base]
+    needs: [detect-changes, build-base, check-cli-release]
     if: |
       always() &&
       (needs.build-base.result == 'success' || needs.build-base.result == 'skipped') &&
+      (needs.check-cli-release.outputs.cli-pending != 'true' || github.event_name == 'repository_dispatch') &&
       (needs.detect-changes.outputs.minecraft == 'true' ||
        needs.detect-changes.outputs.shared == 'true' ||
        needs.build-base.result == 'success' ||
+       github.event_name == 'repository_dispatch' ||
        inputs.build_minecraft)
     runs-on: ubuntu-latest
     steps:
