@@ -117,7 +117,7 @@ minecraftctl world register <world-name>
 The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
 
 - Enables and starts `minecraft@<world>.service`
-- Enables `minecraft-map-rebuild@<world>.timer`
+- Enables `minecraft-map-build@<world>.timer`
 - Enables `minecraft-world-backup@<world>.timer`
 - Enables `minecraft-map-backup@<world>.timer`
 - Reloads systemd daemon
@@ -127,14 +127,21 @@ The `world register` command is used to "reattach" an existing world to a new se
 ### Build Maps
 
 ```bash
-# Build all maps for a world
-minecraftctl map build <world-name>
+# Build all maps for a world immediately
+minecraftctl map build now <world-name>
 
 # Build a specific map
-minecraftctl map build <world-name> --map overworld
+minecraftctl map build now <world-name> --map overworld
 
 # Force rebuild
-minecraftctl map build <world-name> --force
+minecraftctl map build now <world-name> --force
+
+# Check status of map build timer/service
+minecraftctl map build status <world-name>
+
+# Enable/disable automatic map builds
+minecraftctl map build enable <world-name>
+minecraftctl map build disable <world-name>
 ```
 
 ### RCON Commands

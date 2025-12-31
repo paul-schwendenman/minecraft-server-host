@@ -462,7 +462,7 @@ func RegisterWorld(worldName string) error {
 
 	// Enable timers (but don't start them - they'll start on their schedule)
 	timers := []string{
-		fmt.Sprintf("minecraft-map-rebuild@%s.timer", worldName),
+		fmt.Sprintf("minecraft-map-build@%s.timer", worldName),
 		fmt.Sprintf("minecraft-world-backup@%s.timer", worldName),
 		fmt.Sprintf("minecraft-map-backup@%s.timer", worldName),
 	}

@@ -81,8 +81,7 @@ build {
   # --------------------------------------------------------------------------
   provisioner "shell" { script = "scripts/minecraft/install_autoshutdown.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_create_world.sh" }
-  provisioner "shell" { script = "scripts/minecraft/install_map_rebuild.sh" }
-  provisioner "shell" { script = "scripts/minecraft/install_map_refresh.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_map_build.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_map_backup.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_world_backup.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_mc_healthcheck.sh" }

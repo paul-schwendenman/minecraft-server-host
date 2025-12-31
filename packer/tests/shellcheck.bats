@@ -123,14 +123,8 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "shellcheck: minecraft/install_map_rebuild.sh" {
-    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/install_map_rebuild.sh"
-    echo "$output"
-    [ "$status" -eq 0 ]
-}
-
-@test "shellcheck: minecraft/install_map_refresh.sh" {
-    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/install_map_refresh.sh"
+@test "shellcheck: minecraft/install_map_build.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/install_map_build.sh"
     echo "$output"
     [ "$status" -eq 0 ]
 }

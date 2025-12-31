@@ -26,7 +26,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | Command | File | Description |
 |---------|------|-------------|
 | `world` | `cmd/minecraftctl/world.go` | list, info, create, register, upgrade, status, start, stop, restart, enable, disable, logs, backup |
-| `map` | `cmd/minecraftctl/map.go` | build, preview, manifest, index, config, backup, rebuild, refresh |
+| `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, config, backup |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
 
@@ -40,9 +40,9 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `world backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-world-backup@<world>`
 
 **Map service commands:**
+- `map build now <world>` - Build maps immediately
+- `map build status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-build@<world>`
 - `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`
-- `map rebuild status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-rebuild@<world>`
-- `map refresh status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-refresh@<world>`
 
 ### Packages
 
