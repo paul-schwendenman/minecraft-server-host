@@ -46,4 +46,4 @@ else
 fi
 
 echo "Backup complete"
-restic snapshots --tag "${WORLD}" --last 3
+restic snapshots --latest 3 --tag "${WORLD}"
