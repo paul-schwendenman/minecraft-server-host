@@ -29,6 +29,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, config, backup |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
+| `backup` | `cmd/minecraftctl/backup.go` | list, create, restore, prune, stats, check (restic-based backups) |
 
 #### Service Management Commands
 
@@ -44,6 +45,14 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `map build status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-build@<world>`
 - `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`
 
+**Backup commands (restic-based):**
+- `backup list [tag]` - List available snapshots (optionally filter by world name)
+- `backup create [world]` - Create backup (defaults to all worlds)
+- `backup restore <snapshot> [--target <path>]` - Restore a snapshot
+- `backup prune` - Remove old snapshots per retention policy
+- `backup stats` - Show repository statistics
+- `backup check` - Verify repository integrity
+
 ### Packages
 
 | Package | Purpose |
@@ -55,6 +64,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 | `pkg/config` | Global config via Viper |
 | `pkg/nbt` | NBT level.dat reader |
 | `pkg/systemd` | Systemctl/journalctl wrapper functions |
+| `pkg/backup` | Restic backup management (list, create, restore, prune) |
 
 ## Key Concepts
 

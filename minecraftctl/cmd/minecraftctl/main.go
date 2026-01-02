@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(MapCmd)
 	rootCmd.AddCommand(RconCmd)
 	rootCmd.AddCommand(ConfigCmd)
+	rootCmd.AddCommand(BackupCmd)
 	rootCmd.AddCommand(jars.JarCmd)
 }
 
