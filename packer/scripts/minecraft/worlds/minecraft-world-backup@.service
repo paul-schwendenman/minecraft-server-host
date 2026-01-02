@@ -8,4 +8,4 @@ User=minecraft
 EnvironmentFile=-/etc/minecraft.env
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "say Backing up world data..."
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "save-all"
-ExecStart=/usr/local/bin/backup-worlds.sh %i
+ExecStart=/usr/local/bin/minecraftctl backup create %i

@@ -94,6 +94,13 @@ else
     echo "  ⚠️ No world backup timers active"
 fi
 
+WORLD_PRUNE_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-world-prune || true)
+if [[ -n "$WORLD_PRUNE_TIMERS" ]]; then
+    echo "$WORLD_PRUNE_TIMERS" | while read -r line; do echo "  $line"; done
+else
+    echo "  ⚠️ No world prune timer active"
+fi
+
 # 9. EBS Mount -----------------------------------------------------------
 echo "[*] Checking EBS mount (/srv/minecraft-server)..."
 if mountpoint -q /srv/minecraft-server; then
@@ -103,7 +110,7 @@ else
 fi
 
 # 10. CLI Tools ----------------------------------------------------------
-for bin in minecraftctl aws java caddy; do
+for bin in minecraftctl aws java caddy restic; do
   if command -v "$bin" >/dev/null 2>&1; then
     echo "  ✔ $bin installed"
   else

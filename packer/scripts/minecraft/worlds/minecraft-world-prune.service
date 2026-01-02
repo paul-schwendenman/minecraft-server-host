@@ -6,4 +6,4 @@ After=network-online.target
 Type=oneshot
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
-ExecStart=/usr/local/bin/prune-worlds.sh
+ExecStart=/usr/local/bin/minecraftctl backup prune

@@ -34,3 +34,10 @@ var ConfigCmd = &cobra.Command{
 	Short: "Server configuration management",
 	Long:  "Manage Minecraft server.properties configuration files",
 }
+
+// BackupCmd is the parent command for backup management
+var BackupCmd = &cobra.Command{
+	Use:   "backup",
+	Short: "Manage world backups",
+	Long:  "Commands for managing world backups using restic",
+}
