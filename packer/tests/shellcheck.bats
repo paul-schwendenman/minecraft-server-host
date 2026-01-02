@@ -74,6 +74,18 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "shellcheck: minecraft/worlds/prune-worlds.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/worlds/prune-worlds.sh"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "shellcheck: minecraft/worlds/restore-world.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/worlds/restore-world.sh"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
 @test "shellcheck: minecraft/user-data/setup-env.sh" {
     run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/user-data/setup-env.sh"
     echo "$output"

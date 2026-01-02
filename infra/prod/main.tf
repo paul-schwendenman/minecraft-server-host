@@ -10,6 +10,12 @@ variable "ami_id" {
   default     = null
 }
 
+variable "restic_password" {
+  description = "Password for restic backup encryption"
+  type        = string
+  sensitive   = true
+}
+
 provider "aws" {
   region  = "us-east-2"
   profile = var.aws_profile
@@ -87,6 +93,8 @@ module "mc_stack" {
 
   iam_instance_profile = module.ec2_role.instance_profile_name
   map_bucket           = module.s3_buckets.map_bucket_name
+  backup_bucket        = module.s3_buckets.backup_bucket_name
+  restic_password      = var.restic_password
 }
 
 module "api_lambda" {

@@ -80,6 +80,16 @@ resource "aws_instance" "minecraft" {
               else
                 echo "MC_MAP_BUCKET already set, skipping append"
               fi
+              if ! grep -q '^MC_WORLD_BUCKET=' /etc/minecraft.env; then
+                echo "MC_WORLD_BUCKET=${var.backup_bucket}" | sudo tee -a /etc/minecraft.env
+              else
+                echo "MC_WORLD_BUCKET already set, skipping append"
+              fi
+              if ! grep -q '^RESTIC_PASSWORD=' /etc/minecraft.env; then
+                echo "RESTIC_PASSWORD=${var.restic_password}" | sudo tee -a /etc/minecraft.env
+              else
+                echo "RESTIC_PASSWORD already set, skipping append"
+              fi
               EOT
 
   tags = {

@@ -1,0 +1,9 @@
+[Unit]
+Description=Prune old Minecraft world backups
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=minecraft
+EnvironmentFile=-/etc/minecraft.env
+ExecStart=/usr/local/bin/prune-worlds.sh
