@@ -68,23 +68,25 @@ jobs:
           VERSION="${{ steps.latest.outputs.version }}"
           URL="${{ steps.jar.outputs.url }}"
           SHA256="${{ steps.jar.outputs.sha256 }}"
+          FILE="packer/minecraft_jars.auto.pkrvars.hcl"
 
-          # Insert new entry before the closing bracket
-          # Remove the closing bracket line
-          sed -i '$ d' packer/minecraft_jars.auto.pkrvars.hcl
+          # Remove the last two lines (closing } and ])
+          head -n -2 "$FILE" > "$FILE.tmp"
 
-          # Add comma after the last entry, then add new entry and closing bracket
-          cat >> packer/minecraft_jars.auto.pkrvars.hcl << EOF
-          },
+          # Append the previous entry's closing brace with comma, new entry, and closing bracket
+          # Using printf to control exact indentation (2 spaces for braces, 4 for properties)
           {
-            version = "$VERSION"
-            url     = "$URL"
-            sha256  = "$SHA256"
-          }
-        ]
-        EOF
+            echo "  },"
+            echo "  {"
+            echo "    version = \"$VERSION\""
+            echo "    url     = \"$URL\""
+            echo "    sha256  = \"$SHA256\""
+            echo "  }"
+            echo "]"
+          } >> "$FILE.tmp"
 
-          echo "Added version $VERSION to minecraft_jars.auto.pkrvars.hcl"
+          mv "$FILE.tmp" "$FILE"
+          echo "Added version $VERSION to $FILE"
 
       - name: Create Pull Request
         if: steps.check.outputs.needs_update == 'true'
