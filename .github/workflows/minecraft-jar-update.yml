@@ -1,0 +1,108 @@
+name: Check for Minecraft server JAR updates
+
+on:
+  schedule:
+    - cron: '0 10 * * 1'  # Weekly on Monday at 10am UTC
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get latest Minecraft release
+        id: latest
+        run: |
+          echo "Fetching Minecraft version manifest..."
+          MANIFEST=$(curl -fsSL https://launchermeta.mojang.com/mc/game/version_manifest.json)
+
+          # Get latest release version
+          VERSION=$(echo "$MANIFEST" | jq -r '.latest.release')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Latest release: $VERSION"
+
+          # Get the version metadata URL
+          VERSION_URL=$(echo "$MANIFEST" | jq -r --arg v "$VERSION" '.versions[] | select(.id == $v) | .url')
+          echo "version_url=$VERSION_URL" >> $GITHUB_OUTPUT
+
+      - name: Check if already tracked
+        id: check
+        run: |
+          VERSION="${{ steps.latest.outputs.version }}"
+          if grep -q "version = \"$VERSION\"" packer/minecraft_jars.auto.pkrvars.hcl; then
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION is already tracked"
+          else
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION is new, will add"
+          fi
+
+      - name: Get server JAR details
+        if: steps.check.outputs.needs_update == 'true'
+        id: jar
+        run: |
+          echo "Fetching version metadata..."
+          VERSION_META=$(curl -fsSL "${{ steps.latest.outputs.version_url }}")
+
+          # Extract server jar URL
+          JAR_URL=$(echo "$VERSION_META" | jq -r '.downloads.server.url')
+          echo "url=$JAR_URL" >> $GITHUB_OUTPUT
+          echo "Server JAR URL: $JAR_URL"
+
+          # Download and calculate SHA256 (Mojang only provides SHA1)
+          echo "Downloading server JAR to calculate SHA256..."
+          curl -fsSL -o server.jar "$JAR_URL"
+          SHA256=$(sha256sum server.jar | cut -d' ' -f1)
+          echo "sha256=$SHA256" >> $GITHUB_OUTPUT
+          echo "SHA256: $SHA256"
+          rm server.jar
+
+      - name: Add new version to config
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          VERSION="${{ steps.latest.outputs.version }}"
+          URL="${{ steps.jar.outputs.url }}"
+          SHA256="${{ steps.jar.outputs.sha256 }}"
+
+          # Insert new entry before the closing bracket
+          # Remove the closing bracket line
+          sed -i '$ d' packer/minecraft_jars.auto.pkrvars.hcl
+
+          # Add comma after the last entry, then add new entry and closing bracket
+          cat >> packer/minecraft_jars.auto.pkrvars.hcl << EOF
+          },
+          {
+            version = "$VERSION"
+            url     = "$URL"
+            sha256  = "$SHA256"
+          }
+        ]
+        EOF
+
+          echo "Added version $VERSION to minecraft_jars.auto.pkrvars.hcl"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(packer): add Minecraft server ${{ steps.latest.outputs.version }}"
+          title: "Add Minecraft server ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated addition of new Minecraft server JAR.
+
+            **Version:** `${{ steps.latest.outputs.version }}`
+            **SHA256:** `${{ steps.jar.outputs.sha256 }}`
+            **URL:** `${{ steps.jar.outputs.url }}`
+
+            [View Minecraft release notes](https://www.minecraft.net/en-us/article/minecraft-java-edition-${{ steps.latest.outputs.version }})
+
+            ---
+            *This PR was created automatically by the minecraft-jar-update workflow.*
+          branch: minecraft-${{ steps.latest.outputs.version }}
+          labels: dependencies,automated
