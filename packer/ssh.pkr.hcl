@@ -38,19 +38,18 @@ build {
     destination = "/tmp/scripts/"
   }
 
-  # provisioner "shell" { script = "scripts/install_base_deps.sh" }
-  # provisioner "shell" { script = "scripts/create-minecraft-user.sh" }
-  # provisioner "shell" { script = "scripts/install_minecraftctl.sh" }
-  # provisioner "shell" { script = "scripts/install_minecraft_service.sh" }
-  # provisioner "shell" { script = "scripts/install_user_data_helpers.sh" }
+  # provisioner "shell" { script = "scripts/base/install_base_deps.sh" }
+  # provisioner "shell" { script = "scripts/base/create-minecraft-user.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_minecraftctl.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_minecraft_service.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_user_data_helpers.sh" }
 
-  # provisioner "shell" { script = "scripts/install_autoshutdown.sh" }
-  # provisioner "shell" { script = "scripts/install_caddy_unmined.sh" }
-  # provisioner "shell" { script = "scripts/install_create_world.sh" }
-  # provisioner "shell" { script = "scripts/install_map_build.sh" }
-  # provisioner "shell" { script = "scripts/install_map_backup.sh" }
-  # provisioner "shell" { script = "scripts/install_world_backup.sh" }
-  # provisioner "shell" { script = "scripts/install_mc_healthcheck.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_autoshutdown.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_create_world.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_map_build.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_map_backup.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_world_backup.sh" }
+  # provisioner "shell" { script = "scripts/minecraft/install_mc_healthcheck.sh" }
 
   provisioner "shell" {
     inline = [
