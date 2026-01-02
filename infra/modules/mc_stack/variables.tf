@@ -68,6 +68,18 @@ variable "map_bucket" {
   type        = string
 }
 
+variable "backup_bucket" {
+  description = "S3 bucket for world backups"
+  type        = string
+  default     = ""
+}
+
+variable "restic_password" {
+  description = "Password for restic backup encryption"
+  type        = string
+  sensitive   = true
+}
+
 variable "world_name" {
   description = "Minecraft world name"
   type        = string

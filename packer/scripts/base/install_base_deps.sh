@@ -53,6 +53,19 @@ if ! command -v yq >/dev/null 2>&1; then
   sudo chown root:root /usr/local/bin/yq
 fi
 
+# --- Install restic (verified checksum) ---
+if ! command -v restic >/dev/null 2>&1; then
+  echo "[*] Installing restic"
+  RESTIC_VERSION="0.18.1"
+  cd /tmp
+  wget -q "https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_amd64.bz2" -O restic.bz2
+  echo "680838f19d67151adba227e1570cdd8af12c19cf1735783ed1ba928bc41f363d  restic.bz2" | sha256sum -c -
+  bunzip2 restic.bz2
+  sudo mv restic /usr/local/bin/restic
+  sudo chmod 0755 /usr/local/bin/restic
+  sudo chown root:root /usr/local/bin/restic
+fi
+
 # --- Install uNmINeD CLI ---
 UNMINED_DIR="/opt/unmined"
 MAP_DIR="/var/www/map"

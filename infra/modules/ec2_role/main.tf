@@ -31,7 +31,7 @@ resource "aws_iam_role_policy" "minecraft_ec2_policy" {
       {
         Sid    = "Backups",
         Effect = "Allow",
-        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"],
+        Action = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:ListBucket"],
         Resource = [
           "arn:aws:s3:::${var.backup_bucket}",
           "arn:aws:s3:::${var.backup_bucket}/*"

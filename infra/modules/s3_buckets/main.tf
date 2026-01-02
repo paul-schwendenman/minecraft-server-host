@@ -64,29 +64,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "maps" {
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "backups" {
-  bucket = aws_s3_bucket.backups.id
-
-  rule {
-    id     = "expire-old-backups"
-    status = "Enabled"
-
-    # Applies to all objects
-    filter {}
-
-    # Move objects to Glacier after 30 days
-    transition {
-      days          = 30
-      storage_class = "GLACIER"
-    }
-
-    # Permanently delete after 90 days
-    expiration {
-      days = 90
-    }
-  }
-}
-
 resource "aws_s3_bucket_website_configuration" "maps" {
   bucket = aws_s3_bucket.maps.id
 
