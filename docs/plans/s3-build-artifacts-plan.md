@@ -160,7 +160,94 @@ When a new version is released:
 
 This is more explicit than the current approach but prevents unexpected build failures.
 
-## Alternative: Keep External URLs as Fallback
+## Alternative A: Automated PR for Unmined Updates
+
+A lighter-weight approach that keeps direct downloads but automates the hash update:
+
+### GitHub Action: `.github/workflows/unmined-update.yml`
+
+```yaml
+name: Check for unmined-cli updates
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Monday at 9am UTC
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get current version
+        id: current
+        run: |
+          HASH=$(grep -oP '(?<=echo ")[a-f0-9]{64}' packer/scripts/base/install_base_deps.sh)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+      - name: Download latest unmined-cli
+        id: latest
+        run: |
+          # Download the latest dev release
+          wget -q -O unmined-cli.tgz "https://unmined.net/download/unmined-cli-linux-x64-dev/"
+
+          # Calculate SHA256
+          HASH=$(sha256sum unmined-cli.tgz | cut -d' ' -f1)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+          # Extract version from tarball
+          tar -tzf unmined-cli.tgz | head -1 | grep -oP 'unmined-cli_\K[^_]+' > version.txt
+          VERSION=$(cat version.txt)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.current.outputs.hash }}" != "${{ steps.latest.outputs.hash }}" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update hash in script
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          sed -i 's/${{ steps.current.outputs.hash }}/${{ steps.latest.outputs.hash }}/' \
+            packer/scripts/base/install_base_deps.sh
+
+      - name: Create Pull Request
+        if: steps.check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(packer): update unmined-cli to ${{ steps.latest.outputs.version }}"
+          title: "Update unmined-cli to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated update of unmined-cli SHA256 hash.
+
+            **Version:** ${{ steps.latest.outputs.version }}
+            **New SHA256:** `${{ steps.latest.outputs.hash }}`
+
+            [View release notes](https://unmined.net/downloads/)
+
+            ---
+            *This PR was created automatically by the unmined-update workflow.*
+          branch: unmined-update-${{ steps.latest.outputs.version }}
+          labels: dependencies,automated
+```
+
+### Pros
+- No infrastructure changes needed
+- Keeps external download (one less thing to maintain)
+- Human approval via PR review
+- Links to release notes for visibility
+
+### Cons
+- Still depends on external URL during builds
+- Builds fail between release and PR merge
+
+## Alternative B: Keep External URLs as Fallback
 
 For minecraft JARs specifically, Mojang's URLs are quite stable. An alternative is to keep the external URLs but add S3 as a fallback:
 
@@ -171,8 +258,14 @@ if ! aws s3 cp "s3://${BUCKET}/..." "$JAR_FILE" 2>/dev/null; then
 fi
 ```
 
+## Recommendation
+
+**For unmined-cli:** Use the GitHub Action (Alternative A). It's simpler, requires no infrastructure changes, and the weekly check should catch updates before they break builds.
+
+**For minecraft JARs:** Keep current approach (direct Mojang downloads). They're stable and versioned - new JARs only get added manually when you want to support a new Minecraft version.
+
 ## Open Questions
 
-1. Should the artifacts bucket be shared across test/prod environments?
-2. Should we add a CI job to automatically check for new unmined releases?
-3. Should minecraft JARs remain external (Mojang is reliable) and only proxy unmined?
+1. Should the artifacts bucket be shared across test/prod environments? (Only relevant if going with S3 approach)
+2. What schedule makes sense for the unmined check? (Weekly? Daily?)
+3. Should the workflow also verify the download works before creating the PR?
