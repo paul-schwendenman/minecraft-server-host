@@ -1,0 +1,78 @@
+name: Check for unmined-cli updates
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Monday at 9am UTC
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get current hash
+        id: current
+        run: |
+          HASH=$(grep -oP '(?<=echo ")[a-f0-9]{64}' packer/scripts/base/install_base_deps.sh)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Current hash: $HASH"
+
+      - name: Download latest unmined-cli
+        id: latest
+        run: |
+          echo "Downloading latest unmined-cli..."
+          wget -q -O unmined-cli.tgz "https://unmined.net/download/unmined-cli-linux-x64-dev/"
+
+          # Calculate SHA256
+          HASH=$(sha256sum unmined-cli.tgz | cut -d' ' -f1)
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+          echo "Latest hash: $HASH"
+
+          # Extract version from tarball directory name
+          VERSION=$(tar -tzf unmined-cli.tgz | head -1 | sed 's|unmined-cli_\([^/]*\)_linux-x64/.*|\1|')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Latest version: $VERSION"
+
+      - name: Check if update needed
+        id: check
+        run: |
+          if [ "${{ steps.current.outputs.hash }}" != "${{ steps.latest.outputs.hash }}" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "Update needed: hash changed"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "No update needed: hash unchanged"
+          fi
+
+      - name: Update hash in script
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          sed -i 's/${{ steps.current.outputs.hash }}/${{ steps.latest.outputs.hash }}/' \
+            packer/scripts/base/install_base_deps.sh
+          echo "Updated hash in install_base_deps.sh"
+
+      - name: Create Pull Request
+        if: steps.check.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(packer): update unmined-cli to ${{ steps.latest.outputs.version }}"
+          title: "Update unmined-cli to ${{ steps.latest.outputs.version }}"
+          body: |
+            Automated update of unmined-cli SHA256 hash.
+
+            **Version:** `${{ steps.latest.outputs.version }}`
+            **New SHA256:** `${{ steps.latest.outputs.hash }}`
+            **Previous SHA256:** `${{ steps.current.outputs.hash }}`
+
+            [View releases](https://unmined.net/downloads/)
+
+            ---
+            *This PR was created automatically by the unmined-update workflow.*
+          branch: unmined-update-${{ steps.latest.outputs.version }}
+          labels: dependencies,automated
