@@ -69,10 +69,11 @@ module "s3_buckets" {
 }
 
 module "ec2_role" {
-  source        = "../modules/ec2_role"
-  name          = "minecraft-prod"
-  map_bucket    = module.s3_buckets.map_bucket_name
-  backup_bucket = module.s3_buckets.backup_bucket_name
+  source          = "../modules/ec2_role"
+  name            = "minecraft-prod"
+  map_bucket      = module.s3_buckets.map_bucket_name
+  backup_bucket   = module.s3_buckets.backup_bucket_name
+  route53_zone_id = aws_route53_zone.prod.zone_id
 }
 
 module "mc_stack" {
@@ -95,6 +96,9 @@ module "mc_stack" {
   map_bucket           = module.s3_buckets.map_bucket_name
   backup_bucket        = module.s3_buckets.backup_bucket_name
   restic_password      = var.restic_password
+
+  route53_zone_id  = aws_route53_zone.prod.zone_id
+  route53_dns_name = aws_route53_zone.prod.name
 }
 
 module "api_lambda" {

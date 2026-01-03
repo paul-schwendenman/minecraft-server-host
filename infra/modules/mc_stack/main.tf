@@ -90,6 +90,11 @@ resource "aws_instance" "minecraft" {
               else
                 echo "RESTIC_PASSWORD already set, skipping append"
               fi
+              %{if var.route53_zone_id != "" && var.route53_dns_name != ""}
+              export ROUTE53_ZONE_ID="${var.route53_zone_id}"
+              export ROUTE53_DNS_NAME="${var.route53_dns_name}"
+              /usr/local/bin/publish-sshfp.sh
+              %{endif}
               EOT
 
   tags = {
