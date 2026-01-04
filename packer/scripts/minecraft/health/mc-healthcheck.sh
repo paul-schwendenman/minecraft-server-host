@@ -36,7 +36,19 @@ else
     echo "  ✘ autoshutdown.timer not enabled"
 fi
 
-# 4. Map build timers ---------------------------------------------------------
+# 4. Dynamic DNS service -------------------------------------------------------
+echo "[*] Checking dyndns..."
+if systemctl is-enabled --quiet dyndns.service 2>/dev/null; then
+    if systemctl is-active --quiet dyndns.service; then
+        echo "  ✔ dyndns.service ran successfully"
+    else
+        echo "  ✘ dyndns.service failed"
+    fi
+else
+    echo "  ⚠️ dyndns.service not enabled (Route53 DNS updates disabled)"
+fi
+
+# 5. Map build timers ---------------------------------------------------------
 echo "[*] Checking map build timers..."
 BUILD_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-build || true)
 if [[ -n "$BUILD_TIMERS" ]]; then
@@ -45,7 +57,7 @@ else
     echo "  (no map build timers active)"
 fi
 
-# 5. Symlink + directories -----------------------------------------------------
+# 6. Symlink + directories -----------------------------------------------------
 echo "[*] Checking map symlink..."
 if [[ -L /var/www/map ]]; then
     echo "  ✔ /var/www/map → $(readlink -f /var/www/map)"
@@ -53,11 +65,11 @@ else
     echo "  ✘ /var/www/map missing or not symlink"
 fi
 
-# 6. Listening ports -----------------------------------------------------------
+# 7. Listening ports -----------------------------------------------------------
 echo "[*] Checking expected ports..."
 ss -tulwn | grep -E '(:25565|:80|:443)' || echo "  ✘ Expected ports not open"
 
-# 7. RCON query ---------------------------------------------------------------
+# 8. RCON query ---------------------------------------------------------------
 echo "[*] Querying RCON..."
 if [ ! -e /etc/minecraft.env ]; then
   echo "  ✘ /etc/minecraft.env missing"
@@ -78,7 +90,7 @@ else
     fi
 fi
 
-# 8. Backups -------------------------------------------------------------
+# 9. Backups -------------------------------------------------------------
 echo "[*] Checking backup timers..."
 MAP_BACKUP_TIMERS=$(systemctl list-timers --all --no-legend | grep minecraft-map-backup || true)
 if [[ -n "$MAP_BACKUP_TIMERS" ]]; then
@@ -101,7 +113,7 @@ else
     echo "  ⚠️ No world prune timer active"
 fi
 
-# 9. EBS Mount -----------------------------------------------------------
+# 10. EBS Mount -----------------------------------------------------------
 echo "[*] Checking EBS mount (/srv/minecraft-server)..."
 if mountpoint -q /srv/minecraft-server; then
   echo "  ✔ Mounted"
@@ -109,7 +121,7 @@ else
   echo "  ✘ Not mounted"
 fi
 
-# 10. CLI Tools ----------------------------------------------------------
+# 11. CLI Tools ----------------------------------------------------------
 for bin in minecraftctl aws java caddy restic; do
   if command -v "$bin" >/dev/null 2>&1; then
     echo "  ✔ $bin installed"
@@ -119,11 +131,11 @@ for bin in minecraftctl aws java caddy restic; do
 done
 [[ -x /opt/unmined/unmined-cli ]] && echo "  ✔ uNmINeD installed" || echo "  ✘ uNmINeD missing"
 
-# 11. Disk usage ---------------------------------------------------------
+# 12. Disk usage ---------------------------------------------------------
 echo "[*] Checking disk usage..."
 df -h /srv/minecraft-server | awk 'NR==2 {print "  📦 "$5 " used on "$6}'
 
-# 12. Failed units -------------------------------------------------------
+# 13. Failed units -------------------------------------------------------
 echo "[*] Checking for failed Minecraft units..."
 systemctl --failed | grep minecraft || echo "  ✔ No failed units"
 
