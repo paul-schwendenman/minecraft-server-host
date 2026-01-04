@@ -96,3 +96,15 @@ variable "world_seed" {
   type        = string
   default     = ""
 }
+
+variable "route53_zone_id" {
+  description = "Route53 zone ID for publishing SSHFP records (optional)"
+  type        = string
+  default     = ""
+}
+
+variable "route53_dns_name" {
+  description = "DNS name for SSHFP records (optional, requires route53_zone_id)"
+  type        = string
+  default     = ""
+}

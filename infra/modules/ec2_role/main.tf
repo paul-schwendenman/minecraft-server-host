@@ -41,6 +41,31 @@ resource "aws_iam_role_policy" "minecraft_ec2_policy" {
   })
 }
 
+resource "aws_iam_role_policy" "route53_dns" {
+  count = var.route53_zone_id != "" ? 1 : 0
+  name  = "${var.name}-route53-dns-policy"
+  role  = aws_iam_role.minecraft_ec2.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Sid    = "UpdateDNSRecords",
+        Effect = "Allow",
+        Action = [
+          "route53:ChangeResourceRecordSets"
+        ],
+        Resource = "arn:aws:route53:::hostedzone/${var.route53_zone_id}",
+        Condition = {
+          "ForAllValues:StringEquals" = {
+            "route53:ChangeResourceRecordSetsRecordTypes" = ["A", "AAAA", "SSHFP"]
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "minecraft_profile" {
   name = "${var.name}-instance-profile"
   role = aws_iam_role.minecraft_ec2.name

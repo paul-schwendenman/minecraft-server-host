@@ -1,0 +1,13 @@
+[Unit]
+Description=Update Route53 DNS records with current IP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=-/etc/minecraft.env
+ExecStart=/usr/local/bin/publish-dns.sh
+
+[Install]
+WantedBy=multi-user.target

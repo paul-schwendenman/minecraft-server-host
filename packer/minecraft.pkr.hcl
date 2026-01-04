@@ -85,6 +85,7 @@ build {
   provisioner "shell" { script = "scripts/minecraft/install_map_backup.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_world_backup.sh" }
   provisioner "shell" { script = "scripts/minecraft/install_mc_healthcheck.sh" }
+  provisioner "shell" { script = "scripts/minecraft/install_dyndns.sh" }
 
   # --------------------------------------------------------------------------
   # 5. Install Minecraft JARs

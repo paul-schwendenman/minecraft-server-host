@@ -90,6 +90,14 @@ resource "aws_instance" "minecraft" {
               else
                 echo "RESTIC_PASSWORD already set, skipping append"
               fi
+              %{if var.route53_zone_id != "" && var.route53_dns_name != ""}
+              if ! grep -q '^ROUTE53_ZONE_ID=' /etc/minecraft.env; then
+                echo "ROUTE53_ZONE_ID=${var.route53_zone_id}" | sudo tee -a /etc/minecraft.env
+              fi
+              if ! grep -q '^ROUTE53_DNS_NAME=' /etc/minecraft.env; then
+                echo "ROUTE53_DNS_NAME=${var.route53_dns_name}" | sudo tee -a /etc/minecraft.env
+              fi
+              %{endif}
               EOT
 
   tags = {
