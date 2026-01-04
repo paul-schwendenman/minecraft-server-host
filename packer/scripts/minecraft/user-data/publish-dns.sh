@@ -97,14 +97,19 @@ EOF
   fi
 fi
 
-# SSHFP records - only update on first run or if --force-sshfp is passed
-# Check if SSHFP exists by querying DNS
-CURRENT_SSHFP=$(dig +short SSHFP "${ROUTE53_DNS_NAME}" @8.8.8.8 2>/dev/null | head -1 || echo "")
+# SSHFP records - compare local host key with DNS and update if different
+SSHFP_RECORDS=$(ssh-keygen -r "${ROUTE53_DNS_NAME}" -f /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null || true)
 
-if [ -z "$CURRENT_SSHFP" ] || [ "${1:-}" = "--force-sshfp" ]; then
-  SSHFP_RECORDS=$(ssh-keygen -r "${ROUTE53_DNS_NAME}" -f /etc/ssh/ssh_host_ed25519_key.pub 2>/dev/null || true)
+if [ -n "$SSHFP_RECORDS" ]; then
+  # Get local SHA-256 fingerprint (type 2) for comparison
+  LOCAL_SSHFP_SHA256=$(echo "$SSHFP_RECORDS" | awk '$5 == "2" {print $6}' | tr '[:upper:]' '[:lower:]')
 
-  if [ -n "$SSHFP_RECORDS" ]; then
+  # Get current SSHFP SHA-256 from DNS (type 2)
+  CURRENT_SSHFP_SHA256=$(dig +short SSHFP "${ROUTE53_DNS_NAME}" @8.8.8.8 2>/dev/null | awk '$2 == "2" {print $3}' | tr '[:upper:]' '[:lower:]' | head -1 || echo "")
+
+  if [ "$LOCAL_SSHFP_SHA256" != "$CURRENT_SSHFP_SHA256" ]; then
+    echo "SSHFP record changed: ${CURRENT_SSHFP_SHA256:-<none>} -> ${LOCAL_SSHFP_SHA256}"
+
     SSHFP_RRS=""
     while IFS= read -r line; do
       ALG=$(echo "$line" | awk '{print $4}')
@@ -139,6 +144,8 @@ EOF
         CHANGES="$SSHFP_CHANGE"
       fi
     fi
+  else
+    echo "SSHFP record unchanged"
   fi
 else
   echo "SSHFP record exists, skipping (use --force-sshfp to update)"
