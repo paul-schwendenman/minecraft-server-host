@@ -1,6 +1,6 @@
 [Unit]
 Description=Update Route53 DNS records with current IP
-After=network-online.target
+After=network-online.target cloud-final.service
 Wants=network-online.target
 
 [Service]
