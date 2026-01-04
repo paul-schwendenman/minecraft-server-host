@@ -5,7 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+RemainAfterExit=yes
 EnvironmentFile=-/etc/minecraft.env
 ExecStart=/usr/local/bin/publish-dns.sh
-ProtectSystem=full
-ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target
