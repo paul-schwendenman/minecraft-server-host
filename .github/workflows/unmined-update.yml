@@ -18,7 +18,7 @@ jobs:
       - name: Get current hash
         id: current
         run: |
-          HASH=$(grep -oP '(?<=echo ")[a-f0-9]{64}' packer/scripts/base/install_base_deps.sh)
+          HASH=$(grep 'unmined-cli' packer/scripts/base/install_base_deps.sh | grep -oP '[a-f0-9]{64}')
           echo "hash=$HASH" >> $GITHUB_OUTPUT
           echo "Current hash: $HASH"
 
