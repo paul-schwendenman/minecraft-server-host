@@ -37,7 +37,11 @@ command -v minecraftctl >/dev/null 2>&1 || {
 
 OUTPUT=$(minecraftctl rcon send "list" || true)
 COUNT=$(echo "$OUTPUT" | sed -n 's/.*There are \([0-9]*\).*/\1/p' | head -1)
-COUNT=${COUNT:-0}
+# COUNT=${COUNT:-0}
+if [[ -z "${COUNT}" ]]; then
+  logger -t autoshutdown "Failed to parse player count from RCON output: ${OUTPUT}"
+  COUNT=0
+fi
 logger -t autoshutdown "RCON reports $COUNT players online"
 
 if [[ "${COUNT}" -eq 0 ]]; then
