@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -190,10 +191,30 @@ func (b *Builder) buildMap(
 	// Add optional map options
 	baseArgs = b.addMapOptions(baseArgs, mapDef.Options)
 
+	// Build ranges FIRST so their properties don't overwrite the base map bounds
+	// The base map render must come last to set the correct full-world bounds
+	// in unmined.map.properties.js
+	//
+	// Track max zoomin across all ranges so we can patch the properties file
+	maxZoomin := zoomin
+	for _, r := range mapDef.Ranges {
+		rangeZoomin := zoomin
+		if r.Zoomin != nil {
+			rangeZoomin = *r.Zoomin
+		}
+		if rangeZoomin > maxZoomin {
+			maxZoomin = rangeZoomin
+		}
+		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel); err != nil {
+			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
+			continue
+		}
+	}
+
 	log.Info().Str("map", mapDef.Name).Str("dimension", mapDef.Dimension).
 		Strs("args", baseArgs).Msg("rendering base map")
 
-	// Build base map
+	// Build base map LAST so it sets the correct full-world bounds
 	cmd := exec.Command(b.unminedPath, baseArgs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -201,11 +222,10 @@ func (b *Builder) buildMap(
 		return fmt.Errorf("failed to render base map: %w", err)
 	}
 
-	// Build ranges
-	for _, r := range mapDef.Ranges {
-		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel); err != nil {
-			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
-			continue
+	// Patch maxZoom in properties file if ranges have higher zoom levels
+	if maxZoomin > zoomin {
+		if err := b.patchPropertiesMaxZoom(mapOutput, maxZoomin); err != nil {
+			log.Warn().Err(err).Msg("failed to patch maxZoom in properties file")
 		}
 	}
 
@@ -298,4 +318,27 @@ func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string 
 		}
 	}
 	return args
+}
+
+// patchPropertiesMaxZoom updates the maxZoom value in unmined.map.properties.js
+// This is needed because ranges may have higher zoom levels than the base map,
+// but the base map render (which runs last) overwrites the properties file.
+func (b *Builder) patchPropertiesMaxZoom(mapOutput string, maxZoom int) error {
+	propsPath := filepath.Join(mapOutput, "unmined.map.properties.js")
+
+	data, err := os.ReadFile(propsPath)
+	if err != nil {
+		return fmt.Errorf("failed to read properties file: %w", err)
+	}
+
+	// Replace maxZoom value
+	re := regexp.MustCompile(`maxZoom:\s*\d+`)
+	newData := re.ReplaceAll(data, []byte(fmt.Sprintf("maxZoom: %d", maxZoom)))
+
+	if err := os.WriteFile(propsPath, newData, 0644); err != nil {
+		return fmt.Errorf("failed to write properties file: %w", err)
+	}
+
+	log.Info().Int("maxZoom", maxZoom).Msg("patched maxZoom in properties file")
+	return nil
 }

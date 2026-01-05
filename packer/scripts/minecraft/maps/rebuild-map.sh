@@ -31,7 +31,7 @@ if $IS_GLOB; then
   for w in $WORLD_PATH; do
     if [[ -d "$w" ]]; then
       WORLD_NAME=$(basename "$w")
-      CMD=("minecraftctl" "map" "build" "$WORLD_NAME")
+      CMD=("minecraftctl" "map" "build" "now" "$WORLD_NAME")
       [[ -n "$MAP_FILTER" ]] && CMD+=("--map" "$MAP_FILTER")
       $FORCE && CMD+=("--force")
       $NONBLOCK && CMD+=("--non-blocking")
@@ -50,7 +50,7 @@ fi
 WORLD_NAME=$(basename "$WORLD_PATH")
 
 # Build minecraftctl command
-CMD=("minecraftctl" "map" "build" "$WORLD_NAME")
+CMD=("minecraftctl" "map" "build" "now" "$WORLD_NAME")
 
 if [[ -n "$MAP_FILTER" ]]; then
   CMD+=("--map" "$MAP_FILTER")

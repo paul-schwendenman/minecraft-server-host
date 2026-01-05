@@ -37,7 +37,7 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/survival"
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build survival"
+    assert_mock_called_with "minecraftctl map build now survival"
 }
 
 @test "rebuild-map: passes --map filter to minecraftctl" {
@@ -46,7 +46,7 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/survival" --map overworld
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build survival --map overworld"
+    assert_mock_called_with "minecraftctl map build now survival --map overworld"
 }
 
 @test "rebuild-map: passes --force flag to minecraftctl" {
@@ -55,7 +55,7 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/survival" --force
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build survival --force"
+    assert_mock_called_with "minecraftctl map build now survival --force"
 }
 
 @test "rebuild-map: passes --non-blocking flag to minecraftctl" {
@@ -64,7 +64,7 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/survival" --non-blocking
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build survival --non-blocking"
+    assert_mock_called_with "minecraftctl map build now survival --non-blocking"
 }
 
 @test "rebuild-map: combines multiple flags" {
@@ -73,7 +73,7 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/survival" --map nether --force --non-blocking
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build survival --map nether --force --non-blocking"
+    assert_mock_called_with "minecraftctl map build now survival --map nether --force --non-blocking"
 }
 
 @test "rebuild-map: rejects unknown arguments" {
@@ -94,9 +94,9 @@ teardown() {
 
     [ "$status" -eq 0 ]
     # Should call minecraftctl for each world
-    assert_mock_called_with "minecraftctl map build survival"
-    assert_mock_called_with "minecraftctl map build creative"
-    assert_mock_called_with "minecraftctl map build hardcore"
+    assert_mock_called_with "minecraftctl map build now survival"
+    assert_mock_called_with "minecraftctl map build now creative"
+    assert_mock_called_with "minecraftctl map build now hardcore"
 }
 
 @test "rebuild-map: glob mode passes flags to each world" {
@@ -106,8 +106,8 @@ teardown() {
     run bash "$SCRIPT" "${TEST_TEMP_DIR}/worlds/*" --force
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "minecraftctl map build world1 --force"
-    assert_mock_called_with "minecraftctl map build world2 --force"
+    assert_mock_called_with "minecraftctl map build now world1 --force"
+    assert_mock_called_with "minecraftctl map build now world2 --force"
 }
 
 @test "rebuild-map: glob mode continues on error" {
@@ -131,7 +131,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     # Should only call for the directory
-    assert_mock_called_with "minecraftctl map build valid_world"
+    assert_mock_called_with "minecraftctl map build now valid_world"
     # Should NOT call for the file
     ! assert_mock_called_with "not_a_world"
 }
