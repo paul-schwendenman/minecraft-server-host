@@ -61,12 +61,17 @@ func (b *Builder) GeneratePreview(worldName, mapName, logLevel string) error {
 
 	// Calculate preview center based on dimension
 	var centerX, centerZ int
-	if mapDef.Dimension == "overworld" {
+	switch mapDef.Dimension {
+	case "overworld":
 		// For overworld, use spawn coordinates
 		centerX = int(levelInfo.SpawnX)
 		centerZ = int(levelInfo.SpawnZ)
-	} else {
-		// For nether/end, calculate center from region files
+	case "end", "1":
+		// The End's main island is always centered at 0,0
+		centerX = 0
+		centerZ = 0
+	default:
+		// For nether, calculate center from region files
 		cx, cz, err := calculateRegionCenter(regionDir)
 		if err != nil {
 			return fmt.Errorf("failed to calculate region center: %w", err)
