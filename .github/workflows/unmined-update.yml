@@ -34,7 +34,7 @@ jobs:
           echo "Latest hash: $HASH"
 
           # Extract version from tarball directory name
-          VERSION=$(tar -tzf unmined-cli.tgz | head -1 | sed 's|unmined-cli_\([^/]*\)_linux-x64/.*|\1|')
+          VERSION=$(tar -tzf unmined-cli.tgz 2>/dev/null | head -1 | sed 's|unmined-cli_\([^/]*\)_linux-x64/.*|\1|')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Latest version: $VERSION"
 
