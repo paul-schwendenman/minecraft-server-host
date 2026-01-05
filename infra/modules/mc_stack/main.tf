@@ -97,6 +97,7 @@ resource "aws_instance" "minecraft" {
               if ! grep -q '^ROUTE53_DNS_NAME=' /etc/minecraft.env; then
                 echo "ROUTE53_DNS_NAME=${var.route53_dns_name}" | sudo tee -a /etc/minecraft.env
               fi
+              /usr/local/bin/configure-caddy.sh ${var.route53_dns_name}
               %{endif}
               EOT
 
