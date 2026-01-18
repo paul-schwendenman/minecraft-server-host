@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 On-demand Minecraft server infrastructure on AWS. Web app controls EC2 instances that auto-shutdown when idle.
 
+## Tool Versions
+
+This project uses **asdf** for version management. Ensure shims are in PATH:
+
+```bash
+export PATH="/Users/paul/.asdf/shims:$PATH"
+```
+
+Tools managed: go, node, python, terraform, packer
+
 ## Build Commands
 
 ```bash

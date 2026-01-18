@@ -103,9 +103,10 @@ func CreateWorld(opts CreateWorldOptions) error {
 
 ```bash
 cd minecraftctl
-go build -o minecraftctl ./cmd/minecraftctl
-go test ./...
-go test -race ./...
-go vet ./...
-go fmt ./...
+make build                  # Build for current OS
+make build-linux-amd64      # Cross-compile for prod server
+make test                   # Run tests
+go test -race ./...         # Race detection
+make fmt                    # Format code
+make vet                    # Static analysis
 ```
