@@ -52,3 +52,22 @@ Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md
 - `infra/` - Terraform infrastructure (see `infra/README.md`)
   - `test/` and `prod/` environments with separate VPCs
   - `modules/` - Shared: networking, s3_buckets, ec2_role, mc_stack, api_lambda, web_ui, acm_certificate, dns_records
+
+## Agent Usage
+
+Use subagents to keep context focused:
+
+**Explore agent** - Use for:
+- "How does X work?" questions
+- Finding where functionality is implemented
+- Understanding cross-component interactions (Lambda ↔ UI ↔ minecraftctl)
+
+**Plan agent** - Use for:
+- Changes spanning multiple subprojects
+- New Lambda endpoints that need UI changes
+- Infrastructure changes (Terraform + Packer)
+
+**Bash agent** - Use for:
+- Running test suites across subprojects
+- Build operations
+- Git operations
