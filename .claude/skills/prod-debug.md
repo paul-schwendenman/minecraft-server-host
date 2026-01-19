@@ -15,6 +15,31 @@ scp minecraftctl-linux-amd64 minecraft.paulandsierra.com:/tmp/
 ssh minecraft.paulandsierra.com "sudo install -m 755 /tmp/minecraftctl-linux-amd64 /usr/local/bin/minecraftctl"
 ```
 
+## Hot Updating Scripts with Packer
+
+Use `packer/ssh.pkr.hcl` to deploy updated scripts to the running server without building a new AMI:
+
+```bash
+cd packer
+
+# Copy all scripts to /tmp/scripts/ on the server
+packer build \
+  -var "test_host=minecraft.paulandsierra.com" \
+  -var "test_private_key=~/.ssh/minecraft-packer.pem" \
+  ssh.pkr.hcl
+```
+
+To run specific install scripts, uncomment the relevant provisioners in `ssh.pkr.hcl`:
+
+```hcl
+provisioner "shell" { script = "scripts/minecraft/install_map_backup.sh" }
+```
+
+This is useful for:
+- Testing script changes on prod before baking a new AMI
+- Hot-fixing issues without a full AMI rebuild
+- Iterating on provisioning scripts during development
+
 ## Prerequisites
 
 The EC2 server may be stopped. Before SSH:
