@@ -39,15 +39,50 @@ type LevelInfo struct {
 	// VersionInt is the integer version tag (legacy, lowercase "version")
 	VersionInt int32 `nbt:"version,omitempty"`
 	// DataVersion is the integer data version tag (used in newer versions, 1.18+)
-	DataVersion int32  `nbt:"DataVersion,omitempty"`
-	SpawnX      int32  `nbt:"SpawnX"`
-	SpawnY      int32  `nbt:"SpawnY"`
-	SpawnZ      int32  `nbt:"SpawnZ"`
-	LastPlayed  int64  `nbt:"LastPlayed"`
-	Difficulty  int32  `nbt:"Difficulty"`
-	GameType    int32  `nbt:"GameType"`
-	LevelName   string `nbt:"LevelName"`
-	ServerBrand string `nbt:"ServerBrand,omitempty"`
+	DataVersion int32 `nbt:"DataVersion,omitempty"`
+	// Old format spawn coordinates (pre-1.21)
+	SpawnX int32 `nbt:"SpawnX,omitempty"`
+	SpawnY int32 `nbt:"SpawnY,omitempty"`
+	SpawnZ int32 `nbt:"SpawnZ,omitempty"`
+	// New format spawn (1.21+) - compound with pos array
+	Spawn       SpawnInfo `nbt:"spawn,omitempty"`
+	LastPlayed  int64     `nbt:"LastPlayed"`
+	Difficulty  int32     `nbt:"Difficulty"`
+	GameType    int32     `nbt:"GameType"`
+	LevelName   string    `nbt:"LevelName"`
+	ServerBrand string    `nbt:"ServerBrand,omitempty"`
+}
+
+// SpawnInfo represents the spawn compound in Minecraft 1.21+ level.dat
+type SpawnInfo struct {
+	Pos       []int32 `nbt:"pos,omitempty"`
+	Dimension string  `nbt:"dimension,omitempty"`
+	Pitch     float32 `nbt:"pitch,omitempty"`
+	Yaw       float32 `nbt:"yaw,omitempty"`
+}
+
+// GetSpawnX returns the spawn X coordinate, handling both old and new formats
+func (l *LevelInfo) GetSpawnX() int32 {
+	if len(l.Spawn.Pos) >= 1 {
+		return l.Spawn.Pos[0]
+	}
+	return l.SpawnX
+}
+
+// GetSpawnY returns the spawn Y coordinate, handling both old and new formats
+func (l *LevelInfo) GetSpawnY() int32 {
+	if len(l.Spawn.Pos) >= 2 {
+		return l.Spawn.Pos[1]
+	}
+	return l.SpawnY
+}
+
+// GetSpawnZ returns the spawn Z coordinate, handling both old and new formats
+func (l *LevelInfo) GetSpawnZ() int32 {
+	if len(l.Spawn.Pos) >= 3 {
+		return l.Spawn.Pos[2]
+	}
+	return l.SpawnZ
 }
 
 // LevelData is the root tag wrapper

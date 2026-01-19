@@ -6,6 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 On-demand Minecraft server infrastructure on AWS. Web app controls EC2 instances that auto-shutdown when idle.
 
+## Tool Versions
+
+This project uses **asdf** for version management. Ensure shims are in PATH:
+
+```bash
+export PATH="/Users/paul/.asdf/shims:$PATH"
+```
+
+Tools managed: go, node, python, terraform, packer
+
 ## Build Commands
 
 ```bash
@@ -52,3 +62,22 @@ Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md
 - `infra/` - Terraform infrastructure (see `infra/README.md`)
   - `test/` and `prod/` environments with separate VPCs
   - `modules/` - Shared: networking, s3_buckets, ec2_role, mc_stack, api_lambda, web_ui, acm_certificate, dns_records
+
+## Agent Usage
+
+Use subagents to keep context focused:
+
+**Explore agent** - Use for:
+- "How does X work?" questions
+- Finding where functionality is implemented
+- Understanding cross-component interactions (Lambda ↔ UI ↔ minecraftctl)
+
+**Plan agent** - Use for:
+- Changes spanning multiple subprojects
+- New Lambda endpoints that need UI changes
+- Infrastructure changes (Terraform + Packer)
+
+**Bash agent** - Use for:
+- Running test suites across subprojects
+- Build operations
+- Git operations

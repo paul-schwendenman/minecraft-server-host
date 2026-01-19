@@ -64,8 +64,8 @@ func (b *Builder) GeneratePreview(worldName, mapName, logLevel string) error {
 	switch mapDef.Dimension {
 	case "overworld":
 		// For overworld, use spawn coordinates
-		centerX = int(levelInfo.SpawnX)
-		centerZ = int(levelInfo.SpawnZ)
+		centerX = int(levelInfo.GetSpawnX())
+		centerZ = int(levelInfo.GetSpawnZ())
 	case "end", "1":
 		// The End's main island is always centered at 0,0
 		centerX = 0

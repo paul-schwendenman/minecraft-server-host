@@ -26,7 +26,7 @@ func TestReadLevelDat(t *testing.T) {
 		}
 
 		t.Logf("Read level.dat: LevelName=%q, Version=%q, SpawnX=%d, SpawnY=%d, SpawnZ=%d",
-			info.LevelName, info.GetVersionName(), info.SpawnX, info.SpawnY, info.SpawnZ)
+			info.LevelName, info.GetVersionName(), info.GetSpawnX(), info.GetSpawnY(), info.GetSpawnZ())
 	})
 
 	t.Run("missing file", func(t *testing.T) {
@@ -142,46 +142,93 @@ func TestGetVersionName(t *testing.T) {
 }
 
 func TestLevelInfoFields(t *testing.T) {
-	// Test that the struct fields are properly accessible
-	info := LevelInfo{
-		Version: Version{
-			ID:     3578,
-			Name:   "1.20.4",
-			Series: "main",
-		},
-		VersionInt:  19133,
-		DataVersion: 3578,
-		SpawnX:      100,
-		SpawnY:      64,
-		SpawnZ:      -200,
-		LastPlayed:  1700000000000,
-		Difficulty:  2,
-		GameType:    0,
-		LevelName:   "Test World",
-		ServerBrand: "vanilla",
-	}
+	t.Run("old format (pre-1.21)", func(t *testing.T) {
+		// Test that the struct fields are properly accessible
+		info := LevelInfo{
+			Version: Version{
+				ID:     3578,
+				Name:   "1.20.4",
+				Series: "main",
+			},
+			VersionInt:  19133,
+			DataVersion: 3578,
+			SpawnX:      100,
+			SpawnY:      64,
+			SpawnZ:      -200,
+			LastPlayed:  1700000000000,
+			Difficulty:  2,
+			GameType:    0,
+			LevelName:   "Test World",
+			ServerBrand: "vanilla",
+		}
 
-	if info.SpawnX != 100 {
-		t.Errorf("SpawnX = %d, want 100", info.SpawnX)
-	}
-	if info.SpawnY != 64 {
-		t.Errorf("SpawnY = %d, want 64", info.SpawnY)
-	}
-	if info.SpawnZ != -200 {
-		t.Errorf("SpawnZ = %d, want -200", info.SpawnZ)
-	}
-	if info.Difficulty != 2 {
-		t.Errorf("Difficulty = %d, want 2", info.Difficulty)
-	}
-	if info.GameType != 0 {
-		t.Errorf("GameType = %d, want 0", info.GameType)
-	}
-	if info.LevelName != "Test World" {
-		t.Errorf("LevelName = %q, want %q", info.LevelName, "Test World")
-	}
-	if info.ServerBrand != "vanilla" {
-		t.Errorf("ServerBrand = %q, want %q", info.ServerBrand, "vanilla")
-	}
+		if info.GetSpawnX() != 100 {
+			t.Errorf("GetSpawnX() = %d, want 100", info.GetSpawnX())
+		}
+		if info.GetSpawnY() != 64 {
+			t.Errorf("GetSpawnY() = %d, want 64", info.GetSpawnY())
+		}
+		if info.GetSpawnZ() != -200 {
+			t.Errorf("GetSpawnZ() = %d, want -200", info.GetSpawnZ())
+		}
+		if info.Difficulty != 2 {
+			t.Errorf("Difficulty = %d, want 2", info.Difficulty)
+		}
+		if info.GameType != 0 {
+			t.Errorf("GameType = %d, want 0", info.GameType)
+		}
+		if info.LevelName != "Test World" {
+			t.Errorf("LevelName = %q, want %q", info.LevelName, "Test World")
+		}
+		if info.ServerBrand != "vanilla" {
+			t.Errorf("ServerBrand = %q, want %q", info.ServerBrand, "vanilla")
+		}
+	})
+
+	t.Run("new format (1.21+)", func(t *testing.T) {
+		// Test the new spawn compound format
+		info := LevelInfo{
+			Version: Version{
+				ID:   4671,
+				Name: "1.21.11",
+			},
+			DataVersion: 4671,
+			Spawn: SpawnInfo{
+				Pos:       []int32{-752, 76, 176},
+				Dimension: "minecraft:overworld",
+			},
+			LastPlayed: 1700000000000,
+			Difficulty: 3,
+			GameType:   0,
+			LevelName:  "Test World 1.21",
+		}
+
+		if info.GetSpawnX() != -752 {
+			t.Errorf("GetSpawnX() = %d, want -752", info.GetSpawnX())
+		}
+		if info.GetSpawnY() != 76 {
+			t.Errorf("GetSpawnY() = %d, want 76", info.GetSpawnY())
+		}
+		if info.GetSpawnZ() != 176 {
+			t.Errorf("GetSpawnZ() = %d, want 176", info.GetSpawnZ())
+		}
+	})
+
+	t.Run("new format takes precedence", func(t *testing.T) {
+		// If both old and new format exist, new format should be used
+		info := LevelInfo{
+			SpawnX: 100,
+			SpawnY: 64,
+			SpawnZ: -200,
+			Spawn: SpawnInfo{
+				Pos: []int32{-752, 76, 176},
+			},
+		}
+
+		if info.GetSpawnX() != -752 {
+			t.Errorf("GetSpawnX() = %d, want -752 (new format should take precedence)", info.GetSpawnX())
+		}
+	})
 }
 
 func TestReadLevelDatIntegration(t *testing.T) {
@@ -200,8 +247,8 @@ func TestReadLevelDatIntegration(t *testing.T) {
 
 	// The testdata should have valid spawn coordinates
 	// (they should be reasonable Minecraft coordinates)
-	if info.SpawnY < -64 || info.SpawnY > 320 {
-		t.Errorf("SpawnY = %d, outside reasonable range [-64, 320]", info.SpawnY)
+	if info.GetSpawnY() < -64 || info.GetSpawnY() > 320 {
+		t.Errorf("GetSpawnY() = %d, outside reasonable range [-64, 320]", info.GetSpawnY())
 	}
 
 	// Difficulty should be 0-3
