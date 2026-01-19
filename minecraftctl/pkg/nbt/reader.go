@@ -45,12 +45,12 @@ type LevelInfo struct {
 	SpawnY int32 `nbt:"SpawnY,omitempty"`
 	SpawnZ int32 `nbt:"SpawnZ,omitempty"`
 	// New format spawn (1.21+) - compound with pos array
-	Spawn      SpawnInfo `nbt:"spawn,omitempty"`
-	LastPlayed int64     `nbt:"LastPlayed"`
-	Difficulty int32     `nbt:"Difficulty"`
-	GameType   int32     `nbt:"GameType"`
-	LevelName  string    `nbt:"LevelName"`
-	ServerBrand string   `nbt:"ServerBrand,omitempty"`
+	Spawn       SpawnInfo `nbt:"spawn,omitempty"`
+	LastPlayed  int64     `nbt:"LastPlayed"`
+	Difficulty  int32     `nbt:"Difficulty"`
+	GameType    int32     `nbt:"GameType"`
+	LevelName   string    `nbt:"LevelName"`
+	ServerBrand string    `nbt:"ServerBrand,omitempty"`
 }
 
 // SpawnInfo represents the spawn compound in Minecraft 1.21+ level.dat
