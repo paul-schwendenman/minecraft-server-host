@@ -12,9 +12,5 @@ sudo install -Dm644 "${SRC_DIR}/minecraft-map-build@.service" /etc/systemd/syste
 sudo install -Dm644 "${SRC_DIR}/minecraft-map-build@.timer" /etc/systemd/system/minecraft-map-build@.timer
 sudo install -Dm644 "${SRC_DIR}/minecraft-map-build-daily@.timer" /etc/systemd/system/minecraft-map-build-daily@.timer
 
-# Hook into minecraft@.service (ExecStopPost to rebuild on stop)
-sudo mkdir -p /etc/systemd/system/minecraft@.service.d
-sudo install -Dm644 "${SRC_DIR}/minecraft-override-rebuild.conf" /etc/systemd/system/minecraft@.service.d/minecraft-map-build.conf
-
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
