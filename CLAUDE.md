@@ -40,6 +40,17 @@ make deploy                  # Deploy lambdas + UI to AWS (manual)
 | minecraft-ui | `cd minecraft-ui && pnpm -r test` |
 | packer | `cd packer && bats tests/*.bats` |
 
+## Pre-commit Checks
+
+**Always run formatting/linting before committing:**
+
+| Subproject | Command |
+|------------|---------|
+| minecraftctl | `go fmt ./...` |
+| minecraft-ui | `pnpm -r format && pnpm -r lint` |
+| infra | `terraform fmt -recursive` |
+| packer | `packer fmt .` |
+
 ## CI/CD Deployments
 
 Lambdas and UI apps auto-deploy on push to `master`. See `docs/github-actions.md` for details.
