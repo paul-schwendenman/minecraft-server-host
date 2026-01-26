@@ -1,4 +1,4 @@
-@plugin "daisyui/theme" {
+@plugin 'daisyui/theme' {
 	name: 'mc-dark';
 	default: false;
 	prefersdark: true;

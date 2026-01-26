@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { mockServer } from './src/plugins/mock-server';
+import { playwright } from '@vitest/browser-playwright';
 
 export default defineConfig({
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,10 +14,9 @@ export default defineConfig({
 				extends: './vite.config.ts',
 				test: {
 					name: 'client',
-					environment: 'browser',
 					browser: {
 						enabled: true,
-						provider: 'playwright',
+						provider: playwright(),
 						instances: [{ browser: 'chromium' }]
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
