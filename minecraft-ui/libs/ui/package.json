@@ -11,8 +11,8 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
-		"test:unit": "vitest --environment=node",
-		"test": "vitest --environment=node --run",
+		"test:unit": "vitest",
+		"test": "vitest --run",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build"
 	},
@@ -50,6 +50,7 @@
 		"@testing-library/svelte": "^5.3.1",
 		"@types/node": "^25.0.10",
 		"@vitest/browser": "^4.0.18",
+		"@vitest/browser-playwright": "^4.0.18",
 		"eslint": "^9.39.2",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-storybook": "^10.2.0",
