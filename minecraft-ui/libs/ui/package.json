@@ -61,7 +61,7 @@
 		"prettier-plugin-svelte": "^3.4.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
 		"publint": "^0.3.17",
-		"storybook": "^10.2.0",
+		"storybook": "^10.2.10",
 		"svelte": "^5.48.2",
 		"svelte-check": "^4.3.5",
 		"tailwindcss": "^4.1.18",
