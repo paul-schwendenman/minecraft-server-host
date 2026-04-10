@@ -38,7 +38,7 @@
 		"@eslint/compat": "^2.0.1",
 		"@eslint/js": "^9.39.2",
 		"@sveltejs/adapter-auto": "^7.0.0",
-		"@sveltejs/kit": "^2.50.1",
+		"@sveltejs/kit": "^2.57.1",
 		"@sveltejs/package": "^2.5.7",
 		"@sveltejs/vite-plugin-svelte": "^6.2.4",
 		"@types/node": "^25.0.10",
