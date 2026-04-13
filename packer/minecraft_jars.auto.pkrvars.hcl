@@ -58,5 +58,10 @@ minecraft_jars = [
     version = "1.21.11"
     url     = "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar"
     sha256  = "f83b8e093865806f931c7e34aae41b177d4c076335263dd124c75d6d65dd1726"
+  },
+  {
+    version = "26.1.2"
+    url     = "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
+    sha256  = "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42"
   }
 ]
