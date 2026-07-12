@@ -60,6 +60,16 @@ minecraft_jars = [
     sha256  = "f83b8e093865806f931c7e34aae41b177d4c076335263dd124c75d6d65dd1726"
   },
   {
+    version = "26.1"
+    url     = "https://piston-data.mojang.com/v1/objects/3872a7f07a1a595e651aef8b058dfc2bb3772f46/server.jar"
+    sha256  = "98ab064389a8b34d48ac3d4c5ed858dd9433d0dfd1a12e1cbbda916448d92994"
+  },
+  {
+    version = "26.1.1"
+    url     = "https://piston-data.mojang.com/v1/objects/49c8195703ad0ba4f0a4efbccfd85a4a8ca57431/server.jar"
+    sha256  = "d792784979722dc35144acffb953554e707445c62450550044c4281e632cbbcc"
+  },
+  {
     version = "26.1.2"
     url     = "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
     sha256  = "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42"
