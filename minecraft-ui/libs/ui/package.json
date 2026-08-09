@@ -42,7 +42,7 @@
 		"@storybook/addon-svelte-csf": "^5.1.2",
 		"@storybook/sveltekit": "^10.5.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
-		"@sveltejs/kit": "^2.69.2",
+		"@sveltejs/kit": "^2.70.2",
 		"@sveltejs/package": "^2.5.8",
 		"@sveltejs/vite-plugin-svelte": "^7.2.0",
 		"@tailwindcss/vite": "^4.3.2",
