@@ -89,7 +89,7 @@ jobs:
 
       - name: Install uv
         if: matrix.deploy == 'true'
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.1.0
 
       - name: Build lambda package
         if: matrix.deploy == 'true'
