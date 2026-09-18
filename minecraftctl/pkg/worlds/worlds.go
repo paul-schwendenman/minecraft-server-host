@@ -3,7 +3,6 @@ package worlds
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"sort"
@@ -14,6 +13,7 @@ import (
 	"github.com/paul/minecraftctl/pkg/config"
 	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/paul/minecraftctl/pkg/nbt"
+	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/rs/zerolog/log"
 )
 
@@ -382,16 +382,8 @@ maps:
 	if opts.EnableSystemd {
 		serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
 
-		// Enable service
-		enableCmd := exec.Command("systemctl", "enable", serviceName)
-		if err := enableCmd.Run(); err != nil {
-			return fmt.Errorf("failed to enable systemd service %s: %w", serviceName, err)
-		}
-
-		// Start service
-		startCmd := exec.Command("systemctl", "start", serviceName)
-		if err := startCmd.Run(); err != nil {
-			return fmt.Errorf("failed to start systemd service %s: %w", serviceName, err)
+		if err := systemd.EnableNow(serviceName); err != nil {
+			return fmt.Errorf("failed to enable and start systemd service %s: %w", serviceName, err)
 		}
 	}
 
@@ -443,21 +435,14 @@ func RegisterWorld(worldName string) error {
 	}
 
 	// Reload systemd daemon first to ensure all service files are recognized
-	reloadCmd := exec.Command("systemctl", "daemon-reload")
-	if err := reloadCmd.Run(); err != nil {
+	if err := systemd.DaemonReload(); err != nil {
 		return fmt.Errorf("failed to reload systemd daemon: %w", err)
 	}
 
 	// Enable and start the main service
 	serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-	enableCmd := exec.Command("systemctl", "enable", serviceName)
-	if err := enableCmd.Run(); err != nil {
-		return fmt.Errorf("failed to enable systemd service %s: %w", serviceName, err)
-	}
-
-	startCmd := exec.Command("systemctl", "start", serviceName)
-	if err := startCmd.Run(); err != nil {
-		return fmt.Errorf("failed to start systemd service %s: %w", serviceName, err)
+	if err := systemd.EnableNow(serviceName); err != nil {
+		return fmt.Errorf("failed to enable and start systemd service %s: %w", serviceName, err)
 	}
 
 	// Enable timers (but don't start them - they'll start on their schedule)
@@ -468,8 +453,7 @@ func RegisterWorld(worldName string) error {
 	}
 
 	for _, timerName := range timers {
-		enableTimerCmd := exec.Command("systemctl", "enable", timerName)
-		if err := enableTimerCmd.Run(); err != nil {
+		if err := systemd.Enable(timerName); err != nil {
 			// Log warning but don't fail - timers might not be installed
 			log.Warn().Err(err).Str("timer", timerName).Msg("failed to enable timer, continuing")
 		}

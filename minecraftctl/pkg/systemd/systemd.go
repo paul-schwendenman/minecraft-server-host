@@ -73,6 +73,11 @@ func Disable(unit string) error {
 	return runSystemctl("disable", unit)
 }
 
+// DaemonReload runs systemctl daemon-reload to pick up new/changed unit files
+func DaemonReload() error {
+	return runSystemctl("daemon-reload")
+}
+
 // IsActive checks if a unit is active (returns true if active, false otherwise)
 func IsActive(unit string) (bool, error) {
 	cmd := exec.Command("systemctl", "is-active", "--quiet", unit)
