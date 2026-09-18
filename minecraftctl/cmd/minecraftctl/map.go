@@ -38,18 +38,6 @@ func mapWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
-// mapSingleWorldCompletionFunc provides tab completion for first world arg only
-func mapSingleWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if len(args) != 0 {
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	names, err := worlds.GetWorldNames()
-	if err != nil {
-		return nil, cobra.ShellCompDirectiveError
-	}
-	return names, cobra.ShellCompDirectiveNoFileComp
-}
-
 // MapCmd is an alias for the command defined in internal/commands
 var MapCmd = commands.MapCmd
 
@@ -122,7 +110,7 @@ var mapPreviewCmd = &cobra.Command{
 	Use:               "preview <world> <map>",
 	Short:             "Generate preview image for a map",
 	Args:              cobra.ExactArgs(2),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		mapName := args[1]
@@ -216,7 +204,7 @@ var mapConfigGenerateCmd = &cobra.Command{
 	Short:             "Generate a basic map-config.yml file for a world",
 	Long:              "Creates a map-config.yml file with default settings and a spawn area zoom region based on NBT spawn coordinates",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		force, _ := cmd.Flags().GetBool("force")
@@ -321,7 +309,7 @@ var mapConfigGetCmd = &cobra.Command{
 	Short:             "Get config value(s) from map-config.yml",
 	Long:              "Display config values. If path is specified, shows that field. Otherwise shows full config.",
 	Args:              cobra.RangeArgs(1, 2),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		var path string
@@ -374,7 +362,7 @@ var mapConfigSetCmd = &cobra.Command{
 	Short:             "Set a config value in map-config.yml",
 	Long:              "Set a specific field value using dot notation path (e.g., defaults.zoomout)",
 	Args:              cobra.ExactArgs(3),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		path := args[1]
@@ -422,7 +410,7 @@ var mapConfigValidateCmd = &cobra.Command{
 	Short:             "Validate map-config.yml structure and values",
 	Long:              "Checks that the map-config.yml file is valid and all values are within acceptable ranges",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -458,7 +446,7 @@ var mapConfigEditCmd = &cobra.Command{
 	Short:             "Interactively edit map-config.yml",
 	Long:              "Opens an interactive menu-driven editor for map-config.yml",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 
@@ -510,14 +498,12 @@ var mapBackupStatusCmd = &cobra.Command{
 	Use:               "status <world>",
 	Short:             "Show status of the map backup service and timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
 		fmt.Println("=== Service ===")
-		if err := systemd.Status(service); err != nil {
-			// Continue to show timer status even if service status fails
-		}
+		_ = systemd.Status(service) // best-effort: still show timer status below even if this fails
 		fmt.Println("\n=== Timer ===")
 		return systemd.Status(timer)
 	},
@@ -527,7 +513,7 @@ var mapBackupStartCmd = &cobra.Command{
 	Use:               "start <world>",
 	Short:             "Trigger a map backup now",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -538,7 +524,7 @@ var mapBackupStopCmd = &cobra.Command{
 	Use:               "stop <world>",
 	Short:             "Stop a running map backup",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -549,7 +535,7 @@ var mapBackupEnableCmd = &cobra.Command{
 	Use:               "enable <world>",
 	Short:             "Enable the map backup timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -560,7 +546,7 @@ var mapBackupDisableCmd = &cobra.Command{
 	Use:               "disable <world>",
 	Short:             "Disable the map backup timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -571,7 +557,7 @@ var mapBackupLogsCmd = &cobra.Command{
 	Use:               "logs <world>",
 	Short:             "View logs for the map backup service",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-backup", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -590,14 +576,12 @@ var mapBuildStatusCmd = &cobra.Command{
 	Use:               "status <world>",
 	Short:             "Show status of the map build service and timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		service := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		fmt.Println("=== Service ===")
-		if err := systemd.Status(service); err != nil {
-			// Continue to show timer status even if service status fails
-		}
+		_ = systemd.Status(service) // best-effort: still show timer status below even if this fails
 		fmt.Println("\n=== Timer ===")
 		return systemd.Status(timer)
 	},
@@ -607,7 +591,7 @@ var mapBuildStartCmd = &cobra.Command{
 	Use:               "start <world>",
 	Short:             "Trigger a map build via systemd",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		return systemd.Start(unit)
@@ -618,7 +602,7 @@ var mapBuildStopCmd = &cobra.Command{
 	Use:               "stop <world>",
 	Short:             "Stop a running map build",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		return systemd.Stop(unit)
@@ -629,7 +613,7 @@ var mapBuildEnableCmd = &cobra.Command{
 	Use:               "enable <world>",
 	Short:             "Enable the map build timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		return systemd.EnableNow(timer)
@@ -640,7 +624,7 @@ var mapBuildDisableCmd = &cobra.Command{
 	Use:               "disable <world>",
 	Short:             "Disable the map build timer",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
 		return systemd.Disable(timer)
@@ -651,7 +635,7 @@ var mapBuildLogsCmd = &cobra.Command{
 	Use:               "logs <world>",
 	Short:             "View logs for the map build service",
 	Args:              cobra.ExactArgs(1),
-	ValidArgsFunction: mapSingleWorldCompletionFunc,
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		unit := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitService)
 		opts := systemd.LogOptions{
@@ -1021,17 +1005,16 @@ func deleteMap(mapConfig *config.MapConfig) error {
 	return nil
 }
 
-// buildBatch processes multiple worlds in batch
-func buildBatch(worldNames []string, baseOpts maps.BuildOptions, parallel bool, maxWorkers int) error {
+// runWorldBatch runs work for each world name, either sequentially or via a
+// bounded worker pool, and returns the first error encountered. Sequential
+// runs log each failure as they happen (so progress is visible); parallel
+// runs collect results and only report the first error once all workers finish.
+func runWorldBatch(worldNames []string, parallel bool, maxWorkers int, failureMsg string, work func(worldName string) error) error {
 	if !parallel {
-		// Sequential processing
 		var firstErr error
 		for _, worldName := range worldNames {
-			builder := maps.NewBuilder()
-			opts := baseOpts
-			opts.WorldName = worldName
-			if err := builder.Build(opts); err != nil {
-				log.Error().Err(err).Str("world", worldName).Msg("failed to build maps")
+			if err := work(worldName); err != nil {
+				log.Error().Err(err).Str("world", worldName).Msg(failureMsg)
 				if firstErr == nil {
 					firstErr = err
 				}
@@ -1059,10 +1042,7 @@ func buildBatch(worldNames []string, baseOpts maps.BuildOptions, parallel bool, 
 			semaphore <- struct{}{}        // Acquire
 			defer func() { <-semaphore }() // Release
 
-			builder := maps.NewBuilder()
-			opts := baseOpts
-			opts.WorldName = name
-			errors[idx] = builder.Build(opts)
+			errors[idx] = work(name)
 		}(i, worldName)
 	}
 
@@ -1077,58 +1057,22 @@ func buildBatch(worldNames []string, baseOpts maps.BuildOptions, parallel bool, 
 	return nil
 }
 
+// buildBatch processes multiple worlds in batch
+func buildBatch(worldNames []string, baseOpts maps.BuildOptions, parallel bool, maxWorkers int) error {
+	return runWorldBatch(worldNames, parallel, maxWorkers, "failed to build maps", func(worldName string) error {
+		builder := maps.NewBuilder()
+		opts := baseOpts
+		opts.WorldName = worldName
+		return builder.Build(opts)
+	})
+}
+
 // manifestBatch processes multiple worlds for manifest generation
 func manifestBatch(worldNames []string, baseOpts maps.ManifestOptions, parallel bool, maxWorkers int) error {
-	if !parallel {
-		// Sequential processing
-		var firstErr error
-		for _, worldName := range worldNames {
-			builder := maps.NewManifestBuilder()
-			opts := baseOpts
-			opts.WorldName = worldName
-			if err := builder.BuildManifests(worldName, opts); err != nil {
-				log.Error().Err(err).Str("world", worldName).Msg("failed to build manifests")
-				if firstErr == nil {
-					firstErr = err
-				}
-			}
-		}
-		return firstErr
-	}
-
-	// Parallel processing with worker pool
-	if maxWorkers <= 0 {
-		maxWorkers = runtime.NumCPU()
-	}
-	if maxWorkers > len(worldNames) {
-		maxWorkers = len(worldNames)
-	}
-
-	var wg sync.WaitGroup
-	semaphore := make(chan struct{}, maxWorkers)
-	errors := make([]error, len(worldNames))
-
-	for i, worldName := range worldNames {
-		wg.Add(1)
-		go func(idx int, name string) {
-			defer wg.Done()
-			semaphore <- struct{}{}        // Acquire
-			defer func() { <-semaphore }() // Release
-
-			builder := maps.NewManifestBuilder()
-			opts := baseOpts
-			opts.WorldName = name
-			errors[idx] = builder.BuildManifests(name, opts)
-		}(i, worldName)
-	}
-
-	wg.Wait()
-
-	// Return first error if any
-	for _, err := range errors {
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return runWorldBatch(worldNames, parallel, maxWorkers, "failed to build manifests", func(worldName string) error {
+		builder := maps.NewManifestBuilder()
+		opts := baseOpts
+		opts.WorldName = worldName
+		return builder.BuildManifests(worldName, opts)
+	})
 }

@@ -74,6 +74,23 @@ type MapOptions struct {
 	Players *bool       `yaml:"players,omitempty" mapstructure:"players"`
 }
 
+// ShadowsToString normalizes a MapOptions.Shadows value (which YAML/mapstructure
+// may decode as either a bool or a string, e.g. true or "3do") to its string form.
+// Returns "" if v is nil or an unrecognized type.
+func ShadowsToString(v interface{}) string {
+	switch s := v.(type) {
+	case string:
+		return s
+	case bool:
+		if s {
+			return "true"
+		}
+		return "false"
+	default:
+		return ""
+	}
+}
+
 // MapRange defines a focused render area
 type MapRange struct {
 	Name    string `yaml:"name" mapstructure:"name"`
@@ -332,6 +349,53 @@ func capitalizeFieldName(name string) string {
 	return strings.ToUpper(name[:1]) + name[1:]
 }
 
+// resolvePathSegment navigates from current to the field (or slice element,
+// for a segment like "maps[0]") named by one dot-path segment, following a
+// trailing pointer. pathSoFar is the joined path up to and including this
+// segment, used only for error messages.
+func resolvePathSegment(current reflect.Value, part string, pathSoFar string) (reflect.Value, error) {
+	fieldName := part
+	index := -1
+	if idx := strings.Index(part, "["); idx != -1 {
+		fieldName = part[:idx]
+		re := regexp.MustCompile(`\[(\d+)\]`)
+		matches := re.FindStringSubmatch(part)
+		if len(matches) < 2 {
+			return reflect.Value{}, fmt.Errorf("invalid array index in path: %s", part)
+		}
+		parsedIndex, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("invalid array index: %w", err)
+		}
+		index = parsedIndex
+	}
+
+	field := current.FieldByName(capitalizeFieldName(fieldName))
+	if !field.IsValid() {
+		return reflect.Value{}, fmt.Errorf("field not found: %s", fieldName)
+	}
+
+	next := field
+	if index >= 0 {
+		if field.Kind() != reflect.Slice {
+			return reflect.Value{}, fmt.Errorf("field is not a slice: %s", fieldName)
+		}
+		if index >= field.Len() {
+			return reflect.Value{}, fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
+		}
+		next = field.Index(index)
+	}
+
+	if next.Kind() == reflect.Ptr {
+		if next.IsNil() {
+			return reflect.Value{}, fmt.Errorf("field is nil: %s", pathSoFar)
+		}
+		next = next.Elem()
+	}
+
+	return next, nil
+}
+
 // GetConfigField retrieves a field value from MapConfig using dot notation path
 // Examples: "defaults.zoomout", "maps[0].name", "maps[0].options.shadows"
 func GetConfigField(path string, mapConfig *MapConfig) (interface{}, error) {
@@ -346,50 +410,11 @@ func GetConfigField(path string, mapConfig *MapConfig) (interface{}, error) {
 	current := reflect.ValueOf(mapConfig).Elem()
 
 	for i, part := range parts {
-		// Handle array indexing like maps[0]
-		if idx := strings.Index(part, "["); idx != -1 {
-			fieldName := part[:idx]
-			// Extract index
-			re := regexp.MustCompile(`\[(\d+)\]`)
-			matches := re.FindStringSubmatch(part)
-			if len(matches) < 2 {
-				return nil, fmt.Errorf("invalid array index in path: %s", part)
-			}
-			index, err := strconv.Atoi(matches[1])
-			if err != nil {
-				return nil, fmt.Errorf("invalid array index: %w", err)
-			}
-
-			// Get field
-			field := current.FieldByName(capitalizeFieldName(fieldName))
-			if !field.IsValid() {
-				return nil, fmt.Errorf("field not found: %s", fieldName)
-			}
-
-			// Navigate to array element
-			if field.Kind() != reflect.Slice {
-				return nil, fmt.Errorf("field is not a slice: %s", fieldName)
-			}
-			if index < 0 || index >= field.Len() {
-				return nil, fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
-			}
-			current = field.Index(index)
-		} else {
-			// Regular field access
-			field := current.FieldByName(capitalizeFieldName(part))
-			if !field.IsValid() {
-				return nil, fmt.Errorf("field not found: %s", part)
-			}
-			current = field
+		next, err := resolvePathSegment(current, part, strings.Join(parts[:i+1], "."))
+		if err != nil {
+			return nil, err
 		}
-
-		// Follow pointer if needed
-		if current.Kind() == reflect.Ptr {
-			if current.IsNil() {
-				return nil, fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
-			}
-			current = current.Elem()
-		}
+		current = next
 	}
 
 	return current.Interface(), nil
@@ -407,127 +432,58 @@ func SetConfigField(path string, value interface{}, mapConfig *MapConfig) error 
 
 	parts := strings.Split(path, ".")
 	current := reflect.ValueOf(mapConfig).Elem()
-	var lastPart string
-	var lastIndex int = -1
 
-	for i, part := range parts {
-		isLast := i == len(parts)-1
+	// Navigate through every segment except the last, exactly as GetConfigField does.
+	for i := 0; i < len(parts)-1; i++ {
+		next, err := resolvePathSegment(current, parts[i], strings.Join(parts[:i+1], "."))
+		if err != nil {
+			return err
+		}
+		current = next
+	}
 
-		// Handle array indexing like maps[0]
-		if idx := strings.Index(part, "["); idx != -1 {
-			fieldName := part[:idx]
-			// Extract index
-			re := regexp.MustCompile(`\[(\d+)\]`)
-			matches := re.FindStringSubmatch(part)
-			if len(matches) < 2 {
-				return fmt.Errorf("invalid array index in path: %s", part)
-			}
-			index, err := strconv.Atoi(matches[1])
-			if err != nil {
-				return fmt.Errorf("invalid array index: %w", err)
-			}
+	lastPart := parts[len(parts)-1]
 
-			// Get field
-			field := current.FieldByName(capitalizeFieldName(fieldName))
-			if !field.IsValid() {
-				return fmt.Errorf("field not found: %s", fieldName)
-			}
+	// A final segment with an index (e.g. "maps[0]") targets a whole array
+	// element rather than a scalar field; we don't support setting those.
+	if strings.Contains(lastPart, "[") {
+		if _, err := resolvePathSegment(current, lastPart, path); err != nil {
+			return err
+		}
+		return fmt.Errorf("setting entire array elements is not supported")
+	}
 
-			if !isLast {
-				// Navigate to array element
-				if field.Kind() != reflect.Slice {
-					return fmt.Errorf("field is not a slice: %s", fieldName)
-				}
-				if index < 0 || index >= field.Len() {
-					return fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
-				}
-				current = field.Index(index)
-				// Follow pointer if needed
-				if current.Kind() == reflect.Ptr {
-					if current.IsNil() {
-						return fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
-					}
-					current = current.Elem()
-				}
-			} else {
-				// This is the last part, we need to set a value in the array
-				if field.Kind() != reflect.Slice {
-					return fmt.Errorf("field is not a slice: %s", fieldName)
-				}
-				if index < 0 || index >= field.Len() {
-					return fmt.Errorf("array index out of range: %d (length: %d)", index, field.Len())
-				}
-				elem := field.Index(index)
-				if elem.Kind() == reflect.Ptr {
-					if elem.IsNil() {
-						return fmt.Errorf("array element is nil at index %d", index)
-					}
-					elem = elem.Elem()
-				}
-				current = elem
-				lastPart = ""
-				lastIndex = index
-			}
+	field := current.FieldByName(capitalizeFieldName(lastPart))
+	if !field.IsValid() {
+		return fmt.Errorf("field not found: %s", lastPart)
+	}
+	if !field.CanSet() {
+		return fmt.Errorf("field cannot be set: %s", lastPart)
+	}
+
+	val := reflect.ValueOf(value)
+	// Convert value to appropriate type
+	if field.Kind() != val.Kind() {
+		// Try to convert
+		if val.CanConvert(field.Type()) {
+			val = val.Convert(field.Type())
 		} else {
-			if !isLast {
-				// Regular field access (not last part)
-				field := current.FieldByName(capitalizeFieldName(part))
-				if !field.IsValid() {
-					return fmt.Errorf("field not found: %s", part)
-				}
-				current = field
-				// Follow pointer if needed
-				if current.Kind() == reflect.Ptr {
-					if current.IsNil() {
-						return fmt.Errorf("field is nil: %s", strings.Join(parts[:i+1], "."))
-					}
-					current = current.Elem()
-				}
-			} else {
-				// Last part - we'll set this field
-				lastPart = part
-			}
+			return fmt.Errorf("cannot convert value type %v to field type %v", val.Type(), field.Type())
 		}
 	}
 
-	// Set the value
-	if lastPart != "" {
-		field := current.FieldByName(capitalizeFieldName(lastPart))
-		if !field.IsValid() {
-			return fmt.Errorf("field not found: %s", lastPart)
-		}
-		if !field.CanSet() {
-			return fmt.Errorf("field cannot be set: %s", lastPart)
-		}
-
-		val := reflect.ValueOf(value)
-		// Convert value to appropriate type
-		if field.Kind() != val.Kind() {
-			// Try to convert
-			if val.CanConvert(field.Type()) {
-				val = val.Convert(field.Type())
-			} else {
-				return fmt.Errorf("cannot convert value type %v to field type %v", val.Type(), field.Type())
-			}
-		}
-
-		// Handle pointer fields
-		if field.Kind() == reflect.Ptr {
-			// Create a new pointer of the correct type
-			ptr := reflect.New(field.Type().Elem())
-			if val.CanConvert(field.Type().Elem()) {
-				ptr.Elem().Set(val.Convert(field.Type().Elem()))
-			} else {
-				return fmt.Errorf("cannot convert value type %v to pointer element type %v", val.Type(), field.Type().Elem())
-			}
-			field.Set(ptr)
+	// Handle pointer fields
+	if field.Kind() == reflect.Ptr {
+		// Create a new pointer of the correct type
+		ptr := reflect.New(field.Type().Elem())
+		if val.CanConvert(field.Type().Elem()) {
+			ptr.Elem().Set(val.Convert(field.Type().Elem()))
 		} else {
-			field.Set(val)
+			return fmt.Errorf("cannot convert value type %v to pointer element type %v", val.Type(), field.Type().Elem())
 		}
-	} else if lastIndex >= 0 {
-		// Setting an entire array element - this would require more complex logic
-		// For now, we don't support setting entire array elements
-		return fmt.Errorf("setting entire array elements is not supported")
+		field.Set(ptr)
+	} else {
+		field.Set(val)
 	}
 
 	return nil
@@ -574,17 +530,7 @@ func ValidateMapConfig(mapConfig *MapConfig) []string {
 
 		// Validate shadow value if set
 		if m.Options.Shadows != nil {
-			var shadowStr string
-			switch v := m.Options.Shadows.(type) {
-			case string:
-				shadowStr = v
-			case bool:
-				if v {
-					shadowStr = "true"
-				} else {
-					shadowStr = "false"
-				}
-			}
+			shadowStr := ShadowsToString(m.Options.Shadows)
 			if shadowStr != "" && !validShadowValues[strings.ToLower(shadowStr)] {
 				errs = append(errs, fmt.Sprintf("maps[%d].options.shadows must be one of: true, false, 2d, 3d, 3do (got: %v)", i, m.Options.Shadows))
 			}
