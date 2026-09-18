@@ -74,6 +74,23 @@ type MapOptions struct {
 	Players *bool       `yaml:"players,omitempty" mapstructure:"players"`
 }
 
+// ShadowsToString normalizes a MapOptions.Shadows value (which YAML/mapstructure
+// may decode as either a bool or a string, e.g. true or "3do") to its string form.
+// Returns "" if v is nil or an unrecognized type.
+func ShadowsToString(v interface{}) string {
+	switch s := v.(type) {
+	case string:
+		return s
+	case bool:
+		if s {
+			return "true"
+		}
+		return "false"
+	default:
+		return ""
+	}
+}
+
 // MapRange defines a focused render area
 type MapRange struct {
 	Name    string `yaml:"name" mapstructure:"name"`
@@ -574,17 +591,7 @@ func ValidateMapConfig(mapConfig *MapConfig) []string {
 
 		// Validate shadow value if set
 		if m.Options.Shadows != nil {
-			var shadowStr string
-			switch v := m.Options.Shadows.(type) {
-			case string:
-				shadowStr = v
-			case bool:
-				if v {
-					shadowStr = "true"
-				} else {
-					shadowStr = "false"
-				}
-			}
+			shadowStr := ShadowsToString(m.Options.Shadows)
 			if shadowStr != "" && !validShadowValues[strings.ToLower(shadowStr)] {
 				errs = append(errs, fmt.Sprintf("maps[%d].options.shadows must be one of: true, false, 2d, 3d, 3do (got: %v)", i, m.Options.Shadows))
 			}

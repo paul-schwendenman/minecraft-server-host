@@ -302,18 +302,7 @@ func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string 
 		args = append(args, "--night", "true")
 	}
 	if opts.Shadows != nil {
-		var shadowArg string
-		switch v := opts.Shadows.(type) {
-		case bool:
-			if v {
-				shadowArg = "true"
-			} else {
-				shadowArg = "false"
-			}
-		case string:
-			shadowArg = v
-		}
-		if shadowArg != "" {
+		if shadowArg := config.ShadowsToString(opts.Shadows); shadowArg != "" {
 			args = append(args, "--shadows", shadowArg)
 		}
 	}
