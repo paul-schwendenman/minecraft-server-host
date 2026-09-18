@@ -362,9 +362,7 @@ var worldBackupStatusCmd = &cobra.Command{
 		service := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitService)
 		timer := systemd.FormatUnitName("minecraft-world-backup", args[0], systemd.UnitTimer)
 		fmt.Println("=== Service ===")
-		if err := systemd.Status(service); err != nil {
-			// Continue to show timer status even if service status fails
-		}
+		_ = systemd.Status(service) // best-effort: still show timer status below even if this fails
 		fmt.Println("\n=== Timer ===")
 		return systemd.Status(timer)
 	},
