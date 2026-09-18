@@ -40,15 +40,15 @@ wheels = [
 
 [[package]]
 name = "mcstatus"
-version = "14.0.0"
+version = "14.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asyncio-dgram" },
     { name = "dnspython" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/96/b6/5838457fc7db54cb69e551c8ee21142890ebaea0df7d2c4fa49f64e8fd31/mcstatus-14.0.0.tar.gz", hash = "sha256:92141abd6037c2e18e910061f895a23918e6e6bfd462cfba0a3b9bd0ed893942", size = 161480, upload-time = "2026-06-26T16:31:12.592Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/78/9b/c68055043bb276cff7926b13930a10927c7c988e15f2170f909bbfafa8b1/mcstatus-14.2.0.tar.gz", hash = "sha256:ab1a3145dc6b22b8051ea087a87e5b26cf91abfb8e1808539a2526bbfaaa0167", size = 171164, upload-time = "2026-09-02T19:45:29.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/9a/fc/bc4d10fae4909f508e9200cad0e03688a88a627c7cfac495da986b90a709/mcstatus-14.0.0-py3-none-any.whl", hash = "sha256:8f607fe1247a5475e7602342a16f8167000cf9a95b00d3e239f706370c0fb149", size = 61383, upload-time = "2026-06-26T16:31:11.27Z" },
+    { url = "https://files.pythonhosted.org/packages/8c/1e/0a6c2c1ed0329f37def02f9fca58fe3b862381d887b730d8c350edd05024/mcstatus-14.2.0-py3-none-any.whl", hash = "sha256:6099f9d6ae5c68eb5230cd3063b0888ea1ba4e9ae17189bf4c0f919c1ff673d1", size = 62094, upload-time = "2026-09-02T19:45:27.385Z" },
 ]
 
 [[package]]
@@ -72,11 +72,11 @@ dev = [{ name = "pytest", specifier = ">=8.0.0" }]
 
 [[package]]
 name = "packaging"
-version = "26.2"
+version = "26.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d7/f1/e7a6dd94a8d4a5626c03e4e99c87f241ba9e350cd9e6d75123f992427270/packaging-26.2.tar.gz", hash = "sha256:ff452ff5a3e828ce110190feff1178bb1f2ea2281fa2075aadb987c2fb221661", size = 228134, upload-time = "2026-04-24T20:15:23.917Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7d/fa/3944b40b07da9ce895c0e6303a5ab7d53da063554f534556b134a54d6093/packaging-26.3.tar.gz", hash = "sha256:94edc256424af38762eb31306eed28beb9f0efc50a8837492c9d6fd6004aed79", size = 313412, upload-time = "2026-08-04T18:15:28.737Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/b2/87e62e8c3e2f4b32e5fe99e0b86d576da1312593b39f47d8ceef365e95ed/packaging-26.2-py3-none-any.whl", hash = "sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e", size = 100195, upload-time = "2026-04-24T20:15:22.081Z" },
+    { url = "https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl", hash = "sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c", size = 129956, upload-time = "2026-08-04T18:15:27.159Z" },
 ]
 
 [[package]]
@@ -90,11 +90,11 @@ wheels = [
 
 [[package]]
 name = "pygments"
-version = "2.20.0"
+version = "2.21.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c3/b2/bc9c9196916376152d655522fdcebac55e66de6603a76a02bca1b6414f6c/pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f", size = 4955991, upload-time = "2026-03-29T13:29:33.898Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/2e/ced460408999b33da6b31b0021b0f37d329e202d4169aeb164493778f25b/pygments-2.21.0.tar.gz", hash = "sha256:610ca751c9bc2492b38eb9a38a7fbc93edbbb2d7182edaf34e66ae493dee5c8c", size = 5005329, upload-time = "2026-08-17T08:02:48.824Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/7e/a72dd26f3b0f4f2bf1dd8923c85f7ceb43172af56d63c7383eb62b332364/pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176", size = 1231151, upload-time = "2026-03-29T13:29:30.038Z" },
+    { url = "https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl", hash = "sha256:2363c69b61c4a97c838da3b130dcd6468f4848992b21a82f2a63ec34377137d9", size = 1250147, upload-time = "2026-08-17T08:02:44.912Z" },
 ]
 
 [[package]]
