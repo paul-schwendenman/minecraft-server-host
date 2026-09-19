@@ -9,7 +9,7 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get upgrade -y -qq
 sudo add-apt-repository -y universe
 sudo apt-get update -qq
 sudo apt-get install -y -qq \
-  openjdk-21-jre-headless \
+  openjdk-25-jre-headless \
   screen unzip wget curl ca-certificates \
   python3-pip git build-essential jq xfsprogs
 
