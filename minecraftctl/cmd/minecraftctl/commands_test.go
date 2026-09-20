@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"net"
 	"strings"
 	"testing"
@@ -218,11 +219,45 @@ func TestStatusCmdServerNotRunning(t *testing.T) {
 	defer StatusCmd.SetOut(nil)
 
 	statusHost, statusPort, statusTimeout = "127.0.0.1", port, time.Second
+	statusJSON = false
 	if err := StatusCmd.RunE(StatusCmd, nil); err != nil {
 		t.Fatalf("StatusCmd returned error: %v", err)
 	}
 
 	if !strings.HasPrefix(buf.String(), "Server is not running.") {
 		t.Errorf("unexpected output: %q", buf.String())
+	}
+}
+
+func TestStatusCmdJSONServerNotRunning(t *testing.T) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to reserve port: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+
+	var buf bytes.Buffer
+	StatusCmd.SetOut(&buf)
+	defer StatusCmd.SetOut(nil)
+
+	statusHost, statusPort, statusTimeout, statusJSON = "127.0.0.1", port, time.Second, true
+	defer func() { statusJSON = false }()
+	if err := StatusCmd.RunE(StatusCmd, nil); err != nil {
+		t.Fatalf("StatusCmd returned error: %v", err)
+	}
+
+	var got struct {
+		Instance struct {
+			State string `json:"state"`
+		} `json:"instance"`
+		Details json.RawMessage `json:"details"`
+		Error   string          `json:"error"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("output is not valid JSON: %v\n%s", err, buf.String())
+	}
+	if got.Instance.State != "stopped" || string(got.Details) != "null" || got.Error == "" {
+		t.Errorf("unexpected report: %s", buf.String())
 	}
 }

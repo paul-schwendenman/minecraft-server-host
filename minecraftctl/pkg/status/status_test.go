@@ -1,6 +1,8 @@
 package status
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -22,6 +24,11 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse() error = %v", err)
 	}
+
+	if string(s.Raw) != string(raw) {
+		t.Errorf("Raw = %s, want the unmodified response", s.Raw)
+	}
+	s.Raw = nil
 
 	want := &Status{Version: "1.21.4", PlayersOnline: 2, PlayersMax: 20, Players: []string{"alice", "bob"}}
 	if !reflect.DeepEqual(s, want) {
@@ -115,5 +122,37 @@ func TestAddr(t *testing.T) {
 	}
 	if got := Addr("::1", 25565); got != "[::1]:25565" {
 		t.Errorf("Addr() = %q", got)
+	}
+}
+
+func TestNewReportRunning(t *testing.T) {
+	raw := `{"version":{"name":"1.21.4"},"players":{"max":20,"online":1,"sample":[{"name":"alice","id":"a"}]}}`
+	s, err := parse([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := json.Marshal(NewReport(s, nil, "203.0.113.7"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `{"instance":{"state":"running","ip_address":"203.0.113.7"},` +
+		`"dns_record":{"name":null,"value":null,"type":null},"details":` + raw + `}`
+	if string(out) != want {
+		t.Errorf("report = %s\nwant     %s", out, want)
+	}
+}
+
+func TestNewReportNotRunning(t *testing.T) {
+	out, err := json.Marshal(NewReport(nil, errors.New("connection refused"), ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `{"instance":{"state":"stopped","ip_address":null},` +
+		`"dns_record":{"name":null,"value":null,"type":null},"details":null,"error":"connection refused"}`
+	if string(out) != want {
+		t.Errorf("report = %s\nwant     %s", out, want)
 	}
 }

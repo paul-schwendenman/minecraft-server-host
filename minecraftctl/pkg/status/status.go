@@ -23,6 +23,50 @@ type Status struct {
 	// Players is the sample of online players reported by the server. Servers
 	// may report fewer names than PlayersOnline.
 	Players []string
+	// Raw is the unmodified server list ping JSON, as returned by the
+	// details API.
+	Raw json.RawMessage
+}
+
+// Report is the machine-readable status. Its instance and dns_record fields
+// have the same shape as the control API's /status response, and details is
+// the raw server list ping JSON returned by the details API.
+type Report struct {
+	Instance  ReportInstance  `json:"instance"`
+	DNSRecord ReportDNSRecord `json:"dns_record"`
+	Details   json.RawMessage `json:"details"`
+	Error     string          `json:"error,omitempty"`
+}
+
+// ReportInstance mirrors the API's instance object.
+type ReportInstance struct {
+	State     string  `json:"state"`
+	IPAddress *string `json:"ip_address"`
+}
+
+// ReportDNSRecord mirrors the API's dns_record object. DNS is managed in
+// Route53 and isn't visible from the server, so the fields are always null.
+type ReportDNSRecord struct {
+	Name  *string `json:"name"`
+	Value *string `json:"value"`
+	Type  *string `json:"type"`
+}
+
+// NewReport builds a Report. s is nil (with pingErr set) when the server
+// didn't respond; ip is empty when the public IP is unknown.
+func NewReport(s *Status, pingErr error, ip string) Report {
+	r := Report{Instance: ReportInstance{State: "stopped"}, Details: json.RawMessage("null")}
+	if ip != "" {
+		r.Instance.IPAddress = &ip
+	}
+	if s != nil {
+		r.Instance.State = "running"
+		r.Details = s.Raw
+	}
+	if pingErr != nil {
+		r.Error = pingErr.Error()
+	}
+	return r
 }
 
 // pingResponse mirrors the relevant parts of the server list ping JSON.
@@ -55,6 +99,7 @@ func parse(raw []byte) (*Status, error) {
 	}
 
 	s := &Status{
+		Raw:           json.RawMessage(raw),
 		Version:       resp.Version.Name,
 		PlayersOnline: resp.Players.Online,
 		PlayersMax:    resp.Players.Max,
