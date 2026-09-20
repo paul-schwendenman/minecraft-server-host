@@ -1,7 +1,11 @@
 package main
 
 import (
+	"bytes"
+	"net"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/paul/minecraftctl/cmd/minecraftctl/root"
 )
@@ -166,7 +170,7 @@ func TestCommandsRegisteredWithRoot(t *testing.T) {
 	rootCmd := root.GetRootCmd()
 
 	// Check that main commands are registered
-	expectedCommands := []string{"world", "map", "rcon", "jar"}
+	expectedCommands := []string{"world", "map", "rcon", "jar", "status"}
 
 	for _, name := range expectedCommands {
 		found := false
@@ -197,5 +201,28 @@ func TestMapCmdHasSubcommands(t *testing.T) {
 func TestRconCmdHasSubcommands(t *testing.T) {
 	if len(RconCmd.Commands()) == 0 {
 		t.Error("RconCmd should have subcommands")
+	}
+}
+
+func TestStatusCmdServerNotRunning(t *testing.T) {
+	// Grab a free port, then close it so nothing is listening there.
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to reserve port: %v", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+
+	var buf bytes.Buffer
+	StatusCmd.SetOut(&buf)
+	defer StatusCmd.SetOut(nil)
+
+	statusHost, statusPort, statusTimeout = "127.0.0.1", port, time.Second
+	if err := StatusCmd.RunE(StatusCmd, nil); err != nil {
+		t.Fatalf("StatusCmd returned error: %v", err)
+	}
+
+	if !strings.HasPrefix(buf.String(), "Server is not running.") {
+		t.Errorf("unexpected output: %q", buf.String())
 	}
 }

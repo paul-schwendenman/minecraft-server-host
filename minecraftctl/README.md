@@ -144,6 +144,18 @@ minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
 
+### Server Status
+
+```bash
+# Show version and active players, like the web UI (pings 127.0.0.1:25565)
+minecraftctl status
+
+# Ping a different host/port
+minecraftctl status --host 10.0.0.5 --port 25566
+```
+
+Also prints the instance's public IP when running on EC2.
+
 ### RCON Commands
 
 ```bash

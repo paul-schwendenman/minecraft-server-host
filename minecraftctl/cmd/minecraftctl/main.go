@@ -17,6 +17,7 @@ func init() {
 	rootCmd.AddCommand(ConfigCmd)
 	rootCmd.AddCommand(BackupCmd)
 	rootCmd.AddCommand(jarCmd)
+	rootCmd.AddCommand(StatusCmd)
 }
 
 func main() {
