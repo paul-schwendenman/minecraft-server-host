@@ -144,6 +144,27 @@ minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
 
+### Server Status
+
+```bash
+# Show version and active players, like the web UI (pings 127.0.0.1:25565)
+minecraftctl status
+
+# Ping a different host/port
+minecraftctl status --host 10.0.0.5 --port 25566
+```
+
+Also prints the instance's public IP when running on EC2.
+
+Use `--json` for machine-readable output. `instance` and `dns_record` have the same
+shape as the control API's `/status`, and `details` is the raw server response, as
+returned by the details API (`null` plus an `error` message if the server didn't
+respond). `dns_record` values are always `null` because DNS isn't visible from the server.
+
+```bash
+minecraftctl status --json | jq '.details.players.online'
+```
+
 ### RCON Commands
 
 ```bash

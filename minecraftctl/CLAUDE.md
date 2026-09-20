@@ -28,6 +28,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | `world` | `cmd/minecraftctl/world.go` | list, info, create, register, upgrade, status, start, stop, restart, enable, disable, logs, backup |
 | `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, config, backup |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
+| `status` | `cmd/minecraftctl/status.go` | Server status like the web UI: version, active players, EC2 public IP |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
 | `backup` | `cmd/minecraftctl/backup.go` | list, create, restore, prune, stats, check (restic-based backups) |
 
@@ -61,6 +62,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 | `pkg/jars` | JAR downloads, checksums |
 | `pkg/maps` | Map building with uNmINeD |
 | `pkg/rcon` | RCON client |
+| `pkg/status` | Server list ping (via go-mc) and EC2 metadata public IP |
 | `pkg/config` | Global config via Viper |
 | `pkg/nbt` | NBT level.dat reader |
 | `pkg/systemd` | Systemctl/journalctl wrapper functions |
