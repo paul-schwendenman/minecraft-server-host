@@ -427,3 +427,27 @@ func TestFindRegionDir(t *testing.T) {
 		}
 	})
 }
+
+func TestMapHasData(t *testing.T) {
+	world := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(world, "dimensions", "minecraft", "overworld", "region"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		dimension string
+		want      bool
+	}{
+		{"overworld", true},
+		{"nether", false},
+		{"end", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.dimension, func(t *testing.T) {
+			got := mapHasData(world, config.MapDefinition{Name: tt.dimension, Dimension: tt.dimension})
+			if got != tt.want {
+				t.Errorf("mapHasData(%q) = %v, want %v", tt.dimension, got, tt.want)
+			}
+		})
+	}
+}

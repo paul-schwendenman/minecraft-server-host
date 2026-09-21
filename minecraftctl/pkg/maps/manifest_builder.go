@@ -81,6 +81,14 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 
 	// Build manifest for each map
 	for _, mapDef := range mapConfig.Maps {
+		// A dimension with no region data (e.g. an End nobody has visited) was
+		// never rendered, so it gets no preview, map manifest or world listing.
+		if !mapHasData(worldDir, mapDef) {
+			log.Warn().Str("map", mapDef.Name).Str("dimension", mapDef.Dimension).
+				Msg("dimension has no region data, skipping")
+			continue
+		}
+
 		// Generate preview if requested
 		if (opts.GeneratePreviews || opts.PreviewOnly) && !opts.PreviewOnly {
 			log.Info().Str("map", mapDef.Name).Msg("generating preview")
@@ -182,6 +190,12 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 
 	log.Info().Str("world", worldName).Str("path", worldManifestPath).Msg("world manifest created")
 	return nil
+}
+
+// mapHasData reports whether a map's dimension has region data to render.
+func mapHasData(worldDir string, mapDef config.MapDefinition) bool {
+	_, ok := findRegionDir(worldDir, mapDef.Dimension)
+	return ok
 }
 
 func (mb *ManifestBuilder) writeManifest(path string, data interface{}) error {
