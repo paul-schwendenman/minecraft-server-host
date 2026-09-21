@@ -22,7 +22,7 @@ resource "aws_iam_role_policy" "minecraft_ec2_policy" {
       {
         Sid    = "MapUpload",
         Effect = "Allow",
-        Action = ["s3:PutObject", "s3:ListBucket"],
+        Action = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"],
         Resource = [
           "arn:aws:s3:::${var.map_bucket}",
           "arn:aws:s3:::${var.map_bucket}/*"
