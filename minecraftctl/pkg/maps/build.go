@@ -188,6 +188,12 @@ func (b *Builder) buildMap(
 		"--zoomin", strconv.Itoa(zoomin),
 	}
 
+	// uNmINeD is incremental: without --force it only re-renders regions it
+	// considers changed, so tiles left by an earlier or partial render stay put.
+	if opts.Force {
+		baseArgs = append(baseArgs, "--force")
+	}
+
 	// Add optional map options
 	baseArgs = b.addMapOptions(baseArgs, mapDef.Options)
 
@@ -205,7 +211,7 @@ func (b *Builder) buildMap(
 		if rangeZoomin > maxZoomin {
 			maxZoomin = rangeZoomin
 		}
-		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel); err != nil {
+		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel, opts.Force); err != nil {
 			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
 			continue
 		}
@@ -242,6 +248,7 @@ func (b *Builder) buildRange(
 	defaultZoomout int,
 	defaultZoomin int,
 	logLevel string,
+	force bool,
 ) error {
 	x1, z1, x2, z2, err := rangeBounds(r)
 	if err != nil {
@@ -270,6 +277,10 @@ func (b *Builder) buildRange(
 		"--zoomout", strconv.Itoa(zoomout),
 		"--zoomin", strconv.Itoa(zoomin),
 		areaArg,
+	}
+
+	if force {
+		args = append(args, "--force")
 	}
 
 	// Apply map-specific options (gndxray, topY, bottomY, shadows, etc.)
