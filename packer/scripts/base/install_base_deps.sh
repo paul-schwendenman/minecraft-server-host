@@ -77,7 +77,7 @@ if [[ ! -x "${UNMINED_DIR}/unmined-cli" ]]; then
 
   TMPDIR=$(mktemp -d)
   wget -q -O "${TMPDIR}/unmined-cli.tgz" "https://unmined.net/download/unmined-cli-linux-x64-${UNMINED_VERSION}/"
-  echo "0f3ac69c9e73c1edc86db3f8ebaaecb13bc4b535ccd7a845f48e5936d5c2920c  ${TMPDIR}/unmined-cli.tgz" | sha256sum -c -
+  echo "a47ec942a6d4a0f2e68323ed6c4da3221fe9d09353c2132188042776f96e47d7  ${TMPDIR}/unmined-cli.tgz" | sha256sum -c -
   tar -xzf "${TMPDIR}/unmined-cli.tgz" -C "${TMPDIR}"
 
   EXTRACTED_DIR=$(find "${TMPDIR}" -maxdepth 1 -type d -name "unmined-cli_*_linux-x64" | head -n1)
