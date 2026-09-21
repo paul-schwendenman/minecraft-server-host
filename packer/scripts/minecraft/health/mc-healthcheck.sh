@@ -35,6 +35,11 @@ if systemctl is-enabled --quiet autoshutdown.timer; then
 else
     echo "  ✘ autoshutdown.timer not enabled"
 fi
+if systemctl is-failed --quiet autoshutdown.service; then
+    echo "  ✘ autoshutdown.service last run FAILED (journalctl -u autoshutdown.service)"
+else
+    echo "  ✔ autoshutdown.service last run ok"
+fi
 
 # 4. Dynamic DNS service -------------------------------------------------------
 echo "[*] Checking dyndns..."
@@ -119,6 +124,11 @@ if mountpoint -q /srv/minecraft-server; then
   echo "  ✔ Mounted"
 else
   echo "  ✘ Not mounted"
+fi
+if [[ -w /srv/minecraft-server ]]; then
+  echo "  ✔ /srv/minecraft-server writable by $(id -un)"
+else
+  echo "  ✘ /srv/minecraft-server NOT writable by $(id -un) (owner: $(stat -c '%u:%g' /srv/minecraft-server))"
 fi
 
 # 11. CLI Tools ----------------------------------------------------------

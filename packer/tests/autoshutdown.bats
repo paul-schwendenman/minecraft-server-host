@@ -49,7 +49,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     # Should not create touch file or call poweroff
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
 
 @test "autoshutdown: creates touch file on first zero-player check" {
@@ -60,7 +60,7 @@ teardown() {
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    [ -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ -f "${STATE_DIR}/no_one_playing" ]
     # poweroff should NOT be called on first check
     ! assert_mock_called_with "poweroff"
 }
@@ -71,13 +71,13 @@ teardown() {
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file to simulate first check already happened
-    touch "${MINECRAFT_HOME}/no_one_playing"
+    touch "${STATE_DIR}/no_one_playing"
 
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
     # Touch file should be removed
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
     # poweroff should be called
     assert_mock_called_with "poweroff"
 }
@@ -88,13 +88,13 @@ teardown() {
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file from previous check
-    touch "${MINECRAFT_HOME}/no_one_playing"
+    touch "${STATE_DIR}/no_one_playing"
 
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
     # Touch file should be removed
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
     # poweroff should NOT be called
     ! assert_mock_called_with "poweroff"
 }
@@ -120,7 +120,7 @@ teardown() {
 
     [ "$status" -eq 0 ]
     # Should NOT create touch file since players > 0
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
 
 @test "autoshutdown: removes touch file when SSH session detected" {
@@ -128,13 +128,13 @@ teardown() {
     create_mock "who" 0 "paul     pts/0        Dec 18 10:00"
 
     # Create touch file
-    touch "${MINECRAFT_HOME}/no_one_playing"
+    touch "${STATE_DIR}/no_one_playing"
 
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
     # Touch file should be removed due to SSH session
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
 
 @test "autoshutdown: shuts down immediately when no minecraft services running" {
@@ -163,13 +163,65 @@ EOF
     chmod +x "${MOCK_BIN}/systemctl"
 
     # Create touch file from previous check
-    touch "${MINECRAFT_HOME}/no_one_playing"
+    touch "${STATE_DIR}/no_one_playing"
 
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
     # Touch file should be removed
-    [ ! -f "${MINECRAFT_HOME}/no_one_playing" ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
     # poweroff should be called
     assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: touch file lives in state dir, not on the data volume" {
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ -f "${STATE_DIR}/no_one_playing" ]
+    [ ! -e "${MINECRAFT_HOME}/no_one_playing" ]
+}
+
+@test "autoshutdown: creates state dir if RuntimeDirectory did not" {
+    rmdir "${STATE_DIR}"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: unwritable state dir counts as second check and shuts down" {
+    # Regression: minecraft could not write to /srv/minecraft-server, `touch` failed
+    # under set -e, and the box never shut down (13 silent failures in one boot).
+    chmod 555 "${STATE_DIR}"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+
+    run bash "$SCRIPT"
+
+    chmod 755 "${STATE_DIR}"
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "poweroff"
+    assert_mock_called_with "Cannot write"
+}
+
+@test "autoshutdown: unexpected failure is logged with line number" {
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    # minecraftctl exists but the env file sources a failing command
+    echo "false" >> "${MINECRAFT_ENV}"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -ne 0 ]
+    assert_mock_called_with "Unexpected failure at line"
 }

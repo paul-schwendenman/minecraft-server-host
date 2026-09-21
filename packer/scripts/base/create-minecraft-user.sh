@@ -7,12 +7,25 @@ MINECRAFT_USER="minecraft"
 MINECRAFT_GROUP="minecraft"
 
 # --- Ensure user and group ---
-if ! id -u "${MINECRAFT_USER}" >/dev/null 2>&1; then
-  sudo useradd -m -r -s /bin/bash "${MINECRAFT_USER}"
-fi
+# The numeric IDs are pinned because /srv/minecraft-server is a persistent EBS volume
+# that outlives AMI rebuilds: file ownership on it is stored as numbers. With an
+# unpinned `useradd -r` the IDs depend on what else was installed first, so an AMI
+# rebuild can silently hand the volume to a different account (it once became caddy).
+# If the ID is already taken the build fails loudly instead of drifting.
+MINECRAFT_UID="${MINECRAFT_UID:-996}"
+MINECRAFT_GID="${MINECRAFT_GID:-996}"
 
 if ! getent group "${MINECRAFT_GROUP}" >/dev/null 2>&1; then
-  sudo groupadd -r "${MINECRAFT_GROUP}"
+  sudo groupadd -r -g "${MINECRAFT_GID}" "${MINECRAFT_GROUP}"
+fi
+
+if ! id -u "${MINECRAFT_USER}" >/dev/null 2>&1; then
+  sudo useradd -m -r -u "${MINECRAFT_UID}" -g "${MINECRAFT_GROUP}" -s /bin/bash "${MINECRAFT_USER}"
+fi
+
+if [[ "$(id -u "${MINECRAFT_USER}")" != "${MINECRAFT_UID}" || "$(getent group "${MINECRAFT_GROUP}" | cut -d: -f3)" != "${MINECRAFT_GID}" ]]; then
+  echo "Error: ${MINECRAFT_USER} must be ${MINECRAFT_UID}:${MINECRAFT_GID} to match the persistent data volume" >&2
+  exit 1
 fi
 
 sudo usermod -a -G "${MINECRAFT_GROUP}" "${MINECRAFT_USER}"
