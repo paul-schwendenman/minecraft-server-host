@@ -275,11 +275,12 @@ func LoadMapConfig(worldPath string) (*MapConfig, error) {
 		return nil, fmt.Errorf("failed to unmarshal map-config.yml: %w", err)
 	}
 
-	// Set defaults if not specified
-	if mapConfig.Defaults.Zoomout == 0 {
+	// Set defaults if not specified. Zoom levels use IsSet rather than a zero
+	// check because 0 is meaningful: zoomin: 0 renders no zoomed-in levels.
+	if !v.IsSet("defaults.zoomout") {
 		mapConfig.Defaults.Zoomout = 2
 	}
-	if mapConfig.Defaults.Zoomin == 0 {
+	if !v.IsSet("defaults.zoomin") {
 		mapConfig.Defaults.Zoomin = 1
 	}
 	if mapConfig.Defaults.ImageFormat == "" {

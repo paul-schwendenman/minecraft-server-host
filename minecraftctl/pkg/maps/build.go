@@ -146,16 +146,7 @@ func (b *Builder) buildMap(
 	}
 
 	// Verify dimension exists
-	dimDir := worldDir
-	switch mapDef.Dimension {
-	case "nether", "-1":
-		dimDir = filepath.Join(worldDir, "DIM-1")
-	case "end", "1":
-		dimDir = filepath.Join(worldDir, "DIM1")
-	}
-
-	regionDir := filepath.Join(dimDir, "region")
-	if _, err := os.Stat(regionDir); os.IsNotExist(err) {
+	if _, ok := findRegionDir(worldDir, mapDef.Dimension); !ok {
 		return fmt.Errorf("dimension %s has no region data", mapDef.Dimension)
 	}
 
@@ -188,6 +179,12 @@ func (b *Builder) buildMap(
 		"--zoomin", strconv.Itoa(zoomin),
 	}
 
+	// uNmINeD is incremental: without --force it only re-renders regions it
+	// considers changed, so tiles left by an earlier or partial render stay put.
+	if opts.Force {
+		baseArgs = append(baseArgs, "--force")
+	}
+
 	// Add optional map options
 	baseArgs = b.addMapOptions(baseArgs, mapDef.Options)
 
@@ -205,7 +202,7 @@ func (b *Builder) buildMap(
 		if rangeZoomin > maxZoomin {
 			maxZoomin = rangeZoomin
 		}
-		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel); err != nil {
+		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel, opts.Force); err != nil {
 			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
 			continue
 		}
@@ -242,15 +239,11 @@ func (b *Builder) buildRange(
 	defaultZoomout int,
 	defaultZoomin int,
 	logLevel string,
+	force bool,
 ) error {
-	// Calculate area bounds
-	x1 := r.Center[0] - r.Radius
-	z1 := r.Center[1] - r.Radius
-	x2 := r.Center[0] + r.Radius
-	z2 := r.Center[1] + r.Radius
-
-	if x1 >= x2 || z1 >= z2 {
-		return fmt.Errorf("invalid range bounds")
+	x1, z1, x2, z2, err := rangeBounds(r)
+	if err != nil {
+		return err
 	}
 
 	areaArg := fmt.Sprintf("--area=b((%d,%d),(%d,%d))", x1, z1, x2, z2)
@@ -277,6 +270,10 @@ func (b *Builder) buildRange(
 		areaArg,
 	}
 
+	if force {
+		args = append(args, "--force")
+	}
+
 	// Apply map-specific options (gndxray, topY, bottomY, shadows, etc.)
 	args = b.addMapOptions(args, mapDef.Options)
 
@@ -286,6 +283,39 @@ func (b *Builder) buildRange(
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// regionSize is the width of a Minecraft region in blocks. uNmINeD tiles are
+// aligned to region boundaries at every zoom level.
+const regionSize = 512
+
+// rangeBounds returns the block bounds of a range, snapped outward to region
+// boundaries. An --area that cuts through a tile leaves the rest of that tile
+// blank, and because tiles from a range render are shared with the base render
+// (and feed the zoomed-out levels), the blank part shows up in the final map as
+// a white frame around the range.
+func rangeBounds(r config.MapRange) (x1, z1, x2, z2 int, err error) {
+	x1 = floorTo(r.Center[0]-r.Radius, regionSize)
+	z1 = floorTo(r.Center[1]-r.Radius, regionSize)
+	x2 = ceilTo(r.Center[0]+r.Radius, regionSize)
+	z2 = ceilTo(r.Center[1]+r.Radius, regionSize)
+
+	if r.Radius <= 0 {
+		return 0, 0, 0, 0, fmt.Errorf("invalid range bounds")
+	}
+	return x1, z1, x2, z2, nil
+}
+
+func floorTo(v, m int) int {
+	q := v / m
+	if v%m != 0 && v < 0 {
+		q--
+	}
+	return q * m
+}
+
+func ceilTo(v, m int) int {
+	return -floorTo(-v, m)
 }
 
 func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string {

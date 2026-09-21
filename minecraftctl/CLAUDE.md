@@ -42,6 +42,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `world backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-world-backup@<world>`
 
 **Map service commands:**
+- `map config cat|show <world>` - Print the raw `map-config.yml` (`config get` prints the parsed config with defaults applied)
 - `map build now <world>` - Build maps immediately
 - `map build status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-build@<world>`
 - `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`

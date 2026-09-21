@@ -751,3 +751,46 @@ func TestMapRangeStruct(t *testing.T) {
 		t.Errorf("Radius = %d, want 1024", r.Radius)
 	}
 }
+
+func TestLoadMapConfigZoomDefaults(t *testing.T) {
+	load := func(t *testing.T, content string) *MapConfig {
+		t.Helper()
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, "map-config.yml"), []byte(content), 0644); err != nil {
+			t.Fatal(err)
+		}
+		mc, err := LoadMapConfig(dir)
+		if err != nil {
+			t.Fatalf("LoadMapConfig failed: %v", err)
+		}
+		return mc
+	}
+
+	t.Run("explicit zero is kept", func(t *testing.T) {
+		mc := load(t, `
+defaults:
+  zoomout: 6
+  zoomin: 0
+maps:
+  - name: overworld
+    dimension: overworld
+`)
+		if mc.Defaults.Zoomin != 0 {
+			t.Errorf("Defaults.Zoomin = %d, want 0", mc.Defaults.Zoomin)
+		}
+		if got := *mc.Maps[0].Zoomin; got != 0 {
+			t.Errorf("Maps[0].Zoomin = %d, want 0", got)
+		}
+	})
+
+	t.Run("unset falls back to defaults", func(t *testing.T) {
+		mc := load(t, `
+maps:
+  - name: overworld
+    dimension: overworld
+`)
+		if mc.Defaults.Zoomout != 2 || mc.Defaults.Zoomin != 1 {
+			t.Errorf("got zoomout=%d zoomin=%d, want 2 and 1", mc.Defaults.Zoomout, mc.Defaults.Zoomin)
+		}
+	})
+}

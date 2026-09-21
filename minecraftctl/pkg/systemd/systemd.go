@@ -1,10 +1,13 @@
 package systemd
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 )
 
 // UnitType represents the type of systemd unit
@@ -30,12 +33,49 @@ func FormatUnitName(prefix, instance string, unitType UnitType) string {
 	return fmt.Sprintf("%s@%s.%s", prefix, instance, unitType)
 }
 
-// runSystemctl executes a systemctl command and passes through stdout/stderr
+// ErrPermission is returned when systemctl refuses an operation because the
+// caller lacks the privileges to manage system units (typically: not root).
+var ErrPermission = errors.New("permission denied")
+
+// execCommand is a seam for tests.
+var execCommand = exec.Command
+
+// isPermissionError reports whether systemctl stderr output indicates a
+// privilege problem rather than an ordinary failure.
+func isPermissionError(stderr string) bool {
+	s := strings.ToLower(stderr)
+	for _, marker := range []string{
+		"interactive authentication required",
+		"access denied",
+		"permission denied",
+	} {
+		if strings.Contains(s, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// runSystemctl executes a systemctl command and passes through stdout/stderr.
+// Permission failures are returned as ErrPermission (without echoing systemctl's
+// raw message); other failures are wrapped with the command that failed.
 func runSystemctl(args ...string) error {
-	cmd := exec.Command("systemctl", args...)
+	var stderr bytes.Buffer
+	cmd := execCommand("systemctl", args...)
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil && isPermissionError(stderr.String()) {
+		return fmt.Errorf("systemctl %s: %w", strings.Join(args, " "), ErrPermission)
+	}
+	if stderr.Len() > 0 {
+		_, _ = os.Stderr.Write(stderr.Bytes())
+	}
+	if err != nil {
+		return fmt.Errorf("systemctl %s failed: %w", strings.Join(args, " "), err)
+	}
+	return nil
 }
 
 // Status runs systemctl status for a unit

@@ -342,3 +342,112 @@ func TestDefaultUnminedPath(t *testing.T) {
 		t.Errorf("DefaultUnminedPath = %q, unexpected", DefaultUnminedPath)
 	}
 }
+
+func TestRangeBounds(t *testing.T) {
+	tests := []struct {
+		name           string
+		r              config.MapRange
+		x1, z1, x2, z2 int
+		wantErr        bool
+	}{
+		{"already aligned", config.MapRange{Center: [2]int{0, 0}, Radius: 2048}, -2048, -2048, 2048, 2048, false},
+		{"western_base", config.MapRange{Center: [2]int{-7424, 576}, Radius: 384}, -8192, 0, -6656, 1024, false},
+		{"small positive", config.MapRange{Center: [2]int{560, 160}, Radius: 100}, 0, 0, 1024, 512, false},
+		{"zero radius", config.MapRange{Center: [2]int{0, 0}, Radius: 0}, 0, 0, 0, 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x1, z1, x2, z2, err := rangeBounds(tt.r)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if x1 != tt.x1 || z1 != tt.z1 || x2 != tt.x2 || z2 != tt.z2 {
+				t.Errorf("got (%d,%d)-(%d,%d), want (%d,%d)-(%d,%d)", x1, z1, x2, z2, tt.x1, tt.z1, tt.x2, tt.z2)
+			}
+		})
+	}
+}
+
+func TestFindRegionDir(t *testing.T) {
+	mk := func(t *testing.T, dirs ...string) string {
+		t.Helper()
+		w := t.TempDir()
+		for _, d := range dirs {
+			if err := os.MkdirAll(filepath.Join(w, d), 0755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return w
+	}
+
+	t.Run("namespaced layout", func(t *testing.T) {
+		w := mk(t, "dimensions/minecraft/overworld/region", "dimensions/minecraft/the_nether/region")
+		for dim, want := range map[string]string{
+			"overworld": "dimensions/minecraft/overworld/region",
+			"nether":    "dimensions/minecraft/the_nether/region",
+		} {
+			got, ok := findRegionDir(w, dim)
+			if !ok || got != filepath.Join(w, want) {
+				t.Errorf("%s: got (%q, %v), want %q", dim, got, ok, want)
+			}
+		}
+		if _, ok := findRegionDir(w, "end"); ok {
+			t.Error("end should not exist")
+		}
+	})
+
+	t.Run("legacy layout", func(t *testing.T) {
+		w := mk(t, "region", "DIM-1/region", "DIM1/region")
+		for dim, want := range map[string]string{
+			"overworld": "region",
+			"nether":    "DIM-1/region",
+			"end":       "DIM1/region",
+		} {
+			got, ok := findRegionDir(w, dim)
+			if !ok || got != filepath.Join(w, want) {
+				t.Errorf("%s: got (%q, %v), want %q", dim, got, ok, want)
+			}
+		}
+	})
+
+	t.Run("namespaced wins over legacy", func(t *testing.T) {
+		w := mk(t, "region", "dimensions/minecraft/overworld/region")
+		got, _ := findRegionDir(w, "overworld")
+		if got != filepath.Join(w, "dimensions/minecraft/overworld/region") {
+			t.Errorf("got %q", got)
+		}
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		if _, ok := findRegionDir(t.TempDir(), "overworld"); ok {
+			t.Error("expected not found")
+		}
+	})
+}
+
+func TestMapHasData(t *testing.T) {
+	world := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(world, "dimensions", "minecraft", "overworld", "region"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		dimension string
+		want      bool
+	}{
+		{"overworld", true},
+		{"nether", false},
+		{"end", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.dimension, func(t *testing.T) {
+			got := mapHasData(world, config.MapDefinition{Name: tt.dimension, Dimension: tt.dimension})
+			if got != tt.want {
+				t.Errorf("mapHasData(%q) = %v, want %v", tt.dimension, got, tt.want)
+			}
+		})
+	}
+}

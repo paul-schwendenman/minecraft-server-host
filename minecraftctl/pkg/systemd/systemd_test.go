@@ -1,8 +1,81 @@
 package systemd
 
 import (
+	"errors"
+	"os/exec"
+	"strings"
 	"testing"
 )
+
+// stubSystemctl replaces the systemctl invocation with a shell script.
+func stubSystemctl(t *testing.T, script string) {
+	t.Helper()
+	orig := execCommand
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", script)
+	}
+	t.Cleanup(func() { execCommand = orig })
+}
+
+func TestRunSystemctlPermissionError(t *testing.T) {
+	stubSystemctl(t, `echo "Failed to start x.service: Interactive authentication required." >&2; exit 1`)
+
+	err := Start("x.service")
+	if !errors.Is(err, ErrPermission) {
+		t.Fatalf("Start() error = %v, want ErrPermission", err)
+	}
+	if !strings.Contains(err.Error(), "systemctl start x.service") {
+		t.Errorf("error %q should name the failed command", err)
+	}
+}
+
+func TestRunSystemctlOtherFailure(t *testing.T) {
+	stubSystemctl(t, `echo "Unit x.service not found." >&2; exit 5`)
+
+	err := Start("x.service")
+	if err == nil {
+		t.Fatal("Start() = nil, want error")
+	}
+	if errors.Is(err, ErrPermission) {
+		t.Errorf("error %v should not be ErrPermission", err)
+	}
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		t.Fatalf("error %v should wrap *exec.ExitError", err)
+	}
+	if exitErr.ExitCode() != 5 {
+		t.Errorf("exit code = %d, want 5", exitErr.ExitCode())
+	}
+	if !strings.Contains(err.Error(), "systemctl start x.service failed") {
+		t.Errorf("error %q should name the failed command", err)
+	}
+}
+
+func TestRunSystemctlSuccess(t *testing.T) {
+	stubSystemctl(t, `exit 0`)
+
+	if err := Start("x.service"); err != nil {
+		t.Errorf("Start() = %v, want nil", err)
+	}
+}
+
+func TestIsPermissionError(t *testing.T) {
+	tests := []struct {
+		stderr string
+		want   bool
+	}{
+		{"Failed to start x.service: Interactive authentication required.", true},
+		{"Failed to connect to bus: Access denied", true},
+		{"Permission denied", true},
+		{"Unit x.service not found.", false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		if got := isPermissionError(tt.stderr); got != tt.want {
+			t.Errorf("isPermissionError(%q) = %v, want %v", tt.stderr, got, tt.want)
+		}
+	}
+}
 
 func TestFormatUnitName(t *testing.T) {
 	tests := []struct {
