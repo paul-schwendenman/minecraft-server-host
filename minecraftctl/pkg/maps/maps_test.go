@@ -342,3 +342,31 @@ func TestDefaultUnminedPath(t *testing.T) {
 		t.Errorf("DefaultUnminedPath = %q, unexpected", DefaultUnminedPath)
 	}
 }
+
+func TestRangeBounds(t *testing.T) {
+	tests := []struct {
+		name           string
+		r              config.MapRange
+		x1, z1, x2, z2 int
+		wantErr        bool
+	}{
+		{"already aligned", config.MapRange{Center: [2]int{0, 0}, Radius: 2048}, -2048, -2048, 2048, 2048, false},
+		{"western_base", config.MapRange{Center: [2]int{-7424, 576}, Radius: 384}, -8192, 0, -6656, 1024, false},
+		{"small positive", config.MapRange{Center: [2]int{560, 160}, Radius: 100}, 0, 0, 1024, 512, false},
+		{"zero radius", config.MapRange{Center: [2]int{0, 0}, Radius: 0}, 0, 0, 0, 0, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			x1, z1, x2, z2, err := rangeBounds(tt.r)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if x1 != tt.x1 || z1 != tt.z1 || x2 != tt.x2 || z2 != tt.z2 {
+				t.Errorf("got (%d,%d)-(%d,%d), want (%d,%d)-(%d,%d)", x1, z1, x2, z2, tt.x1, tt.z1, tt.x2, tt.z2)
+			}
+		})
+	}
+}

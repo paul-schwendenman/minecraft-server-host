@@ -243,14 +243,9 @@ func (b *Builder) buildRange(
 	defaultZoomin int,
 	logLevel string,
 ) error {
-	// Calculate area bounds
-	x1 := r.Center[0] - r.Radius
-	z1 := r.Center[1] - r.Radius
-	x2 := r.Center[0] + r.Radius
-	z2 := r.Center[1] + r.Radius
-
-	if x1 >= x2 || z1 >= z2 {
-		return fmt.Errorf("invalid range bounds")
+	x1, z1, x2, z2, err := rangeBounds(r)
+	if err != nil {
+		return err
 	}
 
 	areaArg := fmt.Sprintf("--area=b((%d,%d),(%d,%d))", x1, z1, x2, z2)
@@ -286,6 +281,39 @@ func (b *Builder) buildRange(
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+// regionSize is the width of a Minecraft region in blocks. uNmINeD tiles are
+// aligned to region boundaries at every zoom level.
+const regionSize = 512
+
+// rangeBounds returns the block bounds of a range, snapped outward to region
+// boundaries. An --area that cuts through a tile leaves the rest of that tile
+// blank, and because tiles from a range render are shared with the base render
+// (and feed the zoomed-out levels), the blank part shows up in the final map as
+// a white frame around the range.
+func rangeBounds(r config.MapRange) (x1, z1, x2, z2 int, err error) {
+	x1 = floorTo(r.Center[0]-r.Radius, regionSize)
+	z1 = floorTo(r.Center[1]-r.Radius, regionSize)
+	x2 = ceilTo(r.Center[0]+r.Radius, regionSize)
+	z2 = ceilTo(r.Center[1]+r.Radius, regionSize)
+
+	if r.Radius <= 0 {
+		return 0, 0, 0, 0, fmt.Errorf("invalid range bounds")
+	}
+	return x1, z1, x2, z2, nil
+}
+
+func floorTo(v, m int) int {
+	q := v / m
+	if v%m != 0 && v < 0 {
+		q--
+	}
+	return q * m
+}
+
+func ceilTo(v, m int) int {
+	return -floorTo(-v, m)
 }
 
 func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string {
