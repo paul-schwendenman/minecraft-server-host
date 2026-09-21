@@ -370,3 +370,60 @@ func TestRangeBounds(t *testing.T) {
 		})
 	}
 }
+
+func TestFindRegionDir(t *testing.T) {
+	mk := func(t *testing.T, dirs ...string) string {
+		t.Helper()
+		w := t.TempDir()
+		for _, d := range dirs {
+			if err := os.MkdirAll(filepath.Join(w, d), 0755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return w
+	}
+
+	t.Run("namespaced layout", func(t *testing.T) {
+		w := mk(t, "dimensions/minecraft/overworld/region", "dimensions/minecraft/the_nether/region")
+		for dim, want := range map[string]string{
+			"overworld": "dimensions/minecraft/overworld/region",
+			"nether":    "dimensions/minecraft/the_nether/region",
+		} {
+			got, ok := findRegionDir(w, dim)
+			if !ok || got != filepath.Join(w, want) {
+				t.Errorf("%s: got (%q, %v), want %q", dim, got, ok, want)
+			}
+		}
+		if _, ok := findRegionDir(w, "end"); ok {
+			t.Error("end should not exist")
+		}
+	})
+
+	t.Run("legacy layout", func(t *testing.T) {
+		w := mk(t, "region", "DIM-1/region", "DIM1/region")
+		for dim, want := range map[string]string{
+			"overworld": "region",
+			"nether":    "DIM-1/region",
+			"end":       "DIM1/region",
+		} {
+			got, ok := findRegionDir(w, dim)
+			if !ok || got != filepath.Join(w, want) {
+				t.Errorf("%s: got (%q, %v), want %q", dim, got, ok, want)
+			}
+		}
+	})
+
+	t.Run("namespaced wins over legacy", func(t *testing.T) {
+		w := mk(t, "region", "dimensions/minecraft/overworld/region")
+		got, _ := findRegionDir(w, "overworld")
+		if got != filepath.Join(w, "dimensions/minecraft/overworld/region") {
+			t.Errorf("got %q", got)
+		}
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		if _, ok := findRegionDir(t.TempDir(), "overworld"); ok {
+			t.Error("expected not found")
+		}
+	})
+}

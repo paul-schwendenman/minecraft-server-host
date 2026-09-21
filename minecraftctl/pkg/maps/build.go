@@ -146,16 +146,7 @@ func (b *Builder) buildMap(
 	}
 
 	// Verify dimension exists
-	dimDir := worldDir
-	switch mapDef.Dimension {
-	case "nether", "-1":
-		dimDir = filepath.Join(worldDir, "DIM-1")
-	case "end", "1":
-		dimDir = filepath.Join(worldDir, "DIM1")
-	}
-
-	regionDir := filepath.Join(dimDir, "region")
-	if _, err := os.Stat(regionDir); os.IsNotExist(err) {
+	if _, ok := findRegionDir(worldDir, mapDef.Dimension); !ok {
 		return fmt.Errorf("dimension %s has no region data", mapDef.Dimension)
 	}
 
