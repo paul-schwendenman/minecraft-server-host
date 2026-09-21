@@ -357,6 +357,33 @@ var mapConfigGetCmd = &cobra.Command{
 	},
 }
 
+var mapConfigCatCmd = &cobra.Command{
+	Use:               "cat <world>",
+	Aliases:           []string{"show"},
+	Short:             "Print the raw map-config.yml for a world",
+	Long:              "Prints map-config.yml exactly as it exists on disk, including comments and formatting. Use 'get' to see the parsed config with defaults applied.",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		worldInfo, err := worlds.GetWorldInfo(args[0])
+		if err != nil {
+			return fmt.Errorf("failed to get world info: %w", err)
+		}
+
+		configPath := filepath.Join(worldInfo.Path, "map-config.yml")
+		data, err := os.ReadFile(configPath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("map-config.yml not found at %s", configPath)
+			}
+			return fmt.Errorf("failed to read map-config.yml: %w", err)
+		}
+
+		_, err = cmd.OutOrStdout().Write(data)
+		return err
+	},
+}
+
 var mapConfigSetCmd = &cobra.Command{
 	Use:               "set <world> <path> <value>",
 	Short:             "Set a config value in map-config.yml",
@@ -692,6 +719,7 @@ func init() {
 
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)
+	mapConfigCmd.AddCommand(mapConfigCatCmd)
 	mapConfigCmd.AddCommand(mapConfigSetCmd)
 	mapConfigCmd.AddCommand(mapConfigValidateCmd)
 	mapConfigCmd.AddCommand(mapConfigEditCmd)
