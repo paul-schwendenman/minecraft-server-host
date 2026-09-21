@@ -24,3 +24,12 @@ UUID=$(blkid -s UUID -o value "$DEVICE")
 
 grep -q "$UUID" /etc/fstab || echo "UUID=$UUID $MOUNT_POINT auto defaults,nofail 0 2" | sudo tee -a /etc/fstab
 mount -a
+
+# The data volume outlives AMI rebuilds, but its root directory keeps the numeric
+# owner from whichever AMI created it (or root:root on a fresh volume). Make sure
+# the minecraft user can write there. Non-recursive on purpose: world directories
+# are fixed by create-world.sh, and a recursive chown would walk the whole volume.
+if id minecraft >/dev/null 2>&1; then
+  chown minecraft:minecraft "$MOUNT_POINT"
+  chmod g+s "$MOUNT_POINT"
+fi

@@ -14,6 +14,10 @@ setup_test_fixtures() {
     export MINECRAFT_HOME="${TEST_TEMP_DIR}/srv/minecraft-server"
     mkdir -p "${MINECRAFT_HOME}"
 
+    # Idle-check state dir (autoshutdown uses /run/autoshutdown)
+    export STATE_DIR="${TEST_TEMP_DIR}/run/autoshutdown"
+    mkdir -p "${STATE_DIR}"
+
     # Create mock /etc/minecraft.env
     export MINECRAFT_ENV="${TEST_TEMP_DIR}/etc/minecraft.env"
     mkdir -p "$(dirname "${MINECRAFT_ENV}")"
@@ -86,6 +90,7 @@ wrap_script() {
     # Copy script and replace paths
     sed \
         -e "s|/srv/minecraft-server|${MINECRAFT_HOME}|g" \
+        -e "s|/run/autoshutdown|${STATE_DIR}|g" \
         -e "s|/etc/minecraft.env|${MINECRAFT_ENV}|g" \
         -e "s|/opt/minecraft|${TEST_TEMP_DIR}/opt/minecraft|g" \
         "$script_path" > "$wrapped_script"
