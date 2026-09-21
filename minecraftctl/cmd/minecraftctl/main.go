@@ -1,9 +1,13 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/paul/minecraftctl/cmd/minecraftctl/root"
+	"github.com/paul/minecraftctl/pkg/systemd"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -24,7 +28,12 @@ func main() {
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	if err := root.GetRootCmd().Execute(); err != nil {
-		log.Error().Err(err).Msg("command failed")
+		if errors.Is(err, systemd.ErrPermission) {
+			log.Error().Err(err).Msg("insufficient privileges")
+			fmt.Fprintf(os.Stderr, "Managing system services requires root. Re-run with:\n  sudo %s\n", strings.Join(os.Args, " "))
+		} else {
+			log.Error().Err(err).Msg("command failed")
+		}
 		os.Exit(1)
 	}
 }
