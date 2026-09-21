@@ -99,18 +99,48 @@ regression, and the ERR trap.
   `world.bak*`) stay mis-owned. They are world-readable and nothing currently
   needs to write them.
 
-## Open: hard backstop (not implemented)
+## Deferred: hard backstop (not implemented)
+
+**Status:** deferred by decision. Revisit if an instance stays up unexpectedly
+again, or if `poweroff` is ever seen issued while EC2 still reports `running`.
 
 None of the above stops the *next* unknown bug from leaving the instance up
-indefinitely. There is no max-uptime limit, alarm, or scheduled stop in
-`infra/`; the only remote stop is the manual `/api/stop`. Options to discuss:
+indefinitely. Both incidents had the same shape, a bug in the check that is
+supposed to shut the box down, so the backstop must share no code, state or
+permissions with `autoshutdown.sh`. There is currently no max-uptime limit,
+alarm or scheduled stop in `infra/`; the only remote stop is the manual
+`/api/stop`.
 
-- Never-healthy limit: power off if RCON has not answered within N minutes of
-  boot (covers a crash-looping server such as incident 1).
-- Absolute uptime cap that the SSH check cannot override.
-- Make the SSH skip expire, or cap how long it can defer shutdown.
-- Bound the checker: `TimeoutStartSec=` on the unit and a `timeout` around
-  `minecraftctl rcon send`, so a hung RCON call cannot wedge the timer.
-- Fail the unit fast: `StartLimitBurst` / `StartLimitIntervalSec` so a
-  crash-looping `minecraft@` ends in `failed`, and stop the `ExecStopPost`
-  backup hooks from running on failed starts.
+Planned layers, cheapest first:
+
+1. **Hard uptime cap.** A separate `max-uptime.timer` (`OnBootSec=<N>h`) runs
+   `systemctl poweroff` as root. No RCON, SSH, player or marker-file
+   dependencies. Best-effort in-game `say` about 10 minutes before. Disable
+   with `systemctl stop max-uptime.timer` when debugging over SSH.
+2. **Never-healthy watchdog.** One-shot at boot + 30-45 min: if RCON is not
+   answering, power off (the crash-loop / JRE case).
+3. **Harden the checker and the unit.** `TimeoutStartSec=` on
+   `autoshutdown.service` and a `timeout` around `minecraftctl rcon send` so a
+   hung RCON call cannot stop the timer; `StartLimitBurst` /
+   `StartLimitIntervalSec` on `minecraft@.service` so a crash loop ends in
+   `failed`; stop the `ExecStopPost` backup hooks running on failed starts.
+4. **Optional off-box stop.** EventBridge schedule plus Lambda that stops
+   instances running longer than X hours. The only layer that survives a hung
+   OS. Needs Terraform and a Lambda change.
+
+Recommendation when picked up: layers 1-3, skip 4 unless the hung-OS case shows
+up in evidence.
+
+Decisions still open:
+
+- **Cap value.** Must exceed the longest legitimate session; prod boot `-1`
+  ran 7h23m. Suggested 12h.
+- **Does the boot watchdog honour an open SSH session?** Skipping lets you debug
+  a broken server, but is the same loophole that held a box up for 1h40m on
+  Sep 19. Leaning toward skipping, with the layer-1 cap applying regardless.
+- **Warn in-game before the cap fires?** Needs working RCON, so best-effort and
+  never blocking.
+
+Not covered by any layer: a player leaving a client connected (AFK) overnight.
+Only the hard cap ends that; detecting "connected but idle" would be a separate
+feature.
