@@ -22,7 +22,7 @@ data "terraform_remote_state" "prod" {
 # Build artifacts mirror (unmined-cli today; shared by test and prod since
 # these are build inputs, not environment data). See docs/plans/unmined-cli-docs-plan.md.
 resource "aws_s3_bucket" "artifacts" {
-  bucket        = "minecraft-artifacts"
+  bucket        = "minecraft-server-host-artifacts"
   force_destroy = false
 }
 

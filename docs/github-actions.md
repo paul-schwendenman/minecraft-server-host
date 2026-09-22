@@ -171,7 +171,7 @@ Checks unmined.net's rolling `-dev` build for a new unmined-cli release. unmined
 
 **Behavior:**
 - Compares the downloaded tarball's SHA256 against the pin file.
-- On a change (or always, for a manual run): uploads the tarball to the shared `minecraft-artifacts` S3 bucket (see [S3 Build Artifacts Plan](plans/s3-build-artifacts-plan.md)), rewrites `packer/unmined.auto.pkrvars.hcl`, and regenerates `docs/unmined-cli/` (README plus one help-text file per module/verb) from that same tarball.
+- On a change (or always, for a manual run): uploads the tarball to the shared `minecraft-server-host-artifacts` S3 bucket (see [S3 Build Artifacts Plan](plans/s3-build-artifacts-plan.md)), rewrites `packer/unmined.auto.pkrvars.hcl`, and regenerates `docs/unmined-cli/` (README plus one help-text file per module/verb) from that same tarball.
 - Opens or updates a PR on a fixed `unmined-update` branch (see the comment in the workflow for why the branch is fixed rather than per-version).
 - The base AMI build (`packer-build.yml`) reads the pin file and presigns a URL into the S3 mirror at build time; the build instance itself never gets AWS credentials.
 

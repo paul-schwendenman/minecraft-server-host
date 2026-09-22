@@ -98,7 +98,7 @@ These are disabled by default and must be configured with AWS credentials.
 
 Usage
 -----
-- The base AMI needs a presigned URL into the ``minecraft-artifacts`` S3
+- The base AMI needs a presigned URL into the ``minecraft-server-host-artifacts`` S3
   bucket for the pinned unmined-cli build (version/hash come from
   ``unmined.auto.pkrvars.hcl``, kept current by the
   ``unmined-update`` GitHub Actions workflow — see

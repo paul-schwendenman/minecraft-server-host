@@ -18,11 +18,11 @@
 #     credentials with s3:GetObject on the artifacts bucket.
 #
 # Env:
-#   ARTIFACTS_BUCKET   S3 bucket name (default: minecraft-artifacts, the
-#                      bucket created in infra/global)
+#   ARTIFACTS_BUCKET   S3 bucket name (default: minecraft-server-host-artifacts,
+#                      the bucket created in infra/global)
 set -euo pipefail
 
-ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET:-minecraft-artifacts}"
+ARTIFACTS_BUCKET="${ARTIFACTS_BUCKET:-minecraft-server-host-artifacts}"
 
 usage() {
   cat >&2 <<EOF
