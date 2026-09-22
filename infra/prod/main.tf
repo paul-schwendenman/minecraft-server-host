@@ -158,6 +158,7 @@ module "dns_records" {
 
   create_a_record    = true
   create_aaaa_record = true
+  ttl                = 60
 }
 
 output "server_public_ip" {

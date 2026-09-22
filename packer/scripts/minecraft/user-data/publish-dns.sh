@@ -132,7 +132,7 @@ if [ -n "$SSHFP_RECORDS" ]; then
   "ResourceRecordSet": {
     "Name": "${DNS_NAME_FQDN}",
     "Type": "SSHFP",
-    "TTL": 300,
+    "TTL": 60,
     "ResourceRecords": [${SSHFP_RRS}]
   }
 }

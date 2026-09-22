@@ -148,6 +148,7 @@ module "dns_records" {
   dns_name = "test.${data.aws_route53_zone.prod.name}"
   # ipv4_addresses = module.mc_stack.public_ip != "" ? [module.mc_stack.public_ip] : null
   # ipv6_addresses = module.mc_stack.ipv6_addresses
+  ttl = 60
 }
 
 output "server_public_ip" {
