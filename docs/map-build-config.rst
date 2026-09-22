@@ -133,7 +133,9 @@ Key                Type    Description
 Options
 -------
 
-Additional settings mapped directly to ``unmined-cli`` arguments.
+Additional settings mapped directly to ``unmined-cli`` arguments. See
+``docs/unmined-cli/web-render.txt`` for the full, versioned list of
+``web render`` options this maps onto.
 
 =================  ======  ================================================
 Key                Type    Description

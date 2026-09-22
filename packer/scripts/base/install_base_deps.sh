@@ -11,7 +11,8 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq \
   openjdk-25-jre-headless \
   screen unzip wget curl ca-certificates \
-  python3-pip git build-essential jq xfsprogs
+  python3-pip git build-essential jq xfsprogs \
+  libicu70
 
 # --- Python tools (optional) ---
 pip3 install --user --upgrade mcstatus nbtlib
@@ -69,15 +70,22 @@ fi
 # --- Install uNmINeD CLI ---
 UNMINED_DIR="/opt/unmined"
 MAP_DIR="/var/www/map"
-UNMINED_VERSION="dev"
+
+# UNMINED_URL/UNMINED_SHA256 come from packer/unmined.auto.pkrvars.hcl via
+# base.pkr.hcl, which passes a presigned URL into the S3 artifacts mirror
+# (unmined.net only serves a rolling "-dev" build with no stable download
+# URL, so the mirror is what makes this reproducible). See
+# docs/plans/unmined-cli-docs-plan.md.
+: "${UNMINED_URL:?UNMINED_URL not set (see packer/base.pkr.hcl)}"
+: "${UNMINED_SHA256:?UNMINED_SHA256 not set (see packer/unmined.auto.pkrvars.hcl)}"
 
 if [[ ! -x "${UNMINED_DIR}/unmined-cli" ]]; then
   sudo rm -rf "${UNMINED_DIR}"
   sudo mkdir -p "${UNMINED_DIR}"
 
   TMPDIR=$(mktemp -d)
-  wget -q -O "${TMPDIR}/unmined-cli.tgz" "https://unmined.net/download/unmined-cli-linux-x64-${UNMINED_VERSION}/"
-  echo "a47ec942a6d4a0f2e68323ed6c4da3221fe9d09353c2132188042776f96e47d7  ${TMPDIR}/unmined-cli.tgz" | sha256sum -c -
+  wget -q -O "${TMPDIR}/unmined-cli.tgz" "${UNMINED_URL}"
+  echo "${UNMINED_SHA256}  ${TMPDIR}/unmined-cli.tgz" | sha256sum -c -
   tar -xzf "${TMPDIR}/unmined-cli.tgz" -C "${TMPDIR}"
 
   EXTRACTED_DIR=$(find "${TMPDIR}" -maxdepth 1 -type d -name "unmined-cli_*_linux-x64" | head -n1)

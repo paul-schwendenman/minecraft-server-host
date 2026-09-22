@@ -88,7 +88,18 @@ jobs:
           for file in *.pkr.hcl; do
             if [ -f "$file" ] && [ "$file" != "ssh.pkr.hcl" ]; then
               echo "Validating $file..."
-              packer validate "$file" || exit 1
+              if [ "$file" = "base.pkr.hcl" ] || [ "$file" = "docker.pkr.hcl" ]; then
+                # Both share install_base_deps.sh and need the unmined-cli
+                # pin plus a URL; a real one isn't available here (no AWS
+                # credentials), but validate only type-checks the config,
+                # it doesn't fetch the URL.
+                packer validate \
+                  -var-file=unmined.auto.pkrvars.hcl \
+                  -var "unmined_cli_url=https://example.invalid/unmined-cli.tgz" \
+                  "$file" || exit 1
+              else
+                packer validate "$file" || exit 1
+              fi
             fi
           done
 

@@ -1,0 +1,73 @@
+  --world                   Required. Game folder to read.
+
+  --dimension               Dimension name or number to read (overworld, nether,
+                            end).
+
+  --imageformat             (Default: Jpeg) Image format (png, jpeg, bmp, webp,
+                            tiff, pbm). Default is jpeg.
+
+  --topY                    Highest Y coordinate to show (for cave maps)
+
+  --bottomY                 Lowest Y coordinate to show
+
+  --gndxray                 Use underground x-ray (for cave maps to make the
+                            ground transparent)
+
+  --output                  Required. Output folder.
+
+  -a, --area                Area to process. See README for syntax.
+
+  -f, --force               Update all regions, not just the changed ones.
+
+  -c                        Continue on chunk errors
+
+  --zoomout                 (Default: 6) Zoom out levels
+
+  --zoomin                  (Default: 0) Zoom in levels
+
+  --night                   Use night mode
+
+  --players                 Export player data
+
+  --mapsettings             Load map settings from file
+
+  --background              Background color #rrggbb
+
+  --chunkprocessors         Number of chunks processed at the same time
+
+  --showgrid                Show grid by default
+
+  --enablegrid              Enable grid
+
+  --centerx                 Map center X
+
+  --centerz                 Map center Z
+
+  --webp-format             (Default: lossless) WEBP file format (lossy,
+                            lossless)
+
+  --webp-method             (Default: 4) WEBP encoding method (0..6; 0 = fast, 6
+                            = slower and better)
+
+  --webp-quality            (Default: 75) WEBP quality (0..100; 0 = fast, 100 =
+                            slower and better)
+
+  --shadows                 Use shadows (false,true,2d,3d,3do)
+
+  --blockrender             Use block model rendering at zoom-in level 1:4 and
+                            higher
+
+  --java-client-jar         Minecraft Java Edition client JAR file name
+
+  --bedrock-vanilla-pack    Minecraft Bedrock Edition vanilla resource pack file
+                            name
+
+  --log-level               (Default: Information) Logging level. Accepted
+                            values: verbose, debug, information, warning, error,
+                            fatal
+
+  --log-console             (Default: true) Log to console (true/false)
+
+  --log-file                Name of the file to log to
+
+  --help                    Display this help screen.

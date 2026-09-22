@@ -52,7 +52,10 @@ System Components
 ~~~~~~~~~~~~~~~~~
 - **Java (OpenJDK 21)**: required for modern Minecraft server versions.
 - **Caddy**: lightweight web server used to serve rendered maps.
-- **uNmINeD CLI**: world map renderer (downloaded at build time).
+- **uNmINeD CLI**: world map renderer (downloaded at build time from an S3
+  mirror, since unmined.net only publishes a rolling "-dev" build with no
+  stable URL to pin against; see ``unmined.auto.pkrvars.hcl`` and
+  ``docs/unmined-cli/`` below).
 - **mcrcon**: RCON client, used by scripts and automation for sending
   commands to the server.
 - **mcstatus**: Python utility to query Minecraft server status.
@@ -95,15 +98,39 @@ These are disabled by default and must be configured with AWS credentials.
 
 Usage
 -----
+- The base AMI needs a presigned URL into the ``minecraft-server-host-artifacts`` S3
+  bucket for the pinned unmined-cli build (version/hash come from
+  ``unmined.auto.pkrvars.hcl``, kept current by the
+  ``unmined-update`` GitHub Actions workflow — see
+  ``docs/github-actions.md``). The build instance has no AWS credentials of
+  its own, so this has to be generated on the machine invoking ``packer``::
+
+    cd packer
+    AWS_PROFILE=minecraft ../scripts/unmined-artifact.sh presign \
+      "$(grep -oP '(?<=version = ")[^"]+' unmined.auto.pkrvars.hcl)" \
+      "$(grep -oP '(?<=sha256\s{2}= ")[a-f0-9]{64}' unmined.auto.pkrvars.hcl)"
+
 - Build the AMI with::
 
     cd packer
-    AWS_PROFILE=minecraft packer build -var-file=minecraft_jars.auto.pkrvars.hcl base.pkr.hcl
+    AWS_PROFILE=minecraft packer build \
+      -var-file=minecraft_jars.auto.pkrvars.hcl \
+      -var-file=unmined.auto.pkrvars.hcl \
+      -var "unmined_cli_url=<presigned URL from above>" \
+      base.pkr.hcl
     AWS_PROFILE=minecraft packer build -var-file=minecraft_jars.auto.pkrvars.hcl minecraft.pkr.hcl
+
+  ``-var-file=unmined.auto.pkrvars.hcl`` has to be passed explicitly:
+  packer only auto-loads sibling ``*.auto.pkrvars.hcl`` files when invoked
+  against a directory, not when invoked against one specific ``.pkr.hcl``
+  file, which is how every ``packer build``/``packer validate`` call in
+  this repo works.
 
 - Launch with Terraform (see parent project modules).
 - Use ``create-world.sh`` to create/manage worlds.
 - Maps are available via HTTP at ``http://<server>/map/``.
+- unmined-cli's own help output (per module/verb, plus its README) is
+  mirrored at ``docs/unmined-cli/``, refreshed whenever the pin changes.
 
 
 Null Builder
@@ -119,7 +146,12 @@ Run provisioners via SSH:
 docker Builder
 ---------------
 
-::
+Shares ``scripts/base/install_base_deps.sh`` with the base AMI, so it needs
+the same presigned unmined-cli URL (see Usage above)::
 
-    packer build docker.pkr.hcl
+    cd packer
+    AWS_PROFILE=minecraft packer build \
+      -var-file=unmined.auto.pkrvars.hcl \
+      -var "unmined_cli_url=<presigned URL, same as above>" \
+      docker.pkr.hcl
     docker run -it minecraft-local bash

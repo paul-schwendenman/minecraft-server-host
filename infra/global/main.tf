@@ -19,12 +19,31 @@ data "terraform_remote_state" "prod" {
   }
 }
 
+# Build artifacts mirror (unmined-cli today; shared by test and prod since
+# these are build inputs, not environment data). See docs/plans/unmined-cli-docs-plan.md.
+resource "aws_s3_bucket" "artifacts" {
+  bucket        = "minecraft-server-host-artifacts"
+  force_destroy = false
+}
+
+resource "aws_s3_bucket_versioning" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+  versioning_configuration { status = "Enabled" }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "artifacts" {
+  bucket = aws_s3_bucket.artifacts.id
+  rule {
+    apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+  }
+}
+
 module "github_actions_role" {
   source = "../modules/github_actions_role"
 
   github_repo = var.github_repo
 
-  # S3 buckets from both environments
+  # S3 buckets from both environments, plus the shared artifacts bucket
   s3_buckets = [
     # Test
     data.terraform_remote_state.test.outputs.webapp_bucket_name,
@@ -32,6 +51,8 @@ module "github_actions_role" {
     # Prod
     data.terraform_remote_state.prod.outputs.webapp_bucket_name,
     data.terraform_remote_state.prod.outputs.webapp_maps_bucket_name,
+    # Shared
+    aws_s3_bucket.artifacts.bucket,
   ]
 
   # CloudFront distributions from both environments
@@ -52,4 +73,9 @@ data "aws_caller_identity" "current" {}
 output "github_actions_role_arn" {
   description = "Add this to GitHub Secrets as AWS_ROLE_ARN"
   value       = module.github_actions_role.role_arn
+}
+
+output "artifacts_bucket_name" {
+  description = "S3 bucket that mirrors external build inputs (unmined-cli, ...)"
+  value       = aws_s3_bucket.artifacts.bucket
 }

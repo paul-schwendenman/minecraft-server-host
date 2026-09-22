@@ -1,0 +1,3 @@
+  render    Render map for web
+
+  help      Display more information on a specific command.

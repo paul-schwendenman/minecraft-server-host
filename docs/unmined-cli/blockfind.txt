@@ -1,0 +1,3 @@
+  dump    Dump all coordinates of specified blocks
+
+  help    Display more information on a specific command.

@@ -1,0 +1,3 @@
+  render    Render single image
+
+  help      Display more information on a specific command.

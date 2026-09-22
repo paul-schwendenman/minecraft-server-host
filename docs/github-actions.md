@@ -17,6 +17,7 @@ This document describes all GitHub Actions workflows in this repository.
 | [Terraform Validation](#terraform-validation) | Pull request | Validates Terraform configurations |
 | [Go Validation](#go-validation) | Pull request | Validates minecraftctl Go code |
 | [minecraftctl Release](#minecraftctl-release) | Tag push, manual | Builds and releases minecraftctl binaries |
+| [Check for unmined-cli Updates](#check-for-unmined-cli-updates) | Weekly, manual | Mirrors unmined-cli to S3 and refreshes `docs/unmined-cli/` |
 
 ## Build Workflows
 
@@ -158,6 +159,22 @@ Builds and releases the minecraftctl CLI tool for multiple platforms.
 
 Creates a GitHub Release with the built binaries.
 
+### Check for unmined-cli Updates
+
+**File:** `unmined-update.yml`
+
+Checks unmined.net's rolling `-dev` build for a new unmined-cli release. unmined.net only publishes that one rolling URL (no stable/versioned download), so this is what catches a build that would otherwise silently outrun the pin in `packer/unmined.auto.pkrvars.hcl`.
+
+**Triggers:**
+- Weekly on Mondays at 9:00 AM UTC
+- Manual via `workflow_dispatch`
+
+**Behavior:**
+- Compares the downloaded tarball's SHA256 against the pin file.
+- On a change (or always, for a manual run): uploads the tarball to the shared `minecraft-server-host-artifacts` S3 bucket (see [S3 Build Artifacts Plan](plans/s3-build-artifacts-plan.md)), rewrites `packer/unmined.auto.pkrvars.hcl`, and regenerates `docs/unmined-cli/` (README plus one help-text file per module/verb) from that same tarball.
+- Opens or updates a PR on a fixed `unmined-update` branch (see the comment in the workflow for why the branch is fixed rather than per-version).
+- The base AMI build (`packer-build.yml`) reads the pin file and presigns a URL into the S3 mirror at build time; the build instance itself never gets AWS credentials.
+
 ## Validation Workflows
 
 These workflows run on pull requests to validate code changes before merging.
@@ -259,6 +276,6 @@ All workflows with `workflow_dispatch` can be triggered from the GitHub Actions 
 
 | Secret | Used By | Description |
 |--------|---------|-------------|
-| `AWS_ROLE_ARN` | packer-build, ami-cleanup, lambdas-deploy, worlds-deploy, manager-deploy | IAM role ARN for AWS OIDC |
+| `AWS_ROLE_ARN` | packer-build, ami-cleanup, lambdas-deploy, worlds-deploy, manager-deploy, unmined-update | IAM role ARN for AWS OIDC |
 | `PACKER_TEST_HOST` | packer (validation) | Optional: Host for ssh.pkr.hcl validation |
 | `PACKER_TEST_PRIVATE_KEY` | packer (validation) | Optional: SSH key for ssh.pkr.hcl validation |

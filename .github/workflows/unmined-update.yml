@@ -9,55 +9,96 @@ jobs:
   check-update:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
       contents: write
       pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Get current hash
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Get current pin
         id: current
         run: |
-          HASH=$(grep 'unmined-cli' packer/scripts/base/install_base_deps.sh | grep -oP '[a-f0-9]{64}')
+          HASH=$(grep -oP '(?<=sha256\s{2}= ")[a-f0-9]{64}' packer/unmined.auto.pkrvars.hcl)
+          VERSION=$(grep -oP '(?<=version = ")[^"]+' packer/unmined.auto.pkrvars.hcl)
           echo "hash=$HASH" >> $GITHUB_OUTPUT
-          echo "Current hash: $HASH"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Current pin: $VERSION ($HASH)"
 
       - name: Download latest unmined-cli
         id: latest
         run: |
           echo "Downloading latest unmined-cli..."
-          TMPDIR=$(mktemp -d)
-          wget -q -O "${TMPDIR}/unmined-cli.tgz" "https://unmined.net/download/unmined-cli-linux-x64-dev/"
+          TARBALL="${RUNNER_TEMP}/unmined-cli.tgz"
+          wget -q -O "${TARBALL}" "https://unmined.net/download/unmined-cli-linux-x64-dev/"
 
-          # Calculate SHA256
-          HASH=$(sha256sum "${TMPDIR}/unmined-cli.tgz" | cut -d' ' -f1)
+          HASH=$(sha256sum "${TARBALL}" | cut -d' ' -f1)
+          VERSION=$(tar -tzf "${TARBALL}" | head -1 | sed 's|unmined-cli_\([^/]*\)_linux-x64/.*|\1|')
+
+          echo "tarball=${TARBALL}" >> $GITHUB_OUTPUT
           echo "hash=$HASH" >> $GITHUB_OUTPUT
-          echo "Latest hash: $HASH"
-
-          # Extract version from tarball directory name
-          VERSION=$(tar -tzf "${TMPDIR}/unmined-cli.tgz" 2>/dev/null | head -1 | sed 's|unmined-cli_\([^/]*\)_linux-x64/.*|\1|')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Latest version: $VERSION"
-
-          rm -rf "${TMPDIR}"
+          echo "Latest: $VERSION ($HASH)"
 
       - name: Check if update needed
         id: check
         run: |
-          if [ "${{ steps.current.outputs.hash }}" != "${{ steps.latest.outputs.hash }}" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || \
+             [ "${{ steps.current.outputs.hash }}" != "${{ steps.latest.outputs.hash }}" ]; then
             echo "needs_update=true" >> $GITHUB_OUTPUT
-            echo "Update needed: hash changed"
+            echo "Update needed"
           else
             echo "needs_update=false" >> $GITHUB_OUTPUT
             echo "No update needed: hash unchanged"
           fi
 
-      - name: Update hash in script
+      # Uploaded before the pin file is rewritten (and before the PR step), so
+      # a merged PR can never point the pin at an object that isn't in the
+      # bucket. If a PR is later closed unmerged, the orphaned object is
+      # small and harmless.
+      - name: Upload tarball to S3 artifacts mirror
         if: steps.check.outputs.needs_update == 'true'
         run: |
-          sed -i 's/${{ steps.current.outputs.hash }}/${{ steps.latest.outputs.hash }}/' \
-            packer/scripts/base/install_base_deps.sh
-          echo "Updated hash in install_base_deps.sh"
+          scripts/unmined-artifact.sh upload "${{ steps.latest.outputs.tarball }}" "${{ steps.latest.outputs.version }}"
+
+      - name: Compute S3 key
+        id: key
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          KEY=$(scripts/unmined-artifact.sh key "${{ steps.latest.outputs.version }}" "${{ steps.latest.outputs.hash }}")
+          echo "key=$KEY" >> $GITHUB_OUTPUT
+
+      - name: Update pin file
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          cat > packer/unmined.auto.pkrvars.hcl <<EOF
+          unmined_cli = {
+            version = "${{ steps.latest.outputs.version }}"
+            sha256  = "${{ steps.latest.outputs.hash }}"
+          }
+          EOF
+          echo "Updated packer/unmined.auto.pkrvars.hcl"
+
+      - name: Regenerate unmined-cli docs
+        if: steps.check.outputs.needs_update == 'true'
+        run: |
+          # unmined-cli is a .NET build and needs libicu to run at all. The
+          # runtime package name is tied to the Ubuntu version (libicu70 on
+          # 22.04, libicu74 on 24.04, ...), and ubuntu-latest has already
+          # moved once, so resolve it instead of hardcoding it.
+          sudo apt-get update -qq
+          ICU_PKG=$(apt-cache pkgnames libicu | grep -E '^libicu[0-9]+$' | sort -V | tail -1)
+          sudo apt-get install -y -qq "${ICU_PKG}"
+
+          tar -xzf "${{ steps.latest.outputs.tarball }}" -C "${RUNNER_TEMP}"
+          EXTRACTED_DIR=$(find "${RUNNER_TEMP}" -maxdepth 1 -type d -name "unmined-cli_*_linux-x64")
+          scripts/unmined-docs.sh "${EXTRACTED_DIR}" docs/unmined-cli
 
       # unmined.net only publishes a rolling "-dev" build (no stable/versioned URL to
       # pin against), so a new hash shows up here most weeks. Use a fixed branch name
@@ -73,11 +114,14 @@ jobs:
           commit-message: "chore(packer): update unmined-cli to ${{ steps.latest.outputs.version }}"
           title: "Update unmined-cli to ${{ steps.latest.outputs.version }}"
           body: |
-            Automated update of unmined-cli SHA256 hash.
+            Automated update of unmined-cli.
 
             **Version:** `${{ steps.latest.outputs.version }}`
             **New SHA256:** `${{ steps.latest.outputs.hash }}`
             **Previous SHA256:** `${{ steps.current.outputs.hash }}`
+            **S3 key:** `${{ steps.key.outputs.key }}`
+
+            Also refreshes `docs/unmined-cli/` (help text for every module/verb, regenerated from this build).
 
             [View releases](https://unmined.net/downloads/)
 
