@@ -42,7 +42,7 @@ jobs:
           if [ "${{ github.event_name }}" = "push" ]; then
             BASE=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(base\.pkr\.hcl|scripts/base/)' && echo true || echo false)
             MINECRAFT=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(minecraft\.pkr\.hcl|scripts/minecraft/)' && echo true || echo false)
-            SHARED=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(scripts/shared/|minecraft_jars\.auto\.pkrvars\.hcl)' && echo true || echo false)
+            SHARED=$(git diff --name-only HEAD~1 HEAD | grep -qE '^packer/(scripts/shared/|minecraft_jars\.auto\.pkrvars\.hcl|unmined\.auto\.pkrvars\.hcl)' && echo true || echo false)
           else
             BASE=false
             MINECRAFT=false
@@ -104,9 +104,25 @@ jobs:
         working-directory: packer
         run: packer init minecraft.pkr.hcl
 
+      # The build instance has no AWS credentials of its own (see
+      # docs/plans/unmined-cli-docs-plan.md), so the runner presigns a
+      # short-lived URL into the artifacts mirror and hands it to packer.
+      - name: Presign unmined-cli URL
+        id: unmined
+        run: |
+          VERSION=$(grep -oP '(?<=version = ")[^"]+' packer/unmined.auto.pkrvars.hcl)
+          SHA256=$(grep -oP '(?<=sha256\s{2}= ")[a-f0-9]{64}' packer/unmined.auto.pkrvars.hcl)
+          URL=$(scripts/unmined-artifact.sh presign "$VERSION" "$SHA256")
+          echo "::add-mask::$URL"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
       - name: Build base AMI
         working-directory: packer
-        run: packer build -var-file=minecraft_jars.auto.pkrvars.hcl base.pkr.hcl
+        run: |
+          packer build \
+            -var-file=minecraft_jars.auto.pkrvars.hcl \
+            -var "unmined_cli_url=${{ steps.unmined.outputs.url }}" \
+            base.pkr.hcl
 
   build-minecraft:
     needs: [detect-changes, build-base, check-cli-release]

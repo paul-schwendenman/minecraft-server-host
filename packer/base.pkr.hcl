@@ -8,6 +8,25 @@ variable "minecraft_jars" {
   description = "List of Minecraft JARs to download in base AMI"
 }
 
+# version/sha256 come from unmined.auto.pkrvars.hcl, which is checked in and
+# updated by .github/workflows/unmined-update.yml.
+variable "unmined_cli" {
+  type = object({
+    version = string
+    sha256  = string
+  })
+  description = "Pinned unmined-cli version/hash. See docs/plans/unmined-cli-docs-plan.md."
+}
+
+# A presigned S3 GetObject URL for that exact version/hash, valid for the
+# duration of the build. Not committed: generate it with
+# `scripts/unmined-artifact.sh presign <version> <sha256>` and pass it with
+# -var, since the build instance itself has no AWS credentials.
+variable "unmined_cli_url" {
+  type        = string
+  description = "Presigned URL for the pinned unmined-cli tarball in the artifacts bucket"
+}
+
 source "amazon-ebs" "ubuntu_base" {
   region        = "us-east-2"
   instance_type = "t3.micro"
@@ -38,6 +57,10 @@ build {
   }
 
   provisioner "shell" {
+    environment_vars = [
+      "UNMINED_URL=${var.unmined_cli_url}",
+      "UNMINED_SHA256=${var.unmined_cli.sha256}",
+    ]
     script = "scripts/base/install_base_deps.sh"
   }
 

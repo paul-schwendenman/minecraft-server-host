@@ -105,14 +105,13 @@ There is no top-level `scripts/` directory yet. These must work both locally and
 
 ## Rollout order
 
-The order matters, because a pin file that points at an object that doesn't exist breaks AMI builds.
+One PR, not split. An earlier draft of this plan split "workflow writes the pin file" from "packer reads the pin file" into two merges, but in between nothing would keep `install_base_deps.sh`'s hardcoded hash current — the old `sed` step is gone from the workflow (replaced by the pin-file rewrite) before the new consumer exists, so a real upstream bump in that window would silently pin the AMI to a stale hash with no PR to fix it. Ship the scripts, pin file, Terraform, workflow, and packer changes together.
 
-1. Terraform: create the bucket and extend the role (apply in `infra/global`).
-2. Merge the scripts, pin file (holding the current version and hash) and workflow change, with the packer change **not yet** using the URL.
-3. Run `workflow_dispatch` on `unmined-update` to seed the bucket and docs. Check the object exists and its SHA256 matches the pin.
-4. Merge the packer and `packer-build.yml` change that switches to the presigned URL. Run a manual base AMI build to confirm.
-
-Steps 2 and 4 can be one PR if step 3 is done from the branch first. Two PRs is safer.
+1. Terraform: create the bucket and extend the role (apply in `infra/global`), from the branch, before the rest is merged.
+2. On the branch: scripts, pin file, workflow change, packer change (base AMI reads the presigned URL via the pin file), `packer-build.yml` change.
+3. Run `workflow_dispatch` on `unmined-update` from the branch to seed the bucket and docs. Check the object exists and its SHA256 matches the pin.
+4. Run a manual base AMI build from the branch to confirm the presigned URL flow works end to end.
+5. Merge.
 
 ## Known limits
 

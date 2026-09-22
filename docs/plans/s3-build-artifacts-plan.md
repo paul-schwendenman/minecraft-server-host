@@ -1,5 +1,12 @@
 # S3 Build Artifacts Proxy Plan
 
+> **Superseded (unmined-cli):** the unmined-cli half of this plan (Phase 1
+> artifacts bucket, the "Alternative A" automated PR) was implemented as part
+> of [unmined-cli-docs-plan.md](unmined-cli-docs-plan.md), combined with a
+> checked-in copy of unmined-cli's help output. The Minecraft JARs half below
+> was not implemented — that plan's own recommendation was to leave JARs on
+> Mojang's URLs, which still holds.
+
 ## Problem
 
 Packer AMI builds depend on external URLs that can break unexpectedly:
