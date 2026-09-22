@@ -1,0 +1,50 @@
+  --world                   Required. Game folder to read.
+
+  --output                  Required. Output image file name.
+
+  -a, --area                Area to process. See README for syntax.
+
+  --trim                    Trim the sorrounding transparent pixels from the
+                            result image.
+
+  --dimension               Dimension to read (0=Overworld, -1=Nether, 1=End).
+
+  -c                        Continue on chunk errors
+
+  -z, --zoom                Zoom level (supported: -5, -4, -3, -2, -1, 0, 1, 2,
+                            3)
+
+  --topY                    Highest Y coordinate to show (for cave maps)
+
+  --bottomY                 Lowest Y coordinate to show
+
+  --gndxray                 Use underground x-ray (for cave maps to make the
+                            ground transparent)
+
+  --night                   Use night mode
+
+  --mapsettings             Load map settings from file
+
+  --background              Background color #rrggbb
+
+  --chunkprocessors         Number of chunks processed at the same time
+
+  --shadows                 Use shadows (false,true,2d,3d,3do)
+
+  --blockrender             Use block model rendering at zoom-in level 1:4 and
+                            higher
+
+  --java-client-jar         Minecraft Java Edition client JAR file name
+
+  --bedrock-vanilla-pack    Minecraft Bedrock Edition vanilla resource pack file
+                            name
+
+  --log-level               (Default: Information) Logging level. Accepted
+                            values: verbose, debug, information, warning, error,
+                            fatal
+
+  --log-console             (Default: true) Log to console (true/false)
+
+  --log-file                Name of the file to log to
+
+  --help                    Display this help screen.

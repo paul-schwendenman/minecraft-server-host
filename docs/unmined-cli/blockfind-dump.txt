@@ -1,0 +1,34 @@
+  --world            Required. Game folder to read.
+
+  --dimension        Dimension name or number to read (overworld, nether, end).
+
+  --block            Required. Block matching expression
+
+  --topY             Highest Y coordinate to process
+
+  --bottomY          Lowest Y coordinate to process
+
+  -a, --area         Area to process. See README for syntax.
+
+  -c                 Continue on chunk errors
+
+  --csv-fields       (Default: block,state,x,z,y) Comma separated list of fields
+                     to include in the CSV output (possible fields: block,
+                     state, x, y, z)
+
+  --csv-separator    (Default: ;) Character that separates fields in the CSV
+                     output
+
+  --csv-header       (Default: true) Include header in the CSV output
+
+  --output           Output file name (output goes to the console if not
+                     specified)
+
+  --log-level        (Default: Information) Logging level. Accepted values:
+                     verbose, debug, information, warning, error, fatal
+
+  --log-console      (Default: true) Log to console (true/false)
+
+  --log-file         Name of the file to log to
+
+  --help             Display this help screen.
