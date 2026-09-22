@@ -88,9 +88,13 @@ jobs:
       - name: Regenerate unmined-cli docs
         if: steps.check.outputs.needs_update == 'true'
         run: |
-          # unmined-cli is a .NET build and needs libicu to run at all.
+          # unmined-cli is a .NET build and needs libicu to run at all. The
+          # runtime package name is tied to the Ubuntu version (libicu70 on
+          # 22.04, libicu74 on 24.04, ...), and ubuntu-latest has already
+          # moved once, so resolve it instead of hardcoding it.
           sudo apt-get update -qq
-          sudo apt-get install -y -qq libicu70
+          ICU_PKG=$(apt-cache pkgnames libicu | grep -E '^libicu[0-9]+$' | sort -V | tail -1)
+          sudo apt-get install -y -qq "${ICU_PKG}"
 
           tar -xzf "${{ steps.latest.outputs.tarball }}" -C "${RUNNER_TEMP}"
           EXTRACTED_DIR=$(find "${RUNNER_TEMP}" -maxdepth 1 -type d -name "unmined-cli_*_linux-x64")

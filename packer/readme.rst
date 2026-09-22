@@ -115,9 +115,16 @@ Usage
     cd packer
     AWS_PROFILE=minecraft packer build \
       -var-file=minecraft_jars.auto.pkrvars.hcl \
+      -var-file=unmined.auto.pkrvars.hcl \
       -var "unmined_cli_url=<presigned URL from above>" \
       base.pkr.hcl
     AWS_PROFILE=minecraft packer build -var-file=minecraft_jars.auto.pkrvars.hcl minecraft.pkr.hcl
+
+  ``-var-file=unmined.auto.pkrvars.hcl`` has to be passed explicitly:
+  packer only auto-loads sibling ``*.auto.pkrvars.hcl`` files when invoked
+  against a directory, not when invoked against one specific ``.pkr.hcl``
+  file, which is how every ``packer build``/``packer validate`` call in
+  this repo works.
 
 - Launch with Terraform (see parent project modules).
 - Use ``create-world.sh`` to create/manage worlds.
@@ -139,7 +146,12 @@ Run provisioners via SSH:
 docker Builder
 ---------------
 
-::
+Shares ``scripts/base/install_base_deps.sh`` with the base AMI, so it needs
+the same presigned unmined-cli URL (see Usage above)::
 
-    packer build docker.pkr.hcl
+    cd packer
+    AWS_PROFILE=minecraft packer build \
+      -var-file=unmined.auto.pkrvars.hcl \
+      -var "unmined_cli_url=<presigned URL, same as above>" \
+      docker.pkr.hcl
     docker run -it minecraft-local bash

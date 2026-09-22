@@ -121,6 +121,7 @@ jobs:
         run: |
           packer build \
             -var-file=minecraft_jars.auto.pkrvars.hcl \
+            -var-file=unmined.auto.pkrvars.hcl \
             -var "unmined_cli_url=${{ steps.unmined.outputs.url }}" \
             base.pkr.hcl
 
