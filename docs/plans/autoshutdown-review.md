@@ -94,7 +94,7 @@ regression, and the ERR trap.
 - These are AMI-baked files: prod is unchanged until a new AMI is built and
   deployed. Until then, `sudo chown minecraft:minecraft /srv/minecraft-server`
   (non-recursive) fixes the immediate symptom on the running instance.
-- The uid 996 pin is not validated by a real `packer build` yet.
+- The uid 996 pin has since built successfully in CI (`packer-build` runs on Sep 21–22), and test and prod both run the resulting AMI `ami-06396b7e9fb13ffb6` (checked 2026-09-23).
 - Old files on the volume that are `997:997` (jars, logs, `minecraft.env`,
   `world.bak*`) stay mis-owned. They are world-readable and nothing currently
   needs to write them.

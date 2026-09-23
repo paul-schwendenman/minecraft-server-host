@@ -1,5 +1,7 @@
 # Migration Plan: Replace Packer Scripts with minecraftctl
 
+> **Status (2026-09-23):** Done and running in prod. Some names changed along the way: `minecraft-map-rebuild@` became `minecraft-map-build@`, the separate map-refresh service and its install script were dropped, and install lives in `install_minecraftctl.sh` rather than `install_deps.sh`. The one open item is deleting the wrapper scripts; it's tracked in [../todo.md](../todo.md).
+
 ## Overview
 
 This document outlines the plan to migrate from bash scripts to using `minecraftctl` CLI tool for managing Minecraft servers in the packer image builds.
@@ -300,44 +302,44 @@ done
 ## Implementation Checklist
 
 ### Pre-Migration
-- [ ] Build minecraftctl for Linux amd64
-- [ ] Test minecraftctl commands match script behavior
-- [ ] Verify minecraftctl handles all map-config.yml options correctly
-- [ ] Test RCON integration works correctly
+- [x] Build minecraftctl for Linux amd64
+- [x] Test minecraftctl commands match script behavior
+- [x] Verify minecraftctl handles all map-config.yml options correctly
+- [x] Test RCON integration works correctly
 
 ### Installation Phase
-- [ ] Add minecraftctl to `install_deps.sh`
-- [ ] Include minecraftctl binary in packer build
-- [ ] Create `/etc/minecraftctl.yml` config file
-- [ ] Test installation in fresh AMI build
+- [x] Add minecraftctl to the AMI (`packer/scripts/minecraft/install_minecraftctl.sh`)
+- [x] Include minecraftctl binary in packer build
+- [x] ~~Create `/etc/minecraftctl.yml` config file~~ (not needed: packer doesn't write one, and minecraftctl runs on its built-in defaults)
+- [x] Test installation in fresh AMI build
 
 ### Service Updates
-- [ ] Update `minecraft-map-rebuild@.service`
-- [ ] Update `minecraft-map-refresh@.service`
-- [ ] Update `minecraft-override-rebuild.conf`
-- [ ] Test services start correctly
-- [ ] Verify map building works via systemd timers
+- [x] Update `minecraft-map-rebuild@.service` (now `minecraft-map-build@.service`)
+- [x] ~~Update `minecraft-map-refresh@.service`~~ (dropped)
+- [x] Update `minecraft-override-rebuild.conf`
+- [x] Test services start correctly
+- [x] Verify map building works via systemd timers
 
 ### Script Updates
-- [ ] Update `install_map_rebuild.sh`
-- [ ] Update `install_map_refresh.sh`
-- [ ] Update `mc-healthcheck.sh`
-- [ ] Test all installation scripts
+- [x] Update `install_map_rebuild.sh` (now `install_map_build.sh`)
+- [x] ~~Update `install_map_refresh.sh`~~ (dropped)
+- [x] Update `mc-healthcheck.sh`
+- [x] Test all installation scripts
 
 ### Testing
-- [ ] Build new AMI with minecraftctl
-- [ ] Deploy to test environment
-- [ ] Verify map rebuild timers work
-- [ ] Verify map refresh timers work
-- [ ] Verify health check works
-- [ ] Verify maps build correctly
-- [ ] Verify manifests are generated
-- [ ] Test RCON commands via minecraftctl
+- [x] Build new AMI with minecraftctl
+- [x] Deploy to test environment
+- [x] Verify map rebuild timers work
+- [x] ~~Verify map refresh timers work~~ (dropped)
+- [x] Verify health check works
+- [x] Verify maps build correctly
+- [x] Verify manifests are generated
+- [x] Test RCON commands via minecraftctl
 
 ### Migration
-- [ ] Deploy to production
-- [ ] Monitor for issues
-- [ ] Remove old scripts (if applicable) after successful migration
+- [x] Deploy to production
+- [x] Monitor for issues
+- [ ] Remove old scripts after successful migration: `rebuild-map.sh` and `build-map-manifests.sh` are now thin wrappers, still called by `minecraft-map-build@.service` and `minecraft-override-rebuild.conf`
 
 ## Compatibility Notes
 

@@ -1,5 +1,7 @@
 # minecraftctl Development Plan
 
+> **Status (2026-09-23):** Phases 0–9 have shipped. Still open: `doctor`, `--dry-run` beyond `config sync`, removing the legacy wrapper scripts, `map clean` and the `serve` API. These are tracked in [../todo.md](../todo.md).
+
 ## Phase 0 — Foundations
 **Goal:** Decide stack + repo hygiene so you don’t churn later.
 
@@ -105,22 +107,22 @@
 ---
 
 ## Phase 10 — Nice-to-Have
-- `world backup`
+- `world backup` ✅ (as the top-level `backup` command)
 - `map clean`
 - `serve` API
-- Autocomplete generation
+- Autocomplete generation ✅ (Cobra's built-in `completion` command, plus completion of world names)
 
 ---
 
 ## Milestone Checklist
 
-- [ ] Root CLI + config merge (Viper)
-- [ ] `world list`, `world info`
-- [ ] `rcon status`
-- [ ] `map build`
-- [ ] `map manifest build`
-- [ ] `map preview`
-- [ ] Systemd integration
-- [ ] `doctor`, `--dry-run`
-- [ ] CI/CD + release pipeline
-- [ ] Remove legacy scripts after burn-in
+- [x] Root CLI + config merge (Viper)
+- [x] `world list`, `world info`
+- [x] `rcon status`
+- [x] `map build`
+- [x] `map manifest build`
+- [x] `map preview`
+- [x] Systemd integration
+- [ ] `doctor`, `--dry-run`: no `doctor` yet, and `--dry-run` exists only on `config sync`
+- [x] CI/CD + release pipeline (`.github/workflows/minecraftctl.yml`, releases on `minecraftctl-*` tags)
+- [ ] Remove legacy scripts after burn-in: `rebuild-map.sh` and `build-map-manifests.sh` are now thin wrappers around minecraftctl, but systemd still calls them

@@ -1,5 +1,7 @@
 # minecraftctl Enhancement Plan
 
+> **Status (2026-09-23):** All six gaps below are implemented: file locking (`--lock-file`, `--lock-timeout`, `--no-lock`), glob patterns, previews in `map manifest` (`--no-preview`, `--preview-only`), `--non-blocking`, batch mode with `--parallel`, and `map index` / `--update-index`.
+
 ## Overview
 
 This document outlines enhancements to `minecraftctl` to add missing features identified during the packer script migration review. These enhancements will allow `minecraftctl` to fully replace bash wrapper scripts.
