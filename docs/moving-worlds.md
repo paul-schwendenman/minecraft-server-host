@@ -149,8 +149,9 @@ What to expect:
   map build**, including `default`, until it finishes.
 - Builds are incremental and skipped when the world's mtime hasn't changed, so a
   first render is a one-time cost. An interrupted build picks up where it stopped.
-- Rough speed on a t3.medium: ~5 min per range. `old` took an estimated ~2–2.5 h
-  in total; the full overworld pass is most of it.
+- Actual first render of `old` on a t3.medium (2026-09-24): 7 ranges in 27 min
+  (~4 min each), full overworld 58 min, nether 3 min, End 7 min. That's 1 h 36 min
+  wall-clock and ~3 h of CPU. The map upload that followed took another 11 min.
 - Rendering doesn't upload anything. The map reaches S3 (and the site) only when
   `minecraft-map-backup@<world>.service` runs.
 

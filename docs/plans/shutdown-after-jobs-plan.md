@@ -89,7 +89,7 @@ exit                                        # autoshutdown handles the rest
 
 - **Max-uptime backstop** ([autoshutdown-review.md](autoshutdown-review.md#deferred-hard-backstop-not-implemented)):
   once jobs can hold the instance up, the backstop matters more. It has to be
-  longer than the longest expected job (the first `old` render was ~2–2.5 h), so
+  longer than the longest expected job (the first `old` render plus upload took ~1 h 50 min), so
   12 h is still fine.
 - **Stuck jobs:** a hung uNmINeD would keep the instance up until the backstop
   fires. Consider `RuntimeMaxSec=` on the build and backup units (e.g. 6 h).
