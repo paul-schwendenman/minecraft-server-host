@@ -16,7 +16,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
 - [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. Also exclude `caddy/` so `all` stops exiting 3.
 
-- [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. `old` has 934 logs (2020-03-21 to 2025-10-24, 3.9 MB) that are in no backup. Before deleting `old` from test, archive them (laptop and/or S3). Then decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
+- [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. (`old`'s history is already in the pre-rewrite sync at `s3://minecraft-backup-001/logs/`; nothing more to save there.) Decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
 
 ## Later
 
@@ -33,7 +33,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 
 ## Housekeeping
 
-- [ ] Delete `old` from test once you're happy with it on prod. Snapshots `b3d4542b` (world) and `69bbeeb7` (all) are in `minecraft-prod-backups` (2026-09-24). Archive its logs first (see "Review world log retention").
+- [ ] Delete `old` from test once you're happy with it on prod. Snapshots `b3d4542b` (world) and `69bbeeb7` (all) are in `minecraft-prod-backups` (2026-09-24).
 
 - [x] Checklists in `minecraftctl-plan.md` and `minecraftctl-migration-plan.md` checked against the code and updated (2026-09-23).
 - [ ] Delete stale local branches. Five are gone. `replace-map-viewer` (5 commits) and `testing-backup` (16 commits) are still here, local-only and unmerged: decide whether to keep them or drop them.
