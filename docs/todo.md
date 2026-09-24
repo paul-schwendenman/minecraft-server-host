@@ -13,6 +13,9 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [x] **Check the uid 996 pin**: pinned in `create-minecraft-user.sh` (`df01b65`), and every `packer-build` run since (Sep 21–22, latest `d71e2db`) succeeded with it. Test and prod both run `ami-06396b7e9fb13ffb6` from that latest build (checked 2026-09-23).
 - [ ] **Uid drift fixes declined 2026-09-23**: fix ownership on the volume at boot, pin caddy's uid, shut down when `minecraft.env` can't be read. Revisit if an instance stays up again.
 
+- [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
+- [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. Also exclude `caddy/` so `all` stops exiting 3.
+
 ## Later
 
 - [ ] **`minecraftctl backup rotate-password`** ([plan](plans/minecraftctl-backup-password-rotation-plan.md)): not urgent.
@@ -27,6 +30,8 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **`minecraftctl serve` API**: an API served from the game server itself. So far this is only one line in [minecraftctl-plan.md](plans/minecraftctl-plan.md) (Phase 10). It needs a design doc first: what it exposes, how it authenticates, and how it relates to the control lambda.
 
 ## Housekeeping
+
+- [ ] Delete `old` from test once you're happy with it on prod. Snapshots `b3d4542b` (world) and `69bbeeb7` (all) are in `minecraft-prod-backups` (2026-09-24).
 
 - [x] Checklists in `minecraftctl-plan.md` and `minecraftctl-migration-plan.md` checked against the code and updated (2026-09-23).
 - [ ] Delete stale local branches. Five are gone. `replace-map-viewer` (5 commits) and `testing-backup` (16 commits) are still here, local-only and unmerged: decide whether to keep them or drop them.
