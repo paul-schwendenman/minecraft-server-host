@@ -1,8 +1,8 @@
 # Plan: Switch Which World the Server Runs
 
 Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
-The plan was reviewed on 2026-09-25, and the changes it asks for (marked
-**Review** below) aren't in the code yet. Phase 2 is proposed. Written 2026-09-24.
+The plan was reviewed on 2026-09-25; the phase 1 changes it asked for (marked
+**Review** below) are in the code too. Phase 2 is proposed. Written 2026-09-24.
 
 ## Problem
 
@@ -110,9 +110,9 @@ New `minecraft-active.service` (oneshot, `RemainAfterExit=yes`,
   restart loop.
 
 **Not** `world/level.dat`: Minecraft writes that on the world's first start,
-so a world made by `world create` doesn't have one yet. The current
-implementation checks `level.dat`, so on an empty data volume it would start
-nothing. Test both cases:
+so a world made by `world create` doesn't have one yet. (The first version
+checked `level.dat`, which would have started nothing on an empty data volume.)
+Test both cases:
 
 - an **empty data volume**: `user_data` creates `default` and the boot unit
   starts it, generating the world;
@@ -139,15 +139,15 @@ Worlds are no longer enabled one by one:
   `Requires=minecraft@%i.service` and `WantedBy=minecraft@%i.service`, so
   *starting* it starts that world's server. Enabling only adds it to the
   world's `.wants`, so it runs while that world runs, which is what we want.
-  `register` and `create` already only enable. But `minecraftctl map build
-  enable <world>` uses `EnableNow`, which would start a second world alongside
-  the running one. Change it to enable, and start the timer only if that world
-  is the one running.
+  `register` and `create` only enable. `minecraftctl map build enable <world>`
+  used `EnableNow`, which would start a second world alongside the running
+  one; it now enables, and starts the timer only if that world is running.
 - **Review: register every world on a new instance.** `user_data` only
   registers `world_name`, so after an instance replacement the other worlds
-  have no backup timers. Have the boot path (`create-world.sh` in `user_data`)
-  register every world on the volume. This also gives every playable world a
-  daily backup (see open questions).
+  have no backup timers. `create-world.sh` (run from `user_data`) now also
+  registers every other world on the volume (any dir with
+  `server.properties`), warning and carrying on if one fails. This also gives
+  every playable world a daily backup (see open questions).
 - No migration is needed. This ships as a new AMI, and changing `ami` replaces
   the instance, so the root volume (where `systemctl enable` symlinks live)
   starts with no world enabled. The one thing that re-enables a world is

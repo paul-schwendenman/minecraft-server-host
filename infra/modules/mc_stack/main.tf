@@ -74,6 +74,9 @@ resource "aws_instance" "minecraft" {
   lifecycle {
     ignore_changes = [
       associate_public_ip_address,
+      # Set by the control lambda (/start?world=), not by Terraform
+      tags["ActiveWorld"],
+      tags_all["ActiveWorld"],
     ]
   }
 

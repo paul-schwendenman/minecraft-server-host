@@ -18,9 +18,13 @@ teardown() {
     teardown_test_fixtures
 }
 
+# A world as `minecraftctl world create` leaves it: server.properties and a
+# server.jar symlink into the jars dir, but no world/level.dat yet.
 make_world() {
-    mkdir -p "${MINECRAFT_HOME}/$1/world"
-    touch "${MINECRAFT_HOME}/$1/world/level.dat"
+    local jars="${TEST_TEMP_DIR}/opt/minecraft/jars"
+    mkdir -p "${MINECRAFT_HOME}/$1" "${jars}"
+    touch "${MINECRAFT_HOME}/$1/server.properties" "${jars}/minecraft_server_1.21.jar"
+    ln -sf "${jars}/minecraft_server_1.21.jar" "${MINECRAFT_HOME}/$1/server.jar"
 }
 
 # Mock IMDS: the token request succeeds; the tag request returns $1, or 404s
@@ -82,13 +86,13 @@ EOF
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"'nope' is not a world"* ]]
+    [[ "$output" == *"'nope' can't start"* ]]
     assert_mock_called_with "systemctl start minecraft@default.service"
 }
 
 @test "minecraft-active: rejects path traversal in the tag" {
-    mkdir -p "${TEST_TEMP_DIR}/srv/escape/world"
-    touch "${TEST_TEMP_DIR}/srv/escape/world/level.dat"
+    mkdir -p "${TEST_TEMP_DIR}/srv/escape"
+    touch "${TEST_TEMP_DIR}/srv/escape/server.properties" "${TEST_TEMP_DIR}/srv/escape/server.jar"
     mock_imds_tag "../escape"
 
     run bash "$SCRIPT"
@@ -118,4 +122,40 @@ EOF
     [ "$status" -eq 1 ]
     [[ "$output" == *"not starting anything"* ]]
     ! assert_mock_called_with "systemctl start"
+}
+
+@test "minecraft-active: starts a new world that has no level.dat yet" {
+    make_world fresh
+    mock_imds_tag "fresh"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ ! -e "${MINECRAFT_HOME}/fresh/world/level.dat" ]
+    assert_mock_called_with "systemctl start minecraft@fresh.service"
+}
+
+@test "minecraft-active: falls back to default when the world's jar is missing" {
+    make_world old
+    ln -sf "${TEST_TEMP_DIR}/opt/minecraft/jars/minecraft_server_1.16.4.jar" \
+        "${MINECRAFT_HOME}/old/server.jar"
+    mock_imds_tag "old"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"points to a missing jar"* ]]
+    assert_mock_called_with "systemctl start minecraft@default.service"
+}
+
+@test "minecraft-active: falls back to default when server.properties is missing" {
+    make_world old
+    rm "${MINECRAFT_HOME}/old/server.properties"
+    mock_imds_tag "old"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"no "*"old/server.properties"* ]]
+    assert_mock_called_with "systemctl start minecraft@default.service"
 }

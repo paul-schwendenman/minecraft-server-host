@@ -145,6 +145,8 @@ minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
 
+The map build timer runs while its world runs (it requires `minecraft@<world>.service`). `enable` only starts it right away if that world is already running, so enabling it for another world never starts a second server.
+
 ### Server Status
 
 ```bash

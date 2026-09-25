@@ -637,13 +637,25 @@ var mapBuildStopCmd = &cobra.Command{
 }
 
 var mapBuildEnableCmd = &cobra.Command{
-	Use:               "enable <world>",
-	Short:             "Enable the map build timer",
+	Use:   "enable <world>",
+	Short: "Enable the map build timer",
+	Long: "Enable the map build timer. It runs while the world is running. " +
+		"The timer requires the world's server, so it's only started now if that world is already running; " +
+		"starting it for a stopped world would start a second world alongside the running one.",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		timer := systemd.FormatUnitName("minecraft-map-build", args[0], systemd.UnitTimer)
-		return systemd.EnableNow(timer)
+		if err := systemd.Enable(timer); err != nil {
+			return err
+		}
+
+		service := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
+		if running, _ := systemd.IsActive(service); running {
+			return systemd.Start(timer)
+		}
+		fmt.Printf("%s enabled; it starts with %s\n", timer, service)
+		return nil
 	},
 }
 
