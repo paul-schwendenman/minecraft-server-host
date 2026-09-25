@@ -1,6 +1,8 @@
 # Plan: Switch Which World the Server Runs
 
-Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test. Phase 2 is proposed. Written 2026-09-24.
+Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
+The plan was reviewed on 2026-09-25, and the changes it asks for (marked
+**Review** below) aren't in the code yet. Phase 2 is proposed. Written 2026-09-24.
 
 ## Problem
 
@@ -37,10 +39,11 @@ Store the active world in one place, an EC2 tag, instead of in whichever
   first.
 - **Phase 2: switch while the server is running**, without a restart.
 
-The controls app (`minecraft-ui/apps/manager`) doesn't change in either phase.
-It keeps its plain Start/Stop, which boots whatever world the tag already says.
-World selection goes in the maps app (`minecraft-ui/apps/worlds`), which
-already lists every world.
+The controls (the **Controls** page of `minecraft-ui/apps/worlds`, the
+`ServerStatus` component, and the legacy `apps/manager`) don't change in either
+phase. They keep their plain Start/Stop, which boots whatever world the tag
+already says. World selection goes on the world pages of the same app, which
+already list every world.
 
 ## Phase 1: choose the world at start
 
@@ -65,21 +68,56 @@ metadata_options {
 Roll it out together with the new AMI, which replaces the instance anyway, so
 it doesn't matter whether `metadata_options` alone would update it in place.
 
-A tag missing or empty means `default`.
+A tag missing or empty means the default world (see below).
+
+**Review: keep Terraform from removing the tag.** `aws_instance.minecraft` sets
+`tags = { Name = ... }`, so Terraform treats `ActiveWorld` as drift and deletes
+it on the next `apply`. Add it to `ignore_changes`, and check with
+`terraform plan` on a tagged instance that no tag change is planned:
+
+```hcl
+lifecycle {
+  ignore_changes = [associate_public_ip_address, tags["ActiveWorld"]]
+}
+```
+
+**Persistence.** The selection is sticky: it survives stop/start cycles and
+reboots. Replacing the instance (a new AMI) resets it to the default world,
+because the new instance has no tag. That reset is intentional; pick the world
+again after a replacement.
 
 ### 2. Boot unit that starts only the active world
 
 New `minecraft-active.service` (oneshot, `RemainAfterExit=yes`,
-`WantedBy=multi-user.target`):
+`WantedBy=cloud-final.service`, like `dyndns.service`):
 
 1. Read `ActiveWorld` from IMDSv2
    (`/latest/meta-data/tags/instance/ActiveWorld`), falling back to
    `MC_DEFAULT_WORLD` from `/etc/minecraft.env` (written by `user_data` from
    Terraform's `world_name`), or `default` if that isn't set.
-2. Check that `/srv/minecraft-server/<world>/world/level.dat` exists. If it
-   doesn't, log it and fall back to `default`, so a typo can't leave the server
-   up with no world running (autoshutdown would power it off at the next check).
+2. Check that the world can start. If it can't, log it and fall back to the
+   default world, so a typo can't leave the server up with no world running
+   (autoshutdown would power it off at the next check). If the default can't
+   start either, fail without starting anything.
 3. `systemctl start minecraft@<world>.service`.
+
+**Review: what "can start" means.** The name must be a plain directory name
+(no `/`, not starting with `.`), and the world dir must have:
+
+- `server.properties`, and
+- `server.jar` resolving to a file that exists (a symlink into
+  `/opt/minecraft/jars/`). This catches a missing jar at boot instead of in a
+  restart loop.
+
+**Not** `world/level.dat`: Minecraft writes that on the world's first start,
+so a world made by `world create` doesn't have one yet. The current
+implementation checks `level.dat`, so on an empty data volume it would start
+nothing. Test both cases:
+
+- an **empty data volume**: `user_data` creates `default` and the boot unit
+  starts it, generating the world;
+- a **replacement instance** with the existing prod-like volume: the tagged
+  world starts, and a missing tag gives `default`.
 
 **Ordering on first boot.** On a new instance the data volume isn't in
 `/etc/fstab` until `mount-ebs.sh` runs from `user_data`, which is late in boot
@@ -97,6 +135,19 @@ Worlds are no longer enabled one by one:
 - `minecraftctl world register` / `world create` stop enabling
   `minecraft@<world>`. They still enable the map-build, world-backup and
   map-backup timers.
+- **Review: enable timers, never start them.** `minecraft-map-build@.timer` has
+  `Requires=minecraft@%i.service` and `WantedBy=minecraft@%i.service`, so
+  *starting* it starts that world's server. Enabling only adds it to the
+  world's `.wants`, so it runs while that world runs, which is what we want.
+  `register` and `create` already only enable. But `minecraftctl map build
+  enable <world>` uses `EnableNow`, which would start a second world alongside
+  the running one. Change it to enable, and start the timer only if that world
+  is the one running.
+- **Review: register every world on a new instance.** `user_data` only
+  registers `world_name`, so after an instance replacement the other worlds
+  have no backup timers. Have the boot path (`create-world.sh` in `user_data`)
+  register every world on the volume. This also gives every playable world a
+  daily backup (see open questions).
 - No migration is needed. This ships as a new AMI, and changing `ami` replaces
   the instance, so the root volume (where `systemctl enable` symlinks live)
   starts with no world enabled. The one thing that re-enables a world is
@@ -112,18 +163,26 @@ look at any `minecraft@*` unit.
 - `world` is optional. Without it, `/start` does what it does today, so the
   controls app keeps working unchanged.
 - With it:
-  1. Validate the name against `world_manifest.json` in the maps bucket (the
-     lambda already gets `map_bucket_name`). Unknown name: 400.
+  1. Validate the name against `world_manifest.json` in the maps bucket.
+     Unknown name: 400; manifest unreadable: 503. The `api_lambda` module
+     receives `map_bucket_name`, but the control lambda didn't get it as an
+     environment variable; pass `MAPS_BUCKET` and `MAP_PREFIX` (done in the
+     phase 1 code).
   2. If the instance is running or pending and `ActiveWorld` is a different
      world: 409 ("stop the server first"). Same world: nothing to do, return
      the usual response.
   3. `CreateTags` `ActiveWorld=<name>` on the instance.
   4. `StartInstances`.
+- Accepted edge cases, with no extra coordination in phase 1:
+  - Two concurrent requests are last-write-wins on the tag.
+  - The tag can differ from the running world for a while: after the boot unit
+    falls back to the default, or after a manual swap over SSH. `/status`
+    reports the tag, not what's actually running.
 - `/status` also returns the current `ActiveWorld` (read from the instance's
   tags, which `DescribeInstances` already includes).
 - IAM (`infra/modules/api_lambda`): add `ec2:CreateTags` on the instance ARN,
-  with `aws:TagKeys` limited to `ActiveWorld`. Also `s3:GetObject` on the
-  manifest if the role doesn't have it.
+  with `aws:TagKeys` limited to `ActiveWorld`. The role can already read the
+  maps bucket.
 
 ### 4. UI: "Play this world" in the maps app
 
@@ -195,12 +254,30 @@ It could also be used in phase 1: the boot unit would call it instead of
 `systemctl start` directly. The player check never fires at boot, since nobody
 is online yet.
 
+### Review: decide before building phase 2
+
+- **Player policy.** `world switch` refuses while players are online, but the
+  UI was going to warn that switching kicks everyone off. Pick one. Proposed:
+  the watcher refuses while players are online (no `--force`), and the maps app
+  shows the player count and disables **Play** until the server is empty.
+  Forcing a switch stays an SSH-only action.
+- **Watcher retries.** A switch refused because players are online is logged
+  and retried on the next tick; the tag value isn't marked as handled. A
+  successful switch marks it as handled. A startup failure triggers rollback
+  and is marked as handled (failed), with no further retries until the tag
+  changes (see next point).
+- **Failed startup.** `systemctl start` returning doesn't mean Minecraft is up.
+  `world switch` should wait for RCON to answer (a few minutes' timeout). If
+  the new world doesn't come up, stop it, start the previous world again, and
+  report the failure. The watcher then records that tag value as handled
+  (failed), so it doesn't retry until the tag changes again.
+
 ### Lambda and UI changes in phase 2
 
 - `/start?world=` on a running instance with a different world: set the tag
   and return 202 instead of 409. The watcher does the switch.
-- The maps app enables **Play** on other worlds while the server is running,
-  with a warning that it kicks everyone off.
+- The maps app enables **Play** on other worlds while the server is running
+  and empty (see the player policy above).
 
 ## Worlds on prod (checked 2026-09-24)
 
@@ -246,18 +323,28 @@ Phase 1:
 1. ~~Snapshot the archive worlds~~: done 2026-09-25 (IDs in the TODO).
 2. ~~Check jars and give the old worlds maps~~: already done on prod.
 3. Terraform: `instance_metadata_tags = "enabled"`; `ec2:CreateTags` for the
-   control lambda.
+   control lambda; `MAPS_BUCKET` for the control lambda. **Review:**
+   `ignore_changes` for `tags["ActiveWorld"]`.
 4. Packer: `minecraft-active.service`; `world register` / `world create` stop
-   enabling `minecraft@`. Ship as a new AMI.
+   enabling `minecraft@`. Ship as a new AMI. **Review:** the "can start" check
+   (`server.properties` plus a resolvable jar, not `level.dat`); register every
+   world on a new instance; `map build enable` stops starting the timer.
 5. Control lambda: `/start?world=`, `ActiveWorld` in `/status`.
 6. Maps app: **Play** button and active-world/server state.
-7. Try it on test: pick a second world, confirm it comes up; press Start in the
-   controls app, confirm the same world comes up again; set the tag to a name
-   that doesn't exist, confirm `default` comes up. Include a new instance's
-   first boot.
+7. Try it on test:
+   - pick a second world, confirm it comes up;
+   - press Start on the Controls page, confirm the same world comes up again;
+   - set the tag to a name that doesn't exist, confirm `default` comes up;
+   - point a world's `server.jar` at a missing jar, confirm the fallback;
+   - a new instance on an **empty** data volume (world gets generated);
+   - a new instance on an **existing** volume (all worlds registered, tagged
+     world starts);
+   - `terraform plan` on a tagged instance plans no tag change.
 
 Phase 2:
 
+0. Settle the player policy, watcher retries and failed-startup handling
+   (above).
 1. Confirm on test that tag changes reach metadata while the instance runs.
 2. `minecraftctl world switch` (no tag handling; see above).
 3. The watcher timer (option B) in `packer/`, acting only on tag changes.
@@ -266,10 +353,11 @@ Phase 2:
 
 ## Open questions
 
-- Should the tag go back to `default` after a session on an old world, or stay
-  where it was left? (Proposed: stay. The maps app shows the active world, and
-  the controls app's Start boots it, so nobody lands in an old world by
-  surprise without seeing which one.)
-- Should the old worlds get the daily backup timer once they're playable, or
-  only manual snapshots after each session? Registering them adds a daily job
-  per world that mostly backs up nothing new; restic dedupes, so it's cheap.
+- ~~Should the tag go back to `default` after a session on an old world?~~
+  **No, it stays** (sticky). It resets only when the instance is replaced.
+- ~~Daily backups for the old worlds?~~ **Yes, every playable world gets the
+  daily backup timer.** Restic dedupes, so a world nobody played costs almost
+  nothing. This comes from registering every world on a new instance (above).
+- Should the Controls page show the selected world, so it's clear what its
+  plain **Start** launches (e.g. "Start (default)")? The review suggests it;
+  it goes against keeping the controls unchanged. Your call.
