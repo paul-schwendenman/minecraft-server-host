@@ -1,5 +1,12 @@
 import { writable, derived } from 'svelte/store';
-import { getStatus, startInstance, stopInstance, syncDnsRecord, getDetails } from './api/index.js';
+import {
+	getStatus,
+	startInstance,
+	startWorld,
+	stopInstance,
+	syncDnsRecord,
+	getDetails
+} from './api/index.js';
 import type { Action, ServerStatusResponse } from './types/api.ts';
 
 function createStatus() {
@@ -12,6 +19,10 @@ function createStatus() {
 		},
 		dispatch: async (action: Action) => {
 			set(await reducer(action));
+		},
+		startWorld: async (world: string) => {
+			await startWorld(world);
+			set(await getStatus());
 		}
 	};
 }

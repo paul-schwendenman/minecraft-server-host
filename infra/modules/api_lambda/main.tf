@@ -32,6 +32,18 @@ resource "aws_iam_role_policy" "lambda_policy" {
           Resource = var.instance_arn
         },
         {
+          # /start?world= records the chosen world on the instance; it's read
+          # back at boot by minecraft-active.service
+          Effect   = "Allow"
+          Action   = "ec2:CreateTags"
+          Resource = var.instance_arn
+          Condition = {
+            "ForAllValues:StringEquals" = {
+              "aws:TagKeys" = ["ActiveWorld"]
+            }
+          }
+        },
+        {
           Effect   = "Allow"
           Action   = "ec2:DescribeInstances"
           Resource = "*"
@@ -105,6 +117,8 @@ resource "aws_lambda_function" "control" {
       DNS_NAME    = var.dns_name
       CORS_ORIGIN = var.cors_origin
       ZONE_ID     = var.zone_id
+      MAPS_BUCKET = var.map_bucket_name
+      MAP_PREFIX  = "maps/"
     }
   }
 

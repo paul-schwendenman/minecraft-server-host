@@ -140,3 +140,15 @@ setup() {
     echo "$output"
     [ "$status" -eq 0 ]
 }
+
+@test "shellcheck: minecraft/active-world/minecraft-active.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/active-world/minecraft-active.sh"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
+@test "shellcheck: minecraft/install_active_world.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/install_active_world.sh"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}

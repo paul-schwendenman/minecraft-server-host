@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -187,8 +188,9 @@ var worldCreateCmd = &cobra.Command{
 			fmt.Println("Default map-config.yml created")
 		}
 		if opts.EnableSystemd {
-			fmt.Printf("Systemd service minecraft@%s.service enabled and started\n", worldName)
+			fmt.Printf("Timers enabled: %s\n", strings.Join(worlds.WorldTimers(worldName), ", "))
 		}
+		fmt.Printf("Start it with: minecraftctl world start %s\n", worldName)
 
 		return nil
 	},
@@ -196,8 +198,8 @@ var worldCreateCmd = &cobra.Command{
 
 var worldRegisterCmd = &cobra.Command{
 	Use:               "register <world-name>",
-	Short:             "Register an existing world with systemd services",
-	Long:              "Register an existing world by enabling systemd services and timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance.",
+	Short:             "Register an existing world's systemd timers",
+	Long:              "Register an existing world by enabling its map-build, world-backup and map-backup timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance. It doesn't enable or start the world itself.",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -208,9 +210,7 @@ var worldRegisterCmd = &cobra.Command{
 		}
 
 		fmt.Printf("World '%s' registered successfully\n", worldName)
-		fmt.Printf("Systemd service minecraft@%s.service enabled and started\n", worldName)
-		fmt.Printf("Timers enabled: minecraft-map-build@%s.timer, minecraft-world-backup@%s.timer, minecraft-map-backup@%s.timer\n",
-			worldName, worldName, worldName)
+		fmt.Printf("Timers enabled: %s\n", strings.Join(worlds.WorldTimers(worldName), ", "))
 
 		return nil
 	},
@@ -463,7 +463,7 @@ func init() {
 	worldCreateCmd.MarkFlagRequired("version")
 	worldCreateCmd.Flags().StringVar(&createSeed, "seed", "", "World seed (optional)")
 	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
-	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling and starting systemd service")
+	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling the world's systemd timers")
 
 	// Upgrade command flags
 	worldUpgradeCmd.Flags().StringVar(&upgradeVersion, "version", "", "Target Minecraft server version (e.g., 1.21.11)")

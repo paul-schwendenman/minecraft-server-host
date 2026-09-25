@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Card from '$lib/Card.svelte';
 	import Header from '$lib/Header.svelte';
+	import { PlayWorld } from '@minecraft/ui';
 	export let data;
 	const { world, maps } = data;
 </script>
@@ -16,6 +17,8 @@
 		preview={world.previewUrl}
 		subtitle="Select a map to explore"
 	/>
+
+	<PlayWorld world={world.world} />
 
 	<section class="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
 		{#each maps as map (map.name)}

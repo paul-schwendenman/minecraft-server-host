@@ -1,6 +1,6 @@
 # Plan: Switch Which World the Server Runs
 
-Status: **proposed**, not implemented. Written 2026-09-24.
+Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test. Phase 2 is proposed. Written 2026-09-24.
 
 ## Problem
 
@@ -73,7 +73,9 @@ New `minecraft-active.service` (oneshot, `RemainAfterExit=yes`,
 `WantedBy=multi-user.target`):
 
 1. Read `ActiveWorld` from IMDSv2
-   (`/latest/meta-data/tags/instance/ActiveWorld`), falling back to `default`.
+   (`/latest/meta-data/tags/instance/ActiveWorld`), falling back to
+   `MC_DEFAULT_WORLD` from `/etc/minecraft.env` (written by `user_data` from
+   Terraform's `world_name`), or `default` if that isn't set.
 2. Check that `/srv/minecraft-server/<world>/world/level.dat` exists. If it
    doesn't, log it and fall back to `default`, so a typo can't leave the server
    up with no world running (autoshutdown would power it off at the next check).

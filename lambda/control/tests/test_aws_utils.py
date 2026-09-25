@@ -1,5 +1,6 @@
 """Tests for aws_utils module with moto mocks."""
 
+import json
 import os
 import pytest
 import boto3
@@ -206,6 +207,7 @@ def test_describe_state():
     assert "instance" in result
     assert "dns_record" in result
     assert result["instance"]["state"] in ["pending", "running"]
+    assert result["instance"]["active_world"] == "default"
 
 
 @mock_aws
@@ -275,3 +277,60 @@ def test_get_dns_record_not_found():
     record = aws_utils.get_dns_record(zone_id, "nonexistent.example.com")
 
     assert record == {}
+
+
+def _reload_aws_utils():
+    from app.config import get_settings
+    get_settings.cache_clear()
+
+    import importlib
+    import app.aws_utils as aws_utils
+    importlib.reload(aws_utils)
+    return aws_utils
+
+
+@mock_aws
+def test_set_and_get_active_world():
+    """set_active_world tags the instance and get_active_world reads it back."""
+    ec2 = boto3.client("ec2", region_name="us-east-2")
+    instance_id = ec2.run_instances(
+        ImageId="ami-12345678", MinCount=1, MaxCount=1, InstanceType="t2.micro"
+    )["Instances"][0]["InstanceId"]
+    os.environ["INSTANCE_ID"] = instance_id
+
+    aws_utils = _reload_aws_utils()
+
+    assert aws_utils.get_active_world(aws_utils.get_instance(instance_id)) == "default"
+
+    aws_utils.set_active_world(instance_id, "world.bak2")
+
+    assert aws_utils.get_active_world(aws_utils.get_instance(instance_id)) == "world.bak2"
+
+
+def test_get_active_world_ignores_empty_tag():
+    aws_utils = _reload_aws_utils()
+
+    instance = {"Tags": [{"Key": "ActiveWorld", "Value": ""}]}
+
+    assert aws_utils.get_active_world(instance) == "default"
+
+
+@mock_aws
+def test_list_worlds_reads_manifest():
+    os.environ["MAPS_BUCKET"] = "test-maps"
+    s3 = boto3.client("s3", region_name="us-east-2")
+    s3.create_bucket(
+        Bucket="test-maps",
+        CreateBucketConfiguration={"LocationConstraint": "us-east-2"},
+    )
+    s3.put_object(
+        Bucket="test-maps",
+        Key="maps/world_manifest.json",
+        Body=json.dumps([{"world": "default"}, {"world": "old"}, {"version": "x"}]),
+    )
+
+    try:
+        aws_utils = _reload_aws_utils()
+        assert aws_utils.list_worlds() == ["default", "old"]
+    finally:
+        os.environ.pop("MAPS_BUCKET", None)

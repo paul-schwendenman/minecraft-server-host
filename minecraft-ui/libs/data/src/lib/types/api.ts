@@ -7,6 +7,8 @@ export interface DnsRecord {
 export interface Instance {
 	state: 'pending' | 'running' | 'stopping' | 'stopped' | 'terminated';
 	ip_address: string | undefined;
+	/** World the instance starts at boot (its ActiveWorld tag) */
+	active_world?: string;
 }
 
 export interface ServerStatusResponse {

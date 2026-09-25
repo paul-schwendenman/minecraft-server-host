@@ -27,8 +27,8 @@ if [[ ! -f "$JAR_PATH" ]]; then
 fi
 
 # Build minecraftctl command
-# Note: minecraftctl world create enables and starts the systemd service by default
-# (unless --no-systemd is passed, which we don't do here)
+# Note: this doesn't start the world. minecraft-active.service starts whichever
+# world the ActiveWorld instance tag names once cloud-init has finished.
 CMD=("minecraftctl" "world" "create" "$WORLD" "--version" "$VERSION")
 
 if [[ -n "$SEED" ]]; then
