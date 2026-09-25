@@ -1,6 +1,6 @@
 <script>
 	import ServerDetails from './ServerDetails.svelte';
-	import { AsyncButton } from '@minecraft/ui';
+	import AsyncButton from './AsyncButton.svelte';
 	import { status } from '@minecraft/data';
 
 	const handleRefresh = () => {
