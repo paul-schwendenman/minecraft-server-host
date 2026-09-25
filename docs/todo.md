@@ -16,6 +16,9 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
 - [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. Also exclude `caddy/` so `all` stops exiting 3.
 
+- [ ] **Snapshot the archive worlds on prod** (`old`, `world.bak`, `world.bak2`, `world.bak-1.19.2`) before anyone plays them again ([plan](plans/world-switching-plan.md#snapshotting-the-archive-worlds)).
+- [ ] **World switching** ([plan](plans/world-switching-plan.md)): choose which world runs at start from the UI, using an `ActiveWorld` EC2 tag read at boot. Also `minecraftctl world switch`. First, check each old world's jar and give it a map.
+
 - [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. (`old`'s history is already in the pre-rewrite sync at `s3://minecraft-backup-001/logs/`; nothing more to save there.) Decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
 
 ## Later
