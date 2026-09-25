@@ -28,15 +28,25 @@ How it works today:
 
 ## Proposal
 
-Choose the world when the server starts, and store the choice in one place
-instead of in whichever services happen to be enabled.
+Store the active world in one place, an EC2 tag, instead of in whichever
+`minecraft@` services happen to be enabled. Build it in two phases:
+
+- **Phase 1: choose the world at boot.** Set the tag, start the server, and
+  that world comes up. Switching means changing the tag and stopping and
+  starting the server.
+- **Phase 2: switch while the server is running**, without a restart.
+
+The controls app (`minecraft-ui/apps/manager`) doesn't change in either phase.
+It keeps its plain Start/Stop.
+
+## Phase 1: choose the world at boot
 
 ### 1. Active world stored in an EC2 tag
 
 The instance carries a tag `ActiveWorld=<name>`. Reasons to use a tag:
 
-- The lambda can set it while the instance is stopped, before calling
-  `StartInstances`. A file on the data volume can't be written then.
+- It can be set while the instance is stopped. A file on the data volume can't
+  be written then.
 - The instance can read it at boot from instance metadata, with no API call and
   no extra IAM permissions, as long as tags are exposed to metadata.
 
@@ -80,45 +90,105 @@ Worlds are no longer enabled one by one:
 Nothing else needs to change. `autoshutdown.sh` and `mc-healthcheck.sh` already
 look at any `minecraft@*` unit.
 
-### 3. `minecraftctl world switch <name>`
+### 3. Switching in phase 1
 
-For when you're already SSH'd in:
+From a laptop, with the server stopped:
+
+```bash
+AWS_PROFILE=minecraft AWS_REGION=us-east-2 aws ec2 create-tags \
+  --resources <instance-id> --tags Key=ActiveWorld,Value=world.bak2
+```
+
+Then press Start in the controls app as usual. To go back, set the tag to
+`default` (or delete it).
+
+If the server is already running, either stop it and start it again, or SSH in
+and swap the service by hand. That lasts until the next boot, when the tag wins
+again:
+
+```bash
+sudo systemctl stop minecraft@default
+sudo systemctl start minecraft@world.bak2
+```
+
+## Phase 2: switch while the server is running
+
+The lambda can't reach services on the instance, so something on the instance
+has to do the switch. Options considered:
+
+| Option | How the switch happens | Time | New pieces |
+|---|---|---|---|
+| **A. Set the tag and reboot** | Set `ActiveWorld`, then `RebootInstances`. The reboot is graceful, so `minecraft@`'s `ExecStop` saves the world, and the phase 1 boot unit reads the new tag. | ~1–2 min | Almost nothing. A reboot keeps the public IP, so DNS stays valid. |
+| **B. Watch the tag on the instance** | A timer checks `ActiveWorld` in metadata every minute or so and switches when the tag changes. | ≤1 min plus world load | A small timer. Whatever changes the world only writes the tag. |
+| **C. SSM Run Command** | The lambda runs `minecraftctl world switch <name>` on the instance through SSM. | Seconds plus world load | The SSM agent, an instance role policy, and IAM for `ssm:SendCommand`. A whole new way to reach the instance. |
+| **D. `minecraftctl serve`** | An API on the instance does the switch. | Instant | The large "Big ideas" item in the TODO. |
+
+**Chosen: B.** Boot and a live switch go through the same code: at boot the
+check simply starts whatever the tag says. **A** is the fallback if B turns out
+to be fiddly.
+
+Before building B, check on test that a tag change reaches instance metadata
+without a reboot. AWS says it does.
+
+### Keep `minecraftctl` platform-agnostic
+
+The tag is AWS glue, and probably not how switching works long term (see D).
+`minecraftctl` knows about worlds and systemd, not EC2, and it should stay that
+way even though the rest of the project is AWS-specific. So the layers are:
+
+- **`minecraftctl world switch <name>`**: stops the running world and starts
+  another. It knows nothing about tags.
+- **Platform glue in `packer/`**: the phase 1 boot unit and the B watcher.
+  These are the only pieces that read `ActiveWorld`, and both call
+  `minecraftctl world switch` to do the switch. If switching later moves to
+  `minecraftctl serve` or something else, the glue gets deleted and
+  `minecraftctl` doesn't change.
+
+**The watcher reacts to tag changes, not to a mismatch.** It remembers the last
+tag value it acted on (in `/run`, so a boot starts fresh) and only switches when
+the tag changes. A switch done by hand with `minecraftctl world switch` over
+SSH then stays in place until the tag changes or the instance reboots, when the
+tag wins again. Nothing on the instance writes tags, and the instance role
+needs no `ec2:CreateTags`.
+
+### `minecraftctl world switch <name>`
 
 1. Check the world exists and that its `server.jar` target is present.
-2. Stop the running `minecraft@*` (its `ExecStop` saves the world first).
-3. Start `minecraft@<name>`.
-4. Update the tag so the next boot runs the same world. The instance role needs
-   `ec2:CreateTags` on its own instance (condition on `ec2:ResourceTag` or the
-   instance ARN). Or skip this step and let the tag win on the next boot. Decide
-   when implementing.
+2. Refuse if players are online, unless `--force` is given.
+3. Stop the running `minecraft@*` (its `ExecStop` saves the world first).
+4. Start `minecraft@<name>`.
 
-Refuse if players are online unless `--force` is given.
+It could also be used in phase 1: the boot unit would call it instead of
+`systemctl start` directly. The player check never fires at boot, since nobody
+is online yet.
 
-### 4. Control lambda: `/start?world=<name>`
+### Setting the tag without the AWS CLI
 
-- Optional `world` query param. If given, validate it against the world list
-  (see 5), `CreateTags` on the instance, then `StartInstances`.
-- If the instance is already running and a different world is asked for, return
-  409 for now. Switching a running server from the web can come later (it would
-  need the `minecraftctl serve` API or SSM Run Command).
-- `/status` returns the current `ActiveWorld` so the UI can show it.
-- IAM (`infra/modules/api_lambda`): add `ec2:CreateTags` scoped to the instance
-  ARN, with `aws:TagKeys` limited to `ActiveWorld`.
+Once B works, the only thing a web client needs to do is write the tag:
 
-### 5. UI: world picker next to Start
+- Control lambda: `POST /world` with `{"world": "<name>"}`. Validate the name
+  against `world_manifest.json`, then `CreateTags` (IAM in
+  `infra/modules/api_lambda`: `ec2:CreateTags` on the instance ARN, `aws:TagKeys`
+  limited to `ActiveWorld`). `/status` returns the current `ActiveWorld`.
+- Where the button lives is still open. The controls app stays unchanged. The
+  maps app (`apps/worlds`) already lists every world, since
+  `world_manifest.json` holds every world with a published map, so a "play this
+  world" action there is the obvious candidate. It would be the first write
+  action in that app.
 
-The worlds lambda already serves `world_manifest.json`, but that only lists
-worlds **with a published map**. Options:
+## Worlds on prod (checked 2026-09-24)
 
-- Only offer worlds that have maps. It's simple, and it pushes us to give the
-  old worlds maps anyway.
-- Or have the world backup/map jobs also write a list of all worlds to S3.
+| World | Jar | `world/` size |
+|---|---|---|
+| `default` | (current) | 1.5 GB |
+| `old` | 1.16.4 | 5.9 GB |
+| `world.bak` | 1.19 | 2.7 GB |
+| `world.bak2` | 1.19 | 691 MB |
+| `world.bak-1.19.2` | 1.19.2 | 1.6 GB |
 
-Start with the first option. `old` has a map; the `.bak` worlds need
-`map-config.yml` and a first render.
-
-Show which world is running on the status card, and preselect the current
-`ActiveWorld` in the picker.
+Every jar is present in `/opt/minecraft/jars/`. Every world has a
+`map-config.yml` and a published map, so all five are in
+`s3://minecraft-prod-maps/maps/world_manifest.json`.
 
 ## Before switching to an old world
 
@@ -145,19 +215,28 @@ per path, so a lone archive snapshot won't be pruned.
 
 ## Order of work
 
-1. Snapshot the archive worlds (manual, now).
-2. Check jars and give the old worlds maps.
-3. Terraform: `instance_metadata_tags`, lambda `CreateTags`.
-4. Packer: `minecraft-active.service`; `world register` stops enabling
-   `minecraft@`.
-5. Control lambda `/start?world=` and `ActiveWorld` in `/status`.
-6. UI picker.
-7. `minecraftctl world switch`.
+Phase 1:
+
+1. Snapshot the archive worlds (manual, running 2026-09-24).
+2. ~~Check jars and give the old worlds maps~~: already done on prod.
+3. Terraform: `instance_metadata_tags = "enabled"`.
+4. Packer: `minecraft-active.service`; `world register` / `world create` stop
+   enabling `minecraft@`.
+5. Try it on test: tag a second world, start, confirm it comes up; delete the
+   tag, confirm `default` comes up.
+
+Phase 2:
+
+1. Confirm on test that tag changes reach metadata while the instance runs.
+2. `minecraftctl world switch` (no tag handling; see above).
+3. The watcher timer (option B) in `packer/`, acting only on tag changes.
+4. `POST /world` on the control lambda, and decide where the button lives.
 
 ## Open questions
 
 - Should the tag go back to `default` after a session on an old world, or stay
-  where it was left? (Proposed: stay; the UI shows it.)
+  where it was left? (Proposed: stay. In phase 1 that means remembering to set
+  it back.)
 - Should the old worlds get the daily backup timer once they're playable, or
   only manual snapshots after each session? Registering them adds a daily job
   per world that mostly backs up nothing new; restic dedupes, so it's cheap.
