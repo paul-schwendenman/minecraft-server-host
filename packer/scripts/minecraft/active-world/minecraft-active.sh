@@ -29,12 +29,19 @@ DEFAULT_WORLD="${MC_DEFAULT_WORLD:-default}"
 # Why a world can't start, or nothing if it can. Doesn't require
 # world/level.dat: Minecraft writes that on a world's first start, so a world
 # fresh from `minecraftctl world create` has none yet.
+#
+# - eula.txt: without eula=true Minecraft exits straight away.
+# - enable-rcon=true: Minecraft would start without it, but autoshutdown reads
+#   the player count over RCON (and would power off with people playing), and
+#   ExecStop saves and stops the world over RCON.
 why_not_startable() {
   local dir="${WORLDS_DIR}/$1"
   if [[ ! "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
     echo "not a valid world name"
-  elif [[ ! -f "${dir}/server.properties" ]]; then
-    echo "no ${dir}/server.properties"
+  elif ! grep -qx 'eula=true' "${dir}/eula.txt" 2>/dev/null; then
+    echo "${dir}/eula.txt doesn't accept the EULA"
+  elif ! grep -qx 'enable-rcon=true' "${dir}/server.properties" 2>/dev/null; then
+    echo "RCON not enabled in ${dir}/server.properties"
   elif [[ ! -f "${dir}/server.jar" ]]; then
     # -f follows the symlink, so this also catches a jar missing from
     # /opt/minecraft/jars

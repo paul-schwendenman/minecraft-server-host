@@ -104,7 +104,11 @@ New `minecraft-active.service` (oneshot, `RemainAfterExit=yes`,
 **Review: what "can start" means.** The name must be a plain directory name
 (no `/`, not starting with `.`), and the world dir must have:
 
-- `server.properties`, and
+- `eula.txt` with `eula=true`: without it Minecraft exits straight away;
+- `server.properties` with `enable-rcon=true`: Minecraft would start without
+  it (it writes a default file with RCON off), but autoshutdown reads the
+  player count over RCON and would power off with people playing, and
+  `ExecStop` saves and stops the world over RCON; and
 - `server.jar` resolving to a file that exists (a symlink into
   `/opt/minecraft/jars/`). This catches a missing jar at boot instead of in a
   restart loop.

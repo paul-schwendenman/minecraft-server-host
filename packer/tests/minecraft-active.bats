@@ -18,13 +18,17 @@ teardown() {
     teardown_test_fixtures
 }
 
-# A world as `minecraftctl world create` leaves it: server.properties and a
-# server.jar symlink into the jars dir, but no world/level.dat yet.
+# A world as `minecraftctl world create` leaves it: eula.txt, server.properties
+# with RCON enabled and a server.jar symlink into the jars dir, but no
+# world/level.dat yet.
 make_world() {
+    local dir="${MINECRAFT_HOME}/$1"
     local jars="${TEST_TEMP_DIR}/opt/minecraft/jars"
-    mkdir -p "${MINECRAFT_HOME}/$1" "${jars}"
-    touch "${MINECRAFT_HOME}/$1/server.properties" "${jars}/minecraft_server_1.21.jar"
-    ln -sf "${jars}/minecraft_server_1.21.jar" "${MINECRAFT_HOME}/$1/server.jar"
+    mkdir -p "${dir}" "${jars}"
+    echo "eula=true" > "${dir}/eula.txt"
+    printf 'enable-rcon=true\nrcon.port=25575\nlevel-name=world\n' > "${dir}/server.properties"
+    touch "${jars}/minecraft_server_1.21.jar"
+    ln -sf "${jars}/minecraft_server_1.21.jar" "${dir}/server.jar"
 }
 
 # Mock IMDS: the token request succeeds; the tag request returns $1, or 404s
@@ -91,8 +95,11 @@ EOF
 }
 
 @test "minecraft-active: rejects path traversal in the tag" {
-    mkdir -p "${TEST_TEMP_DIR}/srv/escape"
-    touch "${TEST_TEMP_DIR}/srv/escape/server.properties" "${TEST_TEMP_DIR}/srv/escape/server.jar"
+    local escape="${TEST_TEMP_DIR}/srv/escape"
+    mkdir -p "${escape}"
+    echo "eula=true" > "${escape}/eula.txt"
+    echo "enable-rcon=true" > "${escape}/server.properties"
+    touch "${escape}/server.jar"
     mock_imds_tag "../escape"
 
     run bash "$SCRIPT"
@@ -156,6 +163,42 @@ EOF
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    [[ "$output" == *"no "*"old/server.properties"* ]]
+    [[ "$output" == *"RCON not enabled in "*"old/server.properties"* ]]
+    assert_mock_called_with "systemctl start minecraft@default.service"
+}
+
+@test "minecraft-active: falls back to default when RCON is disabled" {
+    make_world old
+    printf 'enable-rcon=false\nlevel-name=world\n' > "${MINECRAFT_HOME}/old/server.properties"
+    mock_imds_tag "old"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"RCON not enabled"* ]]
+    assert_mock_called_with "systemctl start minecraft@default.service"
+}
+
+@test "minecraft-active: falls back to default when the EULA isn't accepted" {
+    make_world old
+    echo "eula=false" > "${MINECRAFT_HOME}/old/eula.txt"
+    mock_imds_tag "old"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"doesn't accept the EULA"* ]]
+    assert_mock_called_with "systemctl start minecraft@default.service"
+}
+
+@test "minecraft-active: falls back to default when eula.txt is missing" {
+    make_world old
+    rm "${MINECRAFT_HOME}/old/eula.txt"
+    mock_imds_tag "old"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"doesn't accept the EULA"* ]]
     assert_mock_called_with "systemctl start minecraft@default.service"
 }
