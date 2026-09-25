@@ -59,8 +59,8 @@ metadata_options {
 }
 ```
 
-Check that changing `metadata_options` updates the instance in place rather than
-replacing it.
+Roll it out together with the new AMI, which replaces the instance anyway, so
+it doesn't matter whether `metadata_options` alone would update it in place.
 
 A tag missing or empty means `default`.
 
@@ -76,16 +76,28 @@ New `minecraft-active.service` (oneshot, `RemainAfterExit=yes`,
    up with no world running (autoshutdown would power it off at the next check).
 3. `systemctl start minecraft@<world>.service`.
 
+**Ordering on first boot.** On a new instance the data volume isn't in
+`/etc/fstab` until `mount-ebs.sh` runs from `user_data`, which is late in boot
+(cloud-init's final stage). Today that doesn't matter, because `register`,
+called from `user_data`, starts the world itself. Once it stops doing that,
+`minecraft-active.service` could run before the volume is mounted, find no
+world, start nothing, and autoshutdown would power off within 5 minutes. So
+order the unit `After=cloud-final.service`, plus
+`RequiresMountsFor=/srv/minecraft-server` for later boots. cloud-final runs on
+every boot but only runs the user scripts on the first, so the delay on later
+boots is small. Test the first boot on test specifically.
+
 Worlds are no longer enabled one by one:
 
 - `minecraftctl world register` / `world create` stop enabling
   `minecraft@<world>`. They still enable the map-build, world-backup and
   map-backup timers.
-- Migration: on the next boot of each env, `systemctl disable minecraft@default`
-  (and any other enabled world). This could go in a packer provisioning step or
-  in `minecraft-active.service` itself: disable every other `minecraft@*` unit
-  before starting the active one. The second option is self-healing, so it's
-  preferred.
+- No migration is needed. This ships as a new AMI, and changing `ami` replaces
+  the instance, so the root volume (where `systemctl enable` symlinks live)
+  starts with no world enabled. The one thing that re-enables a world is
+  `user_data`: every new instance runs `create-world.sh <world_name>`, which
+  calls `minecraftctl world register`. So the `register` change has to ship in
+  the same AMI as `minecraft-active.service`.
 
 Nothing else needs to change. `autoshutdown.sh` and `mc-healthcheck.sh` already
 look at any `minecraft@*` unit.
@@ -217,7 +229,7 @@ per path, so a lone archive snapshot won't be pruned.
 
 Phase 1:
 
-1. Snapshot the archive worlds (manual, running 2026-09-24).
+1. ~~Snapshot the archive worlds~~: done 2026-09-25 (IDs in the TODO).
 2. ~~Check jars and give the old worlds maps~~: already done on prod.
 3. Terraform: `instance_metadata_tags = "enabled"`.
 4. Packer: `minecraft-active.service`; `world register` / `world create` stop
