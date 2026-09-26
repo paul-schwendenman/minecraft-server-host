@@ -113,12 +113,13 @@ resource "aws_lambda_function" "control" {
 
   environment {
     variables = {
-      INSTANCE_ID = var.instance_id
-      DNS_NAME    = var.dns_name
-      CORS_ORIGIN = var.cors_origin
-      ZONE_ID     = var.zone_id
-      MAPS_BUCKET = var.map_bucket_name
-      MAP_PREFIX  = "maps/"
+      INSTANCE_ID   = var.instance_id
+      DNS_NAME      = var.dns_name
+      CORS_ORIGIN   = var.cors_origin
+      ZONE_ID       = var.zone_id
+      MAPS_BUCKET   = var.map_bucket_name
+      MAP_PREFIX    = "maps/"
+      DEFAULT_WORLD = var.default_world
     }
   }
 

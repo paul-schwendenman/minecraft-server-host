@@ -53,3 +53,9 @@ variable "map_bucket_name" {
   description = "Name of the S3 bucket that stores rendered maps"
   type        = string
 }
+
+variable "default_world" {
+  description = "World the instance starts when its ActiveWorld tag is unset (mc_stack world_name)"
+  type        = string
+  default     = "default"
+}

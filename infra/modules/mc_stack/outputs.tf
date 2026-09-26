@@ -28,3 +28,8 @@ output "security_group_id" {
 output "world_volume_id" {
   value = aws_ebs_volume.world.id
 }
+
+output "world_name" {
+  description = "World the instance starts when its ActiveWorld tag is unset"
+  value       = var.world_name
+}
