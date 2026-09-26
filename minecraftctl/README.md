@@ -138,7 +138,7 @@ minecraftctl world switch <world-name> --dry-run
 sudo minecraftctl world switch <world-name> --force --warn-delay 30s
 ```
 
-`world switch` checks the world can start (valid name, `eula=true`, `enable-rcon=true`, `server.jar` resolves; `world/level.dat` isn't needed), refuses while players are online unless `--force` is given, stops every running `minecraft@*`, starts the new world and waits (up to `--timeout`, default 5m) for it to answer RCON. If it doesn't come up, it's stopped and the previous world is started again. Switching to the world that's already running does nothing. While it runs it holds `/run/minecraft-switch.lock`, and autoshutdown skips its check.
+`world switch` checks the world can start (valid name, `eula=true`, `enable-rcon=true`, `server.jar` resolves; `world/level.dat` isn't needed), refuses while players are online unless `--force` is given, stops every running `minecraft@*`, starts the new world and waits (up to `--timeout`, default 5m) for it to answer RCON. If it doesn't come up, it's stopped and the previous world is started again. Switching to the world that's already running (and the only one running) does nothing. While it runs it holds `/run/minecraft-switch.lock`, and autoshutdown skips its check.
 
 Exit codes, so scripts can tell the outcomes apart:
 

@@ -51,7 +51,7 @@ RCON. Only one world can run at a time: they all use the same ports.
 Refuses if players are online, unless --force is given, in which case players
 are warned and get --warn-delay before the world stops. If <world> doesn't come
 up within --timeout, it's stopped and the previous world is started again. If
-<world> is already running, nothing happens. If nothing is running (at boot),
+<world> is the only world running, nothing happens. If nothing is running (at boot),
 <world> is just started.
 
 This doesn't change which world starts at boot; on the AWS hosts that's the
@@ -82,16 +82,10 @@ Exit codes:
 			stopped = strings.Join(res.Stopped, ", ")
 		}
 		switch {
-		case switchDryRun && !res.Started && len(res.Stopped) == 0:
+		case !res.Started:
 			fmt.Printf("%s is already running; nothing to do\n", res.World)
-		case switchDryRun && !res.Started:
-			fmt.Printf("Would stop %s; %s is already running\n", stopped, res.World)
 		case switchDryRun:
 			fmt.Printf("Would stop %s and start %s\n", stopped, res.World)
-		case !res.Started && len(res.Stopped) == 0:
-			fmt.Printf("%s is already running\n", res.World)
-		case !res.Started:
-			fmt.Printf("Stopped %s; %s is running\n", stopped, res.World)
 		default:
 			fmt.Printf("Switched to %s (stopped %s)\n", res.World, stopped)
 		}

@@ -278,10 +278,11 @@ world that crash-loops sits in `activating (auto-restart)`. If the timer fires
 then, the instance powers off mid-switch. **Decided: an flock.** `switch`
 holds `/run/minecraft-switch.lock` (`pkg/lock`) for as long as it runs, and
 autoshutdown skips its check while `flock -n` can't take it, as it already
-does for SSH sessions. flock releases the lock if `switch` dies, and it stops
-two switches running at once (the second waits 5 s, then exits 3).
-Autoshutdown runs as `minecraft` and can't create files in `/run`, so it only
-tests the lock when the file exists. (A manual swap over SSH was already safe
+does for SSH sessions. Autoshutdown holds the lock until it exits, so a switch
+can't start between its check and its shutdown decision. flock releases the
+lock if either dies, and it stops two switches running at once (the second
+waits 15 s, then exits 3). Autoshutdown runs as `minecraft` and can't create
+files in `/run`, so a tmpfiles.d entry creates the lock file at boot. (A manual swap over SSH was already safe
 because of the SSH check.)
 
 **Waiting for "up".** `systemctl start` returning doesn't mean Minecraft is up.
@@ -295,7 +296,10 @@ needs nothing per-world. It gives up early if the unit goes `inactive` or
 in any state but stopped. Stopping every match also cleans up two worlds
 running at once. Only a world that's `active` is checked for players and
 rolled back to; one that's crash-looping (`activating`) or stopping isn't. A
-target that's crash-looping is stopped and started fresh.
+target that's crash-looping, or running alongside another world, is stopped
+and started fresh (the other world's `ExecStop` sends `stop` to the shared
+RCON port, which may be the target's). Only the target running alone and up
+is a no-op.
 
 **Exit codes.** The phase 3 watcher needs to tell outcomes apart without
 parsing stderr, so give them distinct, documented codes:

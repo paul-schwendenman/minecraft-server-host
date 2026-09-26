@@ -241,7 +241,7 @@ MOCK
     run bash "$SCRIPT"
 
     [ "$status" -eq 0 ]
-    assert_mock_called_with "flock -n ${TEST_TEMP_DIR}/run/minecraft-switch.lock"
+    assert_mock_called_with "flock -n 9"
     ! assert_mock_called_with "poweroff"
     [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
@@ -259,7 +259,7 @@ MOCK
     [ -f "${STATE_DIR}/no_one_playing" ]
 }
 
-@test "autoshutdown: doesn't check the lock when no switch has run" {
+@test "autoshutdown: carries on without the lock file" {
     create_mock "who" 0 ""
     create_mock "flock" 1 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"

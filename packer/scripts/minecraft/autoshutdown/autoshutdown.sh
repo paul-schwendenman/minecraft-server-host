@@ -27,13 +27,21 @@ if who | grep 'pts/' >/dev/null 2>&1; then
 fi
 
 # Skip while `minecraftctl world switch` runs (it holds this lock): mid-switch
-# no world may be running, which would otherwise power off straight away. Only
-# test the lock if the file exists; this user can't create files in /run.
+# no world may be running, which would otherwise power off straight away. Keep
+# holding it until this script exits, so a switch can't start between the check
+# and the shutdown decision below (a switch waits a few seconds for it).
+# minecraft-switch-lock.conf (tmpfiles.d) creates the file at boot; this user
+# can't create files in /run, so without it there's nothing to check.
 SWITCH_LOCK="/run/minecraft-switch.lock"
-if [[ -e "${SWITCH_LOCK}" ]] && ! flock -n "${SWITCH_LOCK}" true; then
-  rm -f "${TOUCH_FILE}"
-  logger -t autoshutdown "Skipping shutdown: world switch in progress"
-  exit 0
+if [[ -e "${SWITCH_LOCK}" ]]; then
+  exec 9<"${SWITCH_LOCK}"
+  if ! flock -n 9; then
+    rm -f "${TOUCH_FILE}"
+    logger -t autoshutdown "Skipping shutdown: world switch in progress"
+    exit 0
+  fi
+else
+  logger -p user.warning -t autoshutdown "${SWITCH_LOCK} missing, can't tell whether a world switch is running"
 fi
 
 # Check if any minecraft service is running

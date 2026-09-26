@@ -206,7 +206,9 @@ func TestSwitchToRunningWorldIsNoop(t *testing.T) {
 	assertCalls(t, f, "lock", "unlock")
 }
 
-func TestSwitchStopsEveryOtherWorld(t *testing.T) {
+func TestSwitchRestartsTargetRunningAlongsideAnother(t *testing.T) {
+	// Stopping default could stop old too (ExecStop sends `stop` to the
+	// shared RCON port), so old is restarted and checked, not left as is.
 	f := &fakeSystem{units: []worldUnit{{"default", "active"}, {"old", "active"}}}
 	s := newTestSwitcher(t, f, "default", "old")
 
@@ -214,10 +216,25 @@ func TestSwitchStopsEveryOtherWorld(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Started {
-		t.Error("old was already running, want Started = false")
+	if !res.Started {
+		t.Error("want Started = true")
 	}
-	assertCalls(t, f, "lock", "players", "stop default", "unlock")
+	assertCalls(t, f, "lock", "players", "stop default", "stop old", "start old", "wait old", "unlock")
+}
+
+func TestSwitchRollsBackToTheOtherWorldNotTheTarget(t *testing.T) {
+	f := &fakeSystem{
+		units:   []worldUnit{{"old", "active"}, {"default", "active"}},
+		failing: map[string]bool{"old": true},
+	}
+	s := newTestSwitcher(t, f, "default", "old")
+
+	_, err := s.switchWorld("old", SwitchOptions{})
+	if !errors.Is(err, ErrStartFailed) {
+		t.Fatalf("err = %v, want ErrStartFailed", err)
+	}
+	assertCalls(t, f, "lock", "players", "stop old", "stop default", "start old", "wait old",
+		"stop old", "start default", "wait default", "unlock")
 }
 
 func TestSwitchRestartsCrashLoopingTarget(t *testing.T) {

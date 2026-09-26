@@ -138,13 +138,13 @@ type SwitchOptions struct {
 type SwitchResult struct {
 	World   string
 	Stopped []string // worlds stopped (or that would be)
-	Started bool     // false if World was already running
+	Started bool     // false if World was already the only world running
 }
 
 // SwitchWorld stops whatever world is running and starts worldName, waiting
 // until it answers RCON. If it doesn't come up within opts.Timeout, it's
 // stopped and the previous world is started again. If worldName is already
-// running, any other running world is stopped and nothing else happens.
+// the only world running, nothing happens.
 //
 // The returned error wraps one of ErrNotStartable, ErrSwitchRefused,
 // ErrStartFailed or ErrRollbackFailed when it's one of those outcomes.
@@ -204,18 +204,22 @@ func (s *switcher) switchWorld(target string, opts SwitchOptions) (*SwitchResult
 		return nil, fmt.Errorf("failed to list running worlds: %w", err)
 	}
 
+	// Nothing to do only if target is the one world running and it's up. If
+	// another world runs alongside it, everything is stopped and target is
+	// started fresh: the other world's ExecStop sends `stop` to the shared
+	// RCON port, which may be target's.
+	if len(units) == 1 && units[0].world == target && units[0].active == "active" {
+		return &SwitchResult{World: target}, nil
+	}
+
 	result := &SwitchResult{World: target, Started: true}
 	var previous string // the world to go back to if target doesn't come up
 	serving := false    // a world is up and could have players on it
 	for _, u := range units {
-		if u.world == target && u.active == "active" {
-			result.Started = false
-			continue
-		}
 		result.Stopped = append(result.Stopped, u.world)
 		if u.active == "active" || u.active == "reloading" {
 			serving = true
-			if previous == "" {
+			if previous == "" && u.world != target {
 				previous = u.world
 			}
 		}
@@ -241,10 +245,6 @@ func (s *switcher) switchWorld(target string, opts SwitchOptions) (*SwitchResult
 		if err := s.stop(w); err != nil {
 			return nil, fmt.Errorf("failed to stop %s: %w", w, err)
 		}
-	}
-
-	if !result.Started {
-		return result, nil
 	}
 
 	log.Info().Str("world", target).Msg("starting")
@@ -312,8 +312,9 @@ func (s *switcher) checkPlayers(target string, opts SwitchOptions) error {
 
 func lockSwitch() (func(), error) {
 	fl := lock.NewFileLock(SwitchLockPath)
-	// A short wait rides out autoshutdown's momentary check of the lock.
-	if err := fl.TryLock(5 * time.Second); err != nil {
+	// autoshutdown holds the lock through its check, RCON player count
+	// included; wait that out.
+	if err := fl.TryLock(15 * time.Second); err != nil {
 		if errors.Is(err, fs.ErrPermission) {
 			return nil, fmt.Errorf("failed to lock %s: %w", SwitchLockPath, systemd.ErrPermission)
 		}
