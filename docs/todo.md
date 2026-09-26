@@ -38,3 +38,4 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [x] Checklists in `minecraftctl-plan.md` and `minecraftctl-migration-plan.md` checked against the code and updated (2026-09-23).
 - [ ] Delete stale local branches. Five are gone. `replace-map-viewer` (5 commits) and `testing-backup` (16 commits) are still here, local-only and unmerged: decide whether to keep them or drop them.
 - [ ] `packer/readme.rst` is stale: it still lists `mcrcon` (no longer installed) and `map-rebuild.timer/service` (now `minecraft-map-build@`), and describes `rebuild-map.sh` as rendering with uNmINeD directly.
+- [ ] Pin the packer version in CI. check against the other versions in tool-versions too like terraform
