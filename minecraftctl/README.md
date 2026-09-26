@@ -95,7 +95,7 @@ minecraftctl world create <world-name> --version <version> --seed <seed>
 # Create a world without map-config.yml
 minecraftctl world create <world-name> --version <version> --no-map-config
 
-# Create a world without enabling systemd service
+# Create a world without enabling its systemd timers
 minecraftctl world create <world-name> --version <version> --no-systemd
 
 # Example: Create a world with version 1.21.1 and seed
@@ -110,19 +110,20 @@ minecraftctl world create vanilla-121 --version 1.21.1 --seed 8675309
 ### Register World
 
 ```bash
-# Register an existing world with systemd services
+# Register an existing world's systemd timers
 minecraftctl world register <world-name>
 ```
 
 The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
 
-- Enables and starts `minecraft@<world>.service`
 - Enables `minecraft-map-build@<world>.timer`
 - Enables `minecraft-world-backup@<world>.timer`
 - Enables `minecraft-map-backup@<world>.timer`
 - Reloads systemd daemon
 
-**Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd services and timers for an existing world.
+**Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd timers for an existing world.
+
+Neither `world create` nor `world register` enables or starts `minecraft@<world>.service`. Only one world can run at a time, so which world starts at boot is decided outside minecraftctl (on the AWS hosts, by `minecraft-active.service` from the `ActiveWorld` instance tag). Use `minecraftctl world start <world-name>` to start a world by hand.
 
 ### Build Maps
 
@@ -143,6 +144,8 @@ minecraftctl map build status <world-name>
 minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
+
+The map build timer runs while its world runs (it requires `minecraft@<world>.service`). `enable` only starts it right away if that world is already running, so enabling it for another world never starts a second server.
 
 ### Server Status
 

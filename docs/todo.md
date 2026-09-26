@@ -14,7 +14,10 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Uid drift fixes declined 2026-09-23**: fix ownership on the volume at boot, pin caddy's uid, shut down when `minecraft.env` can't be read. Revisit if an instance stays up again.
 
 - [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
-- [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. Also exclude `caddy/` so `all` stops exiting 3.
+- [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. Also exclude `caddy/` so `all` stops failing (restic exits 3, which minecraftctl reports as 1).
+
+- [x] **Snapshot the archive worlds on prod** (2026-09-25, `minecraft-prod-backups`): `old` `fe1f73d5`, `world.bak` `bba9dbb6`, `world.bak2` `a86f58fe`, `world.bak-1.19.2` `3295efea`, `all` `b4ea6c04`.
+- [ ] **World switching** ([plan](plans/world-switching-plan.md)): phase 1 adds a **Play** button in the maps app. It calls `/start?world=`, the control lambda sets an `ActiveWorld` EC2 tag and starts the instance, and a `minecraft-active.service` boot unit starts that world. Phase 2 switches while the server is running: a watcher on the instance calls `minecraftctl world switch`. The controls app stays unchanged. Every world's jar and map are already on prod (checked 2026-09-24).
 
 - [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. (`old`'s history is already in the pre-rewrite sync at `s3://minecraft-backup-001/logs/`; nothing more to save there.) Decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
 
@@ -30,6 +33,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 ## Big ideas
 
 - [ ] **`minecraftctl serve` API**: an API served from the game server itself. So far this is only one line in [minecraftctl-plan.md](plans/minecraftctl-plan.md) (Phase 10). It needs a design doc first: what it exposes, how it authenticates, and how it relates to the control lambda.
+- [ ] **Create worlds from a UI**: pick a name, version, seed, difficulty and so on, then play it straight away. `minecraftctl` already has the building blocks (`jar download`, `world create --version --seed`). What's missing is a way to trigger them remotely: `minecraftctl serve`, or the same tag/watcher glue as [world switching](plans/world-switching-plan.md) phase 2.
 
 ## Housekeeping
 

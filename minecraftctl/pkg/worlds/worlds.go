@@ -378,13 +378,14 @@ maps:
 		log.Warn().Err(err).Str("world", worldName).Msg("failed to chown world directory to minecraft user, continuing")
 	}
 
-	// Enable and start systemd service if requested
+	// Enable the world's timers if requested. The world's own minecraft@ service
+	// is left alone: only one world can run at a time, so which world starts at
+	// boot is decided outside minecraftctl.
 	if opts.EnableSystemd {
-		serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-
-		if err := systemd.EnableNow(serviceName); err != nil {
-			return fmt.Errorf("failed to enable and start systemd service %s: %w", serviceName, err)
+		if err := systemd.DaemonReload(); err != nil {
+			return fmt.Errorf("failed to reload systemd daemon: %w", err)
 		}
+		enableWorldTimers(worldName)
 	}
 
 	return nil
@@ -421,9 +422,9 @@ func chownToMinecraftUser(path string) error {
 	})
 }
 
-// RegisterWorld registers an existing world with systemd services and timers
-// without modifying any world files. This is used to "reattach" a world from
-// an EBS volume to a new server instance.
+// RegisterWorld enables an existing world's timers without modifying any world
+// files. This is used to "reattach" a world from an EBS volume to a new server
+// instance. It doesn't enable or start the world's minecraft@ service.
 func RegisterWorld(worldName string) error {
 	cfg := config.Get()
 	worldDir := filepath.Join(cfg.WorldsDir, worldName)
@@ -439,25 +440,27 @@ func RegisterWorld(worldName string) error {
 		return fmt.Errorf("failed to reload systemd daemon: %w", err)
 	}
 
-	// Enable and start the main service
-	serviceName := fmt.Sprintf("minecraft@%s.service", worldName)
-	if err := systemd.EnableNow(serviceName); err != nil {
-		return fmt.Errorf("failed to enable and start systemd service %s: %w", serviceName, err)
-	}
+	enableWorldTimers(worldName)
 
-	// Enable timers (but don't start them - they'll start on their schedule)
-	timers := []string{
+	return nil
+}
+
+// WorldTimers returns the timers enabled for a registered world.
+func WorldTimers(worldName string) []string {
+	return []string{
 		fmt.Sprintf("minecraft-map-build@%s.timer", worldName),
 		fmt.Sprintf("minecraft-world-backup@%s.timer", worldName),
 		fmt.Sprintf("minecraft-map-backup@%s.timer", worldName),
 	}
+}
 
-	for _, timerName := range timers {
+// enableWorldTimers enables a world's timers (but doesn't start them - they'll
+// start on their schedule).
+func enableWorldTimers(worldName string) {
+	for _, timerName := range WorldTimers(worldName) {
 		if err := systemd.Enable(timerName); err != nil {
 			// Log warning but don't fail - timers might not be installed
 			log.Warn().Err(err).Str("timer", timerName).Msg("failed to enable timer, continuing")
 		}
 	}
-
-	return nil
 }

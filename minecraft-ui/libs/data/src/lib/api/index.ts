@@ -1,4 +1,4 @@
-export { startInstance } from './start.js';
+export { startInstance, startWorld } from './start.js';
 export { stopInstance } from './stop.js';
 export { syncDnsRecord } from './syncDns.js';
 export { getDetails } from './details.js';

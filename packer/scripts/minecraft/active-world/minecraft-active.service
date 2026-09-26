@@ -1,0 +1,15 @@
+[Unit]
+Description=Start the Minecraft world named by the ActiveWorld instance tag
+# On a new instance the data volume is mounted by user_data (cloud-final), so
+# wait for that. RequiresMountsFor covers later boots, when it's in fstab.
+After=cloud-final.service network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/minecraft-server
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/minecraft-active.sh
+
+[Install]
+WantedBy=cloud-final.service

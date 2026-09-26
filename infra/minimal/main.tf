@@ -66,6 +66,10 @@ resource "aws_instance" "minecraft" {
   user_data = <<-EOT
               #!/bin/bash
               /usr/local/bin/create-world.sh ${var.world_name} ${var.world_version} ${var.world_seed}
+              # minecraft-active.service starts this world (no ActiveWorld tag here)
+              if ! grep -q '^MC_DEFAULT_WORLD=' /etc/minecraft.env 2>/dev/null; then
+                echo "MC_DEFAULT_WORLD=${var.world_name}" | sudo tee -a /etc/minecraft.env
+              fi
               EOT
 
   tags = {

@@ -123,6 +123,80 @@ class TestFastAPIEndpoints:
         assert response.json() == {"message": "Success"}
         mock_start.assert_called_once_with("i-test123")
 
+    def _instance(self, state, world=None):
+        tags = [{"Key": "ActiveWorld", "Value": world}] if world else []
+        return {"State": {"Name": state}, "Tags": tags}
+
+    def _start_world(self, world, state="stopped", active=None, worlds=None):
+        """POST /start?world= with the AWS helpers mocked; returns (response, mocks)."""
+        from fastapi.testclient import TestClient
+        from app.main import app
+
+        with patch("app.main.aws.list_worlds", return_value=worlds or ["default", "old"]), \
+             patch("app.main.aws.get_instance", return_value=self._instance(state, active)), \
+             patch("app.main.aws.set_active_world") as mock_set, \
+             patch("app.main.aws.start_instance") as mock_start:
+            response = TestClient(app).post("/start", params={"world": world})
+        return response, mock_set, mock_start
+
+    def test_start_world_when_stopped_sets_tag_then_starts(self):
+        response, mock_set, mock_start = self._start_world("old")
+
+        assert response.status_code == 200
+        assert response.json() == {"message": "Success", "world": "old"}
+        mock_set.assert_called_once_with("i-test123", "old")
+        mock_start.assert_called_once_with("i-test123")
+
+    def test_start_unknown_world_is_rejected(self):
+        response, mock_set, mock_start = self._start_world("nope")
+
+        assert response.status_code == 400
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_start_different_world_while_running_conflicts(self):
+        response, mock_set, mock_start = self._start_world(
+            "old", state="running", active="default"
+        )
+
+        assert response.status_code == 409
+        assert "default" in response.json()["detail"]
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_start_untagged_running_instance_counts_as_default(self):
+        response, mock_set, _ = self._start_world("default", state="running")
+
+        assert response.status_code == 200
+        mock_set.assert_not_called()
+
+    def test_start_same_world_while_running_is_a_no_op(self):
+        response, mock_set, mock_start = self._start_world(
+            "old", state="running", active="old"
+        )
+
+        assert response.status_code == 200
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_start_world_while_stopping_conflicts(self):
+        response, mock_set, mock_start = self._start_world("old", state="stopping")
+
+        assert response.status_code == 409
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_start_world_when_world_list_unavailable(self):
+        from fastapi.testclient import TestClient
+        from app.main import app
+
+        with patch("app.main.aws.list_worlds", side_effect=Exception("boom")), \
+             patch("app.main.aws.start_instance") as mock_start:
+            response = TestClient(app).post("/start", params={"world": "old"})
+
+        assert response.status_code == 503
+        mock_start.assert_not_called()
+
     @patch("app.main.aws.stop_instance")
     def test_stop_endpoint(self, mock_stop):
         """Test the stop endpoint calls stop_instance."""

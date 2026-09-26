@@ -72,7 +72,7 @@ export function mockServer(): Plugin {
 			// ---------- State ----------
 			let errorThreshold = 0.9;
 			const state: ServerStatusResponse = {
-				instance: { state: 'stopped', ip_address: undefined },
+				instance: { state: 'stopped', ip_address: undefined, active_world: 'default' },
 				dns_record: { name: 'minecraft.example.com.', value: '10.0.0.1', type: 'A' }
 			};
 
@@ -126,6 +126,21 @@ export function mockServer(): Plugin {
 					const path = req.url.replace(/^\/api/, '').split('?')[0];
 
 					if (path === '/start') {
+						const world = new URL(req.url, 'http://mock').searchParams.get('world');
+						if (world) {
+							const up = ['pending', 'running'].includes(state.instance.state);
+							if (up && world !== state.instance.active_world) {
+								return send(
+									res,
+									{
+										detail: `Server is running ${state.instance.active_world}; stop it before switching worlds`
+									},
+									409
+								);
+							}
+							if (up) return send(res, { message: 'Success', world });
+							state.instance.active_world = world;
+						}
 						state.instance.state = 'pending';
 						await sleep(250);
 						setTimeout(() => {

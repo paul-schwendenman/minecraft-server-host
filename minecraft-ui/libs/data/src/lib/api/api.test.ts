@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getStatus } from './status.js';
-import { startInstance } from './start.js';
+import { startInstance, startWorld } from './start.js';
 import { stopInstance } from './stop.js';
 import { syncDnsRecord } from './syncDns.js';
 import { getDetails } from './details.js';
@@ -93,6 +93,48 @@ describe('startInstance', () => {
 		const mockFetch = createMockFetchText('Failed to start', false, 500);
 
 		await expect(startInstance(mockFetch)).rejects.toThrow();
+	});
+});
+
+describe('startWorld', () => {
+	it('passes the world as a query parameter', async () => {
+		const mockFetch = createMockFetchText('{"message":"Success","world":"world.bak-1.19.2"}');
+
+		await startWorld('world.bak-1.19.2', mockFetch);
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining('/start?world=world.bak-1.19.2'),
+			expect.objectContaining({ method: 'POST' })
+		);
+	});
+
+	it('encodes the world name', async () => {
+		const mockFetch = createMockFetchText('{}');
+
+		await startWorld('a b&c', mockFetch);
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining('world=a+b%26c'),
+			expect.anything()
+		);
+	});
+
+	it('throws the API detail message on a conflict', async () => {
+		const mockFetch = createMockFetchText(
+			'{"detail":"Server is running default; stop it before switching worlds"}',
+			false,
+			409
+		);
+
+		await expect(startWorld('old', mockFetch)).rejects.toThrow(
+			'Server is running default; stop it before switching worlds'
+		);
+	});
+
+	it('throws the raw text when the error is not JSON', async () => {
+		const mockFetch = createMockFetchText('Internal Server Error', false, 500);
+
+		await expect(startWorld('old', mockFetch)).rejects.toThrow('Internal Server Error');
 	});
 });
 

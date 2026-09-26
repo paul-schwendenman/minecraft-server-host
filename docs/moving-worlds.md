@@ -101,11 +101,18 @@ sudo -u minecraft minecraftctl backup list <world>
 aws s3 ls s3://minecraft-prod-backups/snapshots/      # from the laptop
 ```
 
-Expect `backup create all` to end with **exit status 3** and the unit marked
+Expect `backup create all` to end with **exit status 1** and the unit marked
 failed: `/srv/minecraft-server/caddy/` belongs to caddy and the minecraft user
 can't read it. Restic exits 3 when it saved the snapshot but skipped unreadable
-files; look for `snapshot <id> saved` in the journal. Caddy re-issues its certs,
-so losing that directory isn't a problem.
+files, and minecraftctl reports any error as exit 1, so the unit sees 1. Look
+for `snapshot <id> saved` in the journal, and check that every `permission
+denied` line is under `caddy/`:
+
+```bash
+journalctl -u <unit> | grep -i 'permission denied' | grep -v caddy   # expect nothing
+```
+
+Caddy re-issues its certs, so losing that directory isn't a problem.
 
 Once both snapshots are in S3 the destination owns the world, and the source
 copy can be deleted.

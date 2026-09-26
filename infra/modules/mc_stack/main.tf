@@ -63,9 +63,20 @@ resource "aws_instance" "minecraft" {
     volume_type = "gp3"
   }
 
+  # Expose tags to instance metadata: minecraft-active.service reads the
+  # ActiveWorld tag at boot to decide which world to start.
+  metadata_options {
+    http_endpoint          = "enabled"
+    http_tokens            = "required"
+    instance_metadata_tags = "enabled"
+  }
+
   lifecycle {
     ignore_changes = [
       associate_public_ip_address,
+      # Set by the control lambda (/start?world=), not by Terraform
+      tags["ActiveWorld"],
+      tags_all["ActiveWorld"],
     ]
   }
 
@@ -79,6 +90,11 @@ resource "aws_instance" "minecraft" {
                 echo "MC_MAP_BUCKET=${var.map_bucket}" | sudo tee -a /etc/minecraft.env
               else
                 echo "MC_MAP_BUCKET already set, skipping append"
+              fi
+              if ! grep -q '^MC_DEFAULT_WORLD=' /etc/minecraft.env; then
+                echo "MC_DEFAULT_WORLD=${var.world_name}" | sudo tee -a /etc/minecraft.env
+              else
+                echo "MC_DEFAULT_WORLD already set, skipping append"
               fi
               if ! grep -q '^MC_WORLD_BUCKET=' /etc/minecraft.env; then
                 echo "MC_WORLD_BUCKET=${var.backup_bucket}" | sudo tee -a /etc/minecraft.env

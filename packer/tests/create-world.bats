@@ -103,3 +103,50 @@ teardown() {
     [ "$status" -eq 0 ]
     assert_mock_called_with "minecraftctl world create vanilla-121-hardcore --version 1.21.1"
 }
+
+@test "create-world: registers the other worlds on the volume" {
+    touch "${TEST_TEMP_DIR}/opt/minecraft/jars/minecraft_server_1.21.1.jar"
+    for w in default old world.bak-1.19.2; do
+        mkdir -p "${MINECRAFT_HOME}/$w"
+        touch "${MINECRAFT_HOME}/$w/server.properties"
+    done
+    mkdir -p "${MINECRAFT_HOME}/caddy"  # not a world: no server.properties
+
+    run bash "$SCRIPT" "default" "1.21.1"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "minecraftctl world register old"
+    assert_mock_called_with "minecraftctl world register world.bak-1.19.2"
+    ! assert_mock_called_with "minecraftctl world register caddy"
+    [ "$(grep -c 'world register default' "${TEST_TEMP_DIR}/mock_calls.log")" -eq 1 ]
+}
+
+@test "create-world: registers existing worlds after creating a new one" {
+    touch "${TEST_TEMP_DIR}/opt/minecraft/jars/minecraft_server_1.21.1.jar"
+    mkdir -p "${MINECRAFT_HOME}/old"
+    touch "${MINECRAFT_HOME}/old/server.properties"
+
+    run bash "$SCRIPT" "survival" "1.21.1"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "minecraftctl world create survival --version 1.21.1"
+    assert_mock_called_with "minecraftctl world register old"
+}
+
+@test "create-world: keeps going when another world can't be registered" {
+    touch "${TEST_TEMP_DIR}/opt/minecraft/jars/minecraft_server_1.21.1.jar"
+    mkdir -p "${MINECRAFT_HOME}/default" "${MINECRAFT_HOME}/broken"
+    touch "${MINECRAFT_HOME}/default/server.properties" "${MINECRAFT_HOME}/broken/server.properties"
+    cat > "${MOCK_BIN}/minecraftctl" << EOF
+#!/usr/bin/env bash
+echo "minecraftctl \$*" >> "${TEST_TEMP_DIR}/mock_calls.log"
+[[ "\$*" == *broken* ]] && exit 1
+exit 0
+EOF
+    chmod +x "${MOCK_BIN}/minecraftctl"
+
+    run bash "$SCRIPT" "default" "1.21.1"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"Could not register 'broken'"* ]]
+}

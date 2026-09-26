@@ -110,6 +110,7 @@ module "api_lambda" {
   zone_id         = aws_route53_zone.prod.zone_id
   map_bucket_name = module.s3_buckets.map_bucket_name
   cors_origin     = "*"
+  default_world   = module.mc_stack.world_name
 }
 
 # Manager app (www.*)

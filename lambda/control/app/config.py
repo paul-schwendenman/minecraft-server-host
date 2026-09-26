@@ -14,4 +14,8 @@ def get_settings():
         "ZONE_ID": os.environ.get("ZONE_ID"),
         "CORS_ORIGIN": os.environ.get("CORS_ORIGIN", "*"),
         "AWS_LOCAL": os.environ.get("AWS_LOCAL") == "1",
+        "MAPS_BUCKET": os.environ.get("MAPS_BUCKET", ""),
+        "MAP_PREFIX": os.environ.get("MAP_PREFIX", "maps/"),
+        # What the instance starts when ActiveWorld is unset (MC_DEFAULT_WORLD there)
+        "DEFAULT_WORLD": os.environ.get("DEFAULT_WORLD", "default"),
     }

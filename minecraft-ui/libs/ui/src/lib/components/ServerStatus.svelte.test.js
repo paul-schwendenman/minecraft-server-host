@@ -34,7 +34,8 @@ const { mockStatus, mockDetails } = vi.hoisted(() => {
 				dns_record: {}
 			}),
 			refresh: vi.fn(() => Promise.resolve()),
-			dispatch: vi.fn(() => Promise.resolve())
+			dispatch: vi.fn(() => Promise.resolve()),
+			startWorld: vi.fn(() => Promise.resolve())
 		},
 		mockDetails: createMockStore(null)
 	};
@@ -47,7 +48,8 @@ vi.mock('@minecraft/data', () => ({
 	startInstance: vi.fn(),
 	stopInstance: vi.fn(),
 	syncDnsRecord: vi.fn(),
-	getDetails: vi.fn()
+	getDetails: vi.fn(),
+	listWorlds: vi.fn(() => Promise.reject(new Error('no worlds in this test')))
 }));
 
 // Import component after mock is set up
@@ -114,6 +116,26 @@ describe('ServerStatus', () => {
 
 			const screen = render(ServerStatus);
 			await expect.element(screen.getByText(/IP address:/)).toBeInTheDocument();
+		});
+	});
+
+	describe('world', () => {
+		it('shows the active world', async () => {
+			mockStatus.set({
+				instance: { state: 'running', ip_address: '10.0.0.1', active_world: 'old' },
+				dns_record: { value: '10.0.0.2' }
+			});
+
+			const screen = render(ServerStatus);
+			await expect.element(screen.getByText('World:')).toBeInTheDocument();
+			await expect.element(screen.getByText('old', { exact: true })).toBeInTheDocument();
+		});
+
+		it('leaves the world out when the API does not report one', async () => {
+			mockStatus.set({ instance: { state: 'stopped' }, dns_record: {} });
+
+			const screen = render(ServerStatus);
+			await expect.element(screen.getByText('World:')).not.toBeInTheDocument();
 		});
 	});
 

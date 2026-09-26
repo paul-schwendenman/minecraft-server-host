@@ -1,6 +1,8 @@
 <script>
 	import { details } from '@minecraft/data';
-	import { ActivePlayerList, ActivePlayerMessage, ServerVersion } from '@minecraft/ui';
+	import ActivePlayerList from './ActivePlayerList.svelte';
+	import ActivePlayerMessage from './ActivePlayerMessage.svelte';
+	import ServerVersion from './ServerVersion.svelte';
 </script>
 
 {#await $details}
