@@ -14,28 +14,33 @@ Architecture Overview
 
    +------------------+        +---------------------+
    |   Terraform      |        |   Packer Build      |
-   | (launch AMI)     |        | (create AMI image)  |
+   | (launch AMI,     |        | (base.pkr.hcl ->    |
+   |  user_data)      |        |  minecraft.pkr.hcl) |
    +--------+---------+        +----------+----------+
             |                             |
             v                             v
    +----------------------------------------------+
    |                EC2 Instance                  |
    |----------------------------------------------|
-   |  Systemd Units:                              |
-   |   - minecraft@.service (per world)           |
-   |   - autoshutdown.timer/service               |
-   |   - map-rebuild.timer/service                |
+   |  Boot (user_data, then systemd):             |
+   |   - mount-ebs / setup-env / setup-maps       |
+   |   - create-world.sh (create or register)     |
+   |   - minecraft-active.service (start world)   |
+   |   - dyndns.service (Route53 records)         |
    |                                              |
-   |  Tools & Scripts:                            |
-   |   - create-world.sh                          |
-   |   - rebuild-map.sh                           |
-   |   - autoshutdown.sh                          |
-   |   - mcrcon / mcstatus                        |
+   |  Per world:                                  |
+   |   - minecraft@<world>.service                |
+   |   - minecraft-map-build@<world>.timer        |
+   |   - minecraft-world-backup@<world>.timer     |
+   |   - minecraft-map-backup@<world>.timer       |
+   |                                              |
+   |  Host:                                       |
+   |   - autoshutdown.timer                       |
+   |   - minecraftctl (world/map/backup/rcon CLI) |
    |                                              |
    |  Dependencies:                               |
-   |   - OpenJDK 21                               |
-   |   - uNmINeD CLI                              |
-   |   - Caddy (map web server)                   |
+   |   - OpenJDK 25, uNmINeD CLI, restic,         |
+   |     AWS CLI, Caddy                           |
    +----------------------------------------------+
                       |
                       v
@@ -45,56 +50,94 @@ Architecture Overview
               |  /var/www/map)  |
               +-----------------+
 
+World data lives on a separate EBS volume mounted at ``/srv/minecraft-server``
+(one directory per world). It outlives AMI rebuilds; the root volume, and with
+it every ``systemctl enable``, is replaced with each new AMI.
+
+Which world runs
+~~~~~~~~~~~~~~~~
+Only one world runs at a time: every world uses port 25565 and RCON 25575.
+Worlds are **not** enabled at boot one by one. ``minecraft-active.service``
+reads the instance's ``ActiveWorld`` tag from instance metadata once
+cloud-init has finished and starts that world. The control lambda sets the tag
+(``POST /start?world=<name>``); see ``docs/plans/world-switching-plan.md``.
+
+If the tag is missing, or the world can't start, it falls back to
+``MC_DEFAULT_WORLD`` from ``/etc/minecraft.env`` (Terraform's ``world_name``,
+usually ``default``). A world can start when its directory has:
+
+- ``eula.txt`` with ``eula=true``
+- ``server.properties`` with ``enable-rcon=true`` (autoshutdown and
+  ``ExecStop`` talk to the server over RCON)
+- ``server.jar`` pointing to a jar that exists in ``/opt/minecraft/jars/``
+
+``world/level.dat`` isn't required: Minecraft writes it on a world's first
+start. Check the log with ``journalctl -u minecraft-active``.
+
 Included Tools & Scripts
 ------------------------
 
 System Components
 ~~~~~~~~~~~~~~~~~
-- **Java (OpenJDK 21)**: required for modern Minecraft server versions.
-- **Caddy**: lightweight web server used to serve rendered maps.
+- **Java (OpenJDK 25)**: required for modern Minecraft server versions.
+- **Minecraft server jars**: every version listed in
+  ``minecraft_jars.auto.pkrvars.hcl``, in ``/opt/minecraft/jars/``. Each world's
+  ``server.jar`` is a symlink to one of them.
+- **minecraftctl**: Go CLI for worlds, maps, backups and RCON (see
+  ``minecraftctl/README.md``). Scripts and units call it rather than using an
+  RCON client directly.
 - **uNmINeD CLI**: world map renderer (downloaded at build time from an S3
   mirror, since unmined.net only publishes a rolling "-dev" build with no
   stable URL to pin against; see ``unmined.auto.pkrvars.hcl`` and
   ``docs/unmined-cli/`` below).
-- **mcrcon**: RCON client, used by scripts and automation for sending
-  commands to the server.
-- **mcstatus**: Python utility to query Minecraft server status.
+- **restic**: world backups to the environment's S3 backup bucket.
+- **AWS CLI**: map uploads and Route53 updates.
+- **Caddy**: lightweight web server used to serve rendered maps.
+- **mcstatus**, **nbtlib**: Python tools for server status and world data.
 
 Systemd Units
 ~~~~~~~~~~~~~
-- **minecraft@.service**: template unit for running a Minecraft world as a
-  service (one world = one unit).
-- **autoshutdown.service** / **autoshutdown.timer**: checks for idle
-  servers and shuts down the instance if no players or SSH sessions are active.
-- **map-rebuild.service** / **map-rebuild.timer**: periodically triggers
-  map regeneration for all worlds.
+- **minecraft@.service**: template unit for running a Minecraft world
+  (one world = one unit). Its drop-ins back up the world and its maps when it
+  stops.
+- **minecraft-active.service**: starts the world named by the ``ActiveWorld``
+  tag at boot (see above).
+- **autoshutdown.timer** / **autoshutdown.service**: every 5 minutes; powers
+  the instance off when no world is running, or after two checks with no
+  players. An interactive SSH session skips shutdown.
+- **minecraft-map-build@.timer** / **.service**: renders a world's maps every
+  15 minutes while that world runs. The timer requires the world's
+  ``minecraft@`` unit, so it's enabled per world but never started on its own.
+- **minecraft-map-backup@.timer** / **.service**: uploads a world's rendered
+  maps to S3 twice a day.
+- **minecraft-world-backup@.timer** / **.service**: daily restic snapshot of
+  a world's ``world/`` directory.
+- **minecraft-world-backup.timer**, **minecraft-world-prune.timer**,
+  **minecraft-map-backup.timer**, **minecraft-map-build-daily@.timer**:
+  weekly full backups, prune and a daily map-build fallback. Installed but not
+  enabled.
+- **dyndns.service**: updates the Route53 A, AAAA and SSHFP records at boot.
+- **minecraft-health.service**: one-off health check
+  (``mc-healthcheck.sh``); run it by hand.
+
+``minecraftctl world register <world>`` enables a world's three timers;
+``world create`` does the same for a new world. Neither enables or starts
+``minecraft@<world>``.
 
 Helper Scripts
 ~~~~~~~~~~~~~~
-- **create-world.sh**:
-  Creates and initializes a new world directory with:
-  - symlinked server jar
-  - EULA acceptance
-  - `server.properties` with RCON configured
-  - systemd unit enabled/started
-  - Caddy automatically serving the world’s map directory
-
-- **rebuild-map.sh**:
-  Renders a map for one or all worlds using uNmINeD and updates the
-  landing page (`/var/www/map/index.html`) with links to available worlds.
-  The currently active world(s) are highlighted.
-
-- **autoshutdown.sh**:
-  Called by systemd; queries RCON (or falls back to logs) to detect active
-  players. Shuts down the machine after two idle checks.
-
-Backups
-~~~~~~~
-Optional scripts can be installed for:
-- **map backups to S3**
-- **world backups to S3**
-
-These are disabled by default and must be configured with AWS credentials.
+- **create-world.sh** ``<world> <version> [seed]``: run from ``user_data`` on
+  every new instance. Registers the world if it's already on the volume,
+  otherwise creates it with ``minecraftctl world create``. Either way it then
+  registers every other world on the volume, so all of them keep their backup
+  timers. It doesn't start anything.
+- **minecraft-active.sh**: the boot unit's script (see "Which world runs").
+- **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
+  ``minecraftctl map build`` used by the map-build units.
+- **backup-maps.sh**: uploads a world's maps to the S3 map bucket.
+- **autoshutdown.sh**: the idle check behind ``autoshutdown.timer``.
+- **mount-ebs.sh**, **setup-env.sh**, **setup-maps.sh**,
+  **configure-caddy.sh**, **publish-dns.sh**: ``user_data`` and boot helpers.
 
 Usage
 -----
@@ -126,9 +169,11 @@ Usage
   file, which is how every ``packer build``/``packer validate`` call in
   this repo works.
 
-- Launch with Terraform (see parent project modules).
-- Use ``create-world.sh`` to create/manage worlds.
-- Maps are available via HTTP at ``http://<server>/map/``.
+- Launch with Terraform (see ``infra/``). ``user_data`` mounts the volume and
+  runs ``create-world.sh``.
+- Manage worlds on the instance with ``minecraftctl`` (``world list``,
+  ``world create``, ``world start``, ...).
+- Maps are served by Caddy from ``/var/www/map`` on the server's domain.
 - unmined-cli's own help output (per module/verb, plus its README) is
   mirrored at ``docs/unmined-cli/``, refreshed whenever the pin changes.
 
