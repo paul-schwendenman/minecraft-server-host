@@ -44,6 +44,14 @@ describe('PlayWorld', () => {
 		mockStatus.startWorld.mockImplementation(() => Promise.resolve());
 	});
 
+	it('refreshes a previously loaded status on mount', async () => {
+		setServer('running', 'default');
+
+		render(PlayWorld, { world: 'old' });
+
+		expect(mockStatus.refresh).toHaveBeenCalled();
+	});
+
 	it('refreshes the status when none is loaded yet', async () => {
 		mockStatus.set({});
 
@@ -94,12 +102,23 @@ describe('PlayWorld', () => {
 			.toBeInTheDocument();
 	});
 
-	it('offers a refresh while the server is stopping', async () => {
-		setServer('stopping');
+	it.each(['running', 'stopped', 'stopping'])('offers a refresh while %s', async (state) => {
+		setServer(state);
 
 		const screen = render(PlayWorld, { world: 'old' });
-		await screen.getByRole('button', { name: 'Refresh' }).click();
+		await expect.poll(() => mockStatus.refresh).toHaveBeenCalledTimes(1);
+		await screen.getByRole('button', { name: 'Refresh server status' }).click();
 
-		expect(mockStatus.refresh).toHaveBeenCalled();
+		expect(mockStatus.refresh).toHaveBeenCalledTimes(2);
+	});
+
+	it('hides the refresh until the status has loaded', async () => {
+		mockStatus.set({});
+
+		const screen = render(PlayWorld, { world: 'old' });
+
+		await expect
+			.element(screen.getByRole('button', { name: 'Refresh server status' }))
+			.not.toBeInTheDocument();
 	});
 });
