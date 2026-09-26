@@ -25,6 +25,9 @@
 		<p>
 			Server is {$status.instance?.state}.
 		</p>
+		{#if $status.instance?.active_world}
+			<p>World: <strong>{$status.instance.active_world}</strong></p>
+		{/if}
 		{#if $status.instance?.state == 'running'}
 			<p>IP address: <code>{$status.instance?.ip_address}</code></p>
 
@@ -35,7 +38,7 @@
 	</div>
 	<div class="flex flex-col flex-wrap gap-1 sm:flex-row">
 		{#if $status.instance?.state == 'stopped'}
-			<StartButton class="min-w-0 flex-2" />
+			<StartButton class="flex-2" />
 		{:else if $status.instance?.state == 'running'}
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
 				<AsyncButton class="flex-2" action={handleSyncDNS}>Update DNS</AsyncButton>

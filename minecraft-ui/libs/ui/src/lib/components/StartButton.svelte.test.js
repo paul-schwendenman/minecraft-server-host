@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { userEvent } from 'vitest/browser';
 
 const { mockStatus, mockListWorlds } = vi.hoisted(() => {
 	let value = {};
@@ -44,22 +45,13 @@ describe('StartButton', () => {
 		mockListWorlds.mockImplementation(() => Promise.resolve(worlds));
 	});
 
-	it('names the world the plain Start launches', async () => {
+	it('does a plain start from the main button', async () => {
 		const screen = render(StartButton);
 
-		await screen.getByRole('button', { name: 'Start default' }).click();
+		await screen.getByRole('button', { name: 'Start', exact: true }).click();
 
 		expect(mockStatus.dispatch).toHaveBeenCalledWith('startInstance');
-	});
-
-	it('says just Start when the active world is unknown', async () => {
-		mockStatus.set({ instance: { state: 'stopped' }, dns_record: {} });
-
-		const screen = render(StartButton);
-
-		await expect
-			.element(screen.getByRole('button', { name: 'Start', exact: true }))
-			.toBeInTheDocument();
+		expect(mockStatus.startWorld).not.toHaveBeenCalled();
 	});
 
 	it('shows a plain Start without a dropdown when the world list fails', async () => {
@@ -67,7 +59,9 @@ describe('StartButton', () => {
 
 		const screen = render(StartButton);
 
-		await expect.element(screen.getByRole('button', { name: 'Start default' })).toBeInTheDocument();
+		await expect
+			.element(screen.getByRole('button', { name: 'Start', exact: true }))
+			.toBeInTheDocument();
 		await expect
 			.element(screen.getByRole('button', { name: 'Start a different world' }))
 			.not.toBeInTheDocument();
@@ -107,5 +101,17 @@ describe('StartButton', () => {
 		await expect
 			.element(screen.getByText('Server is stopping; try again once it has stopped'))
 			.toBeInTheDocument();
+	});
+
+	it('closes the menu on Escape', async () => {
+		const screen = render(StartButton);
+		const toggle = screen.getByRole('button', { name: 'Start a different world' });
+
+		await toggle.click();
+		expect(document.activeElement).toBe(toggle.element());
+
+		await userEvent.keyboard('{Escape}');
+
+		expect(document.activeElement).not.toBe(toggle.element());
 	});
 });

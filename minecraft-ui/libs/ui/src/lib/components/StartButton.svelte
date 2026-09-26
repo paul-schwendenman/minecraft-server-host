@@ -13,7 +13,6 @@
 	let error = $state('');
 
 	const activeWorld = $derived($status.instance?.active_world);
-	const label = $derived(activeWorld ? `Start ${activeWorld}` : 'Start');
 
 	onMount(async () => {
 		try {
@@ -25,9 +24,11 @@
 
 	const handleStart = () => status.dispatch('startInstance');
 
+	// The daisyUI dropdown is open while it has focus
+	const closeMenu = () => (document.activeElement as HTMLElement | null)?.blur();
+
 	const handleStartWorld = async (world: string) => {
-		// Close the focus-driven daisyUI dropdown
-		(document.activeElement as HTMLElement | null)?.blur();
+		closeMenu();
 		if (pending) return;
 
 		pending = true;
@@ -43,20 +44,21 @@
 </script>
 
 {#if worlds.length === 0}
-	<AsyncButton class={className} action={handleStart}>
-		<span class="truncate">{label}</span>
-	</AsyncButton>
+	<AsyncButton class={className} action={handleStart}>Start</AsyncButton>
 {:else}
-	<div class="join flex {className}">
-		<AsyncButton class="join-item min-w-0 flex-1" action={handleStart}>
-			<span class="truncate">{label}</span>
-		</AsyncButton>
-		<div class="dropdown dropdown-end dropdown-top join-item md:dropdown-bottom">
+	<!-- The menu is positioned against this group, so it matches its width -->
+	<div class="relative flex {className}">
+		<AsyncButton class="flex-1 rounded-r-none" action={handleStart}>Start</AsyncButton>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="dropdown static dropdown-end dropdown-top md:dropdown-bottom"
+			onkeydown={(e) => e.key === 'Escape' && closeMenu()}
+		>
 			<div
 				tabindex="0"
 				role="button"
 				aria-label="Start a different world"
-				class="btn btn-lg min-h-12 join-item btn-neutral sm:btn-md"
+				class="btn btn-lg min-h-12 rounded-l-none border-l-base-content/10 btn-neutral sm:btn-md"
 			>
 				{#if pending}
 					<Spinner />
@@ -72,7 +74,7 @@
 			</div>
 			<ul
 				tabindex="-1"
-				class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-64 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
+				class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-full flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
 			>
 				<li class="menu-title">Start a world</li>
 				{#each worlds as world (world)}

@@ -362,8 +362,9 @@ Phase 2:
   daily backup timer.** Restic dedupes, so a world nobody played costs almost
   nothing. This comes from registering every world on a new instance (above).
 - ~~Should the Controls page show the selected world?~~ **Yes, as a split
-  button** (built 2026-09-26, `StartButton` in `libs/ui`). The main button reads
-  "Start <active world>" and does a plain `/start`. The dropdown lists the worlds
+  button** (built 2026-09-26, `StartButton` in `libs/ui`). The status shows
+  "World: <active world>"; the main **Start** does a plain `/start` into it.
+  The dropdown lists the worlds
   from `/api/worlds`; choosing one starts it straight away via
   `/start?world=`. If the world list can't load, it's a plain Start. It only
   shows while the server is stopped; phase 2 could reuse it as "Switch to…".
