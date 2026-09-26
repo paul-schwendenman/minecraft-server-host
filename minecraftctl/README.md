@@ -123,7 +123,35 @@ The `world register` command is used to "reattach" an existing world to a new se
 
 **Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd timers for an existing world.
 
-Neither `world create` nor `world register` enables or starts `minecraft@<world>.service`. Only one world can run at a time, so which world starts at boot is decided outside minecraftctl (on the AWS hosts, by `minecraft-active.service` from the `ActiveWorld` instance tag). Use `minecraftctl world start <world-name>` to start a world by hand.
+Neither `world create` nor `world register` enables or starts `minecraft@<world>.service`. Only one world can run at a time, so which world starts at boot is decided outside minecraftctl (on the AWS hosts, by `minecraft-active.service` from the `ActiveWorld` instance tag). Use `minecraftctl world switch <world-name>` to change worlds by hand.
+
+### Switch World
+
+```bash
+# Stop the running world and start another
+sudo minecraftctl world switch <world-name>
+
+# Show what would happen, without changing anything
+minecraftctl world switch <world-name> --dry-run
+
+# Switch with players online: warn them, wait 30s, then switch
+sudo minecraftctl world switch <world-name> --force --warn-delay 30s
+```
+
+`world switch` checks the world can start (valid name, `eula=true`, `enable-rcon=true`, `server.jar` resolves; `world/level.dat` isn't needed), refuses while players are online unless `--force` is given, stops every running `minecraft@*`, starts the new world and waits (up to `--timeout`, default 5m) for it to answer RCON. If it doesn't come up, it's stopped and the previous world is started again. Switching to the world that's already running (and the only one running) does nothing. While it runs it holds `/run/minecraft-switch.lock`, and autoshutdown skips its check.
+
+Exit codes, so scripts can tell the outcomes apart:
+
+| Code | Meaning |
+|------|---------|
+| 0 | Switched, or the world was already running |
+| 1 | Any other error |
+| 2 | The world can't start; nothing changed |
+| 3 | Refused: players online, player count unreadable, or another switch running; nothing changed |
+| 4 | The world didn't come up; the previous world is running again |
+| 5 | The world didn't come up and neither did the previous world; nothing is running |
+
+`world start` and `world restart` refuse while a different world is running, since both would use the same ports; use `world switch` instead.
 
 ### Build Maps
 

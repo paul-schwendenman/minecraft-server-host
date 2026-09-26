@@ -225,3 +225,49 @@ EOF
     [ "$status" -ne 0 ]
     assert_mock_called_with "Unexpected failure at line"
 }
+
+@test "autoshutdown: skips shutdown while a world switch holds the lock" {
+    create_mock "who" 0 ""
+    create_mock "flock" 1 ""
+    # No world running mid-switch: would otherwise power off at once
+    cat > "${MOCK_BIN}/systemctl" << 'MOCK'
+#!/usr/bin/env bash
+exit 0
+MOCK
+    chmod +x "${MOCK_BIN}/systemctl"
+    touch "${TEST_TEMP_DIR}/run/minecraft-switch.lock"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "flock -n 9"
+    ! assert_mock_called_with "poweroff"
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: carries on when the switch lock is free" {
+    create_mock "who" 0 ""
+    create_mock "flock" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    touch "${TEST_TEMP_DIR}/run/minecraft-switch.lock"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: carries on without the lock file" {
+    create_mock "who" 0 ""
+    create_mock "flock" 1 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    ! assert_mock_called_with "flock"
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}

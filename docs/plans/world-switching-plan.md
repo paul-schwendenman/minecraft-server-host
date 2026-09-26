@@ -2,7 +2,8 @@
 
 Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
 The plan was reviewed on 2026-09-25; the phase 1 changes it asked for (marked
-**Review** below) are in the code too. Phase 2 is proposed. Written 2026-09-24.
+**Review** below) are in the code too. **Phase 2 implemented** (2026-09-25),
+not yet tried on test. Phase 3 is proposed. Written 2026-09-24.
 
 ## Problem
 
@@ -31,13 +32,16 @@ How it works today:
 ## Proposal
 
 Store the active world in one place, an EC2 tag, instead of in whichever
-`minecraft@` services happen to be enabled. Build it in two phases:
+`minecraft@` services happen to be enabled. Build it in three phases:
 
 - **Phase 1: choose the world at start.** Pick a world in the UI. The control
   lambda sets the tag and starts the instance, and a boot unit on the instance
   starts that world. Switching while the server is running means stopping it
   first.
-- **Phase 2: switch while the server is running**, without a restart.
+- **Phase 2: `minecraftctl world switch`.** Switch worlds on a running server
+  from the CLI, over SSH.
+- **Phase 3: switch from the UI while the server is running**, without a
+  restart: a watcher on the instance, the lambda and the maps app.
 
 World selection lives in the maps app (`minecraft-ui/apps/worlds`): a **Play**
 button on each world page, and a split **Start** button on the **Controls**
@@ -206,7 +210,7 @@ and start the server. Over SSH, `systemctl stop minecraft@<a>` and
 `systemctl start minecraft@<b>` swap worlds until the next boot, when the tag
 wins again.
 
-## Phase 2: switch while the server is running
+## Switching while the server is running (phases 2 and 3)
 
 The lambda can't reach services on the instance, so something on the instance
 has to do the switch. Options considered:
@@ -246,36 +250,97 @@ SSH then stays in place until the tag changes or the instance reboots, when the
 tag wins again. Nothing on the instance writes tags, and the instance role
 needs no `ec2:CreateTags`.
 
-### `minecraftctl world switch <name>`
+## Phase 2: `minecraftctl world switch <name>`
 
-1. Check the world exists and that its `server.jar` target is present.
+The CLI on its own, as its own PR. It's useful over SSH straight away, and
+phase 3 builds on it.
+
+1. Check that the world can start (see below).
 2. Refuse if players are online, unless `--force` is given.
-3. Stop the running `minecraft@*` (its `ExecStop` saves the world first).
-4. Start `minecraft@<name>`.
+3. Stop every running `minecraft@*` (its `ExecStop` saves the world first).
+4. Start `minecraft@<name>` and wait until it's up.
+5. If it doesn't come up, stop it and start the previous world again.
 
-It could also be used in phase 1: the boot unit would call it instead of
-`systemctl start` directly. The player check never fires at boot, since nobody
-is online yet.
+If `<name>` is already the only world running, it does nothing and exits 0.
+If nothing is running (at boot), it just starts `<name>`. `--dry-run` prints
+what it would stop and start.
 
-### Review: decide before building phase 2
+**One "can start" check, in Go.** `why_not_startable` in
+`minecraft-active.sh` moved to `worlds.CheckStartable` (`pkg/worlds/switch.go`):
+valid name, world dir exists, `eula=true`, `enable-rcon=true`, `server.jar`
+resolves. Its bats tests became Go tests. (Not exposed as `world check`;
+`world switch --dry-run` covers it.)
 
-- **Player policy.** `world switch` refuses while players are online, but the
-  UI was going to warn that switching kicks everyone off. Pick one. Proposed:
-  the watcher refuses while players are online (no `--force`), and the maps app
-  shows the player count and disables **Play** until the server is empty.
-  Forcing a switch stays an SSH-only action.
-- **Watcher retries.** A switch refused because players are online is logged
-  and retried on the next tick; the tag value isn't marked as handled. A
-  successful switch marks it as handled. A startup failure triggers rollback
-  and is marked as handled (failed), with no further retries until the tag
-  changes (see next point).
-- **Failed startup.** `systemctl start` returning doesn't mean Minecraft is up.
-  `world switch` should wait for RCON to answer (a few minutes' timeout). If
-  the new world doesn't come up, stop it, start the previous world again, and
-  report the failure. The watcher then records that tag value as handled
-  (failed), so it doesn't retry until the tag changes again.
+**Autoshutdown guard.** `autoshutdown.sh` powers off straight away if no
+`minecraft@*` unit is `running`. During a switch there's a gap: the old world
+is `deactivating` while it saves (slow on a 6 GB world like `old`), and a new
+world that crash-loops sits in `activating (auto-restart)`. If the timer fires
+then, the instance powers off mid-switch. **Decided: an flock.** `switch`
+holds `/run/minecraft-switch.lock` (`pkg/lock`) for as long as it runs, and
+autoshutdown skips its check while `flock -n` can't take it, as it already
+does for SSH sessions. Autoshutdown holds the lock until it exits, so a switch
+can't start between its check and its shutdown decision. flock releases the
+lock if either dies, and it stops two switches running at once (the second
+waits 15 s, then exits 3). Autoshutdown runs as `minecraft` and can't create
+files in `/run`, so a tmpfiles.d entry creates the lock file at boot. (A manual swap over SSH was already safe
+because of the SSH check.)
 
-### Lambda and UI changes in phase 2
+**Waiting for "up".** `systemctl start` returning doesn't mean Minecraft is up.
+Wait for RCON to answer `list`, with `--timeout` (default about 5 minutes; a
+first load of an old world is slow). RCON settings come from
+`/etc/minecraft.env` and are shared by every world, so `rcon.NewClient()`
+needs nothing per-world. It gives up early if the unit goes `inactive` or
+`failed`.
+
+**Finding the running world.** `systemd.ListUnits` lists `minecraft@*.service`
+in any state but stopped. Stopping every match also cleans up two worlds
+running at once. Only a world that's `active` is checked for players and
+rolled back to; one that's crash-looping (`activating`) or stopping isn't. A
+target that's crash-looping, or running alongside another world, is stopped
+and started fresh (the other world's `ExecStop` sends `stop` to the shared
+RCON port, which may be the target's). Only the target running alone and up
+is a no-op.
+
+**Exit codes.** The phase 3 watcher needs to tell outcomes apart without
+parsing stderr, so give them distinct, documented codes:
+
+| Code | Outcome | Watcher does |
+|---|---|---|
+| 0 | Switched, or already running it | Marks the tag handled |
+| 1 | Any other error | Retries next tick |
+| 2 | World can't start; nothing changed | Marks the tag handled (failed) |
+| 3 | Refused: players online, player count unreadable, or another switch running; nothing changed | Retries next tick |
+| 4 | New world failed, previous world restored (or nothing was running) | Marks the tag handled (failed) |
+| 5 | Rollback failed too, nothing running | Marks handled, logs loudly |
+
+An unreadable player count (RCON down on an `active` world) refuses rather
+than guessing the server is empty.
+
+**`--force`.** SSH-only (the watcher never passes it). Warns players with a
+`say`, waits `--warn-delay` (default 10 s), then stops.
+
+**Decided: the boot unit calls `world switch`.** `minecraft-active.sh` now
+reads the tag, then runs `world switch <tag>`, falling back to
+`world switch <default>`. So a tagged world that starts but doesn't come up
+(corrupt save, crash on load) now falls back to the default too, where
+before it would crash-loop. The bats tests cover just the tag and fallback.
+
+**Decided: `world start` and `world restart` refuse** while a different world
+is running, and point to `world switch`.
+
+## Phase 3: watcher, lambda and UI
+
+**Player policy.** `world switch` refuses while players are online, but the UI
+was going to warn that switching kicks everyone off. Proposed: the watcher
+refuses (no `--force`), and the maps app shows the player count and disables
+**Play** until the server is empty. Forcing a switch stays an SSH-only action.
+
+**Watcher.** A timer (option B) in `packer/` that acts only on tag changes, as
+above, and handles `world switch`'s exit codes as in the phase 2 table. A
+refused switch isn't marked handled, so it retries; a failed one is, so it
+doesn't retry until the tag changes again.
+
+**Lambda and UI.**
 
 - `/start?world=` on a running instance with a different world: set the tag
   and return 202 instead of 409. The watcher does the switch.
@@ -344,12 +409,26 @@ Phase 1:
      world starts);
    - `terraform plan` on a tagged instance plans no tag change.
 
-Phase 2:
+Phase 2 (`minecraftctl world switch`):
 
-0. Settle the player policy, watcher retries and failed-startup handling
-   (above).
-1. Confirm on test that tag changes reach metadata while the instance runs.
-2. `minecraftctl world switch` (no tag handling; see above).
+1. ~~Settle the lock vs marker, the boot unit and `world start` questions~~:
+   flock; boot unit uses `switch`; `start` refuses.
+2. ~~Move the "can start" check to `pkg/worlds`; add list-units to
+   `pkg/systemd`~~: done.
+3. ~~`world switch` with the RCON wait, rollback and exit codes~~: done.
+4. ~~Autoshutdown guard~~: done.
+5. Try it on test (new AMI):
+   - `world switch` between two worlds, with and without players online;
+   - `--force` with a player online (they see the warning);
+   - point a world's `server.jar` at a missing jar and switch to it (exit 2);
+   - make a world crash on start and switch to it (rolls back, exit 4);
+   - watch `journalctl -t autoshutdown` skip during a slow switch;
+   - reboot with the tag set, and with a bad tag (falls back to default).
+
+Phase 3:
+
+1. Settle the player policy.
+2. Confirm on test that tag changes reach metadata while the instance runs.
 3. The watcher timer (option B) in `packer/`, acting only on tag changes.
 4. Lambda returns 202 instead of 409 for a running instance, and the maps app
    allows switching while it runs.
@@ -367,4 +446,4 @@ Phase 2:
   The dropdown lists the worlds
   from `/api/worlds`; choosing one starts it straight away via
   `/start?world=`. If the world list can't load, it's a plain Start. It only
-  shows while the server is stopped; phase 2 could reuse it as "Switch to…".
+  shows while the server is stopped; phase 3 could reuse it as "Switch to…".
