@@ -26,6 +26,16 @@ if who | grep 'pts/' >/dev/null 2>&1; then
   exit 0
 fi
 
+# Skip while `minecraftctl world switch` runs (it holds this lock): mid-switch
+# no world may be running, which would otherwise power off straight away. Only
+# test the lock if the file exists; this user can't create files in /run.
+SWITCH_LOCK="/run/minecraft-switch.lock"
+if [[ -e "${SWITCH_LOCK}" ]] && ! flock -n "${SWITCH_LOCK}" true; then
+  rm -f "${TOUCH_FILE}"
+  logger -t autoshutdown "Skipping shutdown: world switch in progress"
+  exit 0
+fi
+
 # Check if any minecraft service is running
 RUNNING_SERVICES=$(systemctl list-units --type=service --state=running 'minecraft@*.service' --no-legend 2>/dev/null | wc -l)
 

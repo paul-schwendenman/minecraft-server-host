@@ -112,3 +112,46 @@ func TestUnitTypeConstants(t *testing.T) {
 		t.Errorf("UnitTimer = %q, want %q", UnitTimer, "timer")
 	}
 }
+
+func TestParseListUnits(t *testing.T) {
+	out := "minecraft@default.service loaded active running Minecraft Server default\n" +
+		"minecraft@old.service loaded activating auto-restart Minecraft Server old\n\n"
+	want := []Unit{
+		{Name: "minecraft@default.service", Active: "active", Sub: "running"},
+		{Name: "minecraft@old.service", Active: "activating", Sub: "auto-restart"},
+	}
+	got := parseListUnits(out)
+	if len(got) != len(want) {
+		t.Fatalf("parseListUnits() = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("unit %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	if units := parseListUnits(""); len(units) != 0 {
+		t.Errorf("parseListUnits(\"\") = %+v, want none", units)
+	}
+}
+
+func TestListUnitsArgs(t *testing.T) {
+	orig := execCommand
+	var gotArgs []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		gotArgs = args
+		return exec.Command("sh", "-c", `echo "minecraft@default.service loaded active running Minecraft Server default"`)
+	}
+	t.Cleanup(func() { execCommand = orig })
+
+	units, err := ListUnits("minecraft@*.service", "active", "activating")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(units) != 1 || units[0].Name != "minecraft@default.service" {
+		t.Errorf("ListUnits() = %+v", units)
+	}
+	joined := strings.Join(gotArgs, " ")
+	if !strings.Contains(joined, "--state=active,activating") || !strings.HasSuffix(joined, "minecraft@*.service") {
+		t.Errorf("systemctl args = %q", joined)
+	}
+}
