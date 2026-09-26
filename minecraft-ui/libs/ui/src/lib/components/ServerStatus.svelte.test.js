@@ -34,7 +34,8 @@ const { mockStatus, mockDetails } = vi.hoisted(() => {
 				dns_record: {}
 			}),
 			refresh: vi.fn(() => Promise.resolve()),
-			dispatch: vi.fn(() => Promise.resolve())
+			dispatch: vi.fn(() => Promise.resolve()),
+			startWorld: vi.fn(() => Promise.resolve())
 		},
 		mockDetails: createMockStore(null)
 	};
@@ -47,7 +48,8 @@ vi.mock('@minecraft/data', () => ({
 	startInstance: vi.fn(),
 	stopInstance: vi.fn(),
 	syncDnsRecord: vi.fn(),
-	getDetails: vi.fn()
+	getDetails: vi.fn(),
+	listWorlds: vi.fn(() => Promise.reject(new Error('no worlds in this test')))
 }));
 
 // Import component after mock is set up

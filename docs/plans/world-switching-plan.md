@@ -39,11 +39,10 @@ Store the active world in one place, an EC2 tag, instead of in whichever
   first.
 - **Phase 2: switch while the server is running**, without a restart.
 
-The controls (the **Controls** page of `minecraft-ui/apps/worlds`, the
-`ServerStatus` component, and the legacy `apps/manager`) don't change in either
-phase. They keep their plain Start/Stop, which boots whatever world the tag
-already says. World selection goes on the world pages of the same app, which
-already list every world.
+World selection lives in the maps app (`minecraft-ui/apps/worlds`): a **Play**
+button on each world page, and a split **Start** button on the **Controls**
+page (see open questions). The legacy `apps/manager` doesn't change; its plain
+Start boots whatever world the tag already says.
 
 ## Phase 1: choose the world at start
 
@@ -362,6 +361,9 @@ Phase 2:
 - ~~Daily backups for the old worlds?~~ **Yes, every playable world gets the
   daily backup timer.** Restic dedupes, so a world nobody played costs almost
   nothing. This comes from registering every world on a new instance (above).
-- Should the Controls page show the selected world, so it's clear what its
-  plain **Start** launches (e.g. "Start (default)")? The review suggests it;
-  it goes against keeping the controls unchanged. Your call.
+- ~~Should the Controls page show the selected world?~~ **Yes, as a split
+  button** (built 2026-09-26, `StartButton` in `libs/ui`). The main button reads
+  "Start <active world>" and does a plain `/start`. The dropdown lists the worlds
+  from `/api/worlds`; choosing one starts it straight away via
+  `/start?world=`. If the world list can't load, it's a plain Start. It only
+  shows while the server is stopped; phase 2 could reuse it as "Switch to…".

@@ -1,6 +1,7 @@
 <script>
 	import ServerDetails from './ServerDetails.svelte';
 	import AsyncButton from './AsyncButton.svelte';
+	import StartButton from './StartButton.svelte';
 	import { status } from '@minecraft/data';
 
 	const handleRefresh = () => {
@@ -9,10 +10,6 @@
 
 	const handleStop = () => {
 		return status.dispatch('stopInstance');
-	};
-
-	const handleStart = () => {
-		return status.dispatch('startInstance');
 	};
 
 	const handleSyncDNS = () => {
@@ -38,7 +35,7 @@
 	</div>
 	<div class="flex flex-col flex-wrap gap-1 sm:flex-row">
 		{#if $status.instance?.state == 'stopped'}
-			<AsyncButton class="flex-1" action={handleStart}>Start</AsyncButton>
+			<StartButton class="min-w-0 flex-2" />
 		{:else if $status.instance?.state == 'running'}
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
 				<AsyncButton class="flex-2" action={handleSyncDNS}>Update DNS</AsyncButton>
