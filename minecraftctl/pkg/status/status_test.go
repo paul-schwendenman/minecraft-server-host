@@ -132,12 +132,12 @@ func TestNewReportRunning(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := json.Marshal(NewReport(s, nil, "203.0.113.7"))
+	out, err := json.Marshal(NewReport(s, nil, "203.0.113.7", "second"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := `{"instance":{"state":"running","ip_address":"203.0.113.7"},` +
+	want := `{"instance":{"state":"running","ip_address":"203.0.113.7","active_world":"second"},` +
 		`"dns_record":{"name":null,"value":null,"type":null},"details":` + raw + `}`
 	if string(out) != want {
 		t.Errorf("report = %s\nwant     %s", out, want)
@@ -145,12 +145,12 @@ func TestNewReportRunning(t *testing.T) {
 }
 
 func TestNewReportNotRunning(t *testing.T) {
-	out, err := json.Marshal(NewReport(nil, errors.New("connection refused"), ""))
+	out, err := json.Marshal(NewReport(nil, errors.New("connection refused"), "", ""))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := `{"instance":{"state":"stopped","ip_address":null},` +
+	want := `{"instance":{"state":"stopped","ip_address":null,"active_world":null},` +
 		`"dns_record":{"name":null,"value":null,"type":null},"details":null,"error":"connection refused"}`
 	if string(out) != want {
 		t.Errorf("report = %s\nwant     %s", out, want)

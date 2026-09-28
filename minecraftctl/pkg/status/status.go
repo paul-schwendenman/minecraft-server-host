@@ -38,10 +38,13 @@ type Report struct {
 	Error     string          `json:"error,omitempty"`
 }
 
-// ReportInstance mirrors the API's instance object.
+// ReportInstance mirrors the API's instance object. The API's active_world is
+// the ActiveWorld tag (the world picked to run); here it's the world actually
+// running, from systemd, or null if none is.
 type ReportInstance struct {
-	State     string  `json:"state"`
-	IPAddress *string `json:"ip_address"`
+	State       string  `json:"state"`
+	IPAddress   *string `json:"ip_address"`
+	ActiveWorld *string `json:"active_world"`
 }
 
 // ReportDNSRecord mirrors the API's dns_record object. DNS is managed in
@@ -53,11 +56,15 @@ type ReportDNSRecord struct {
 }
 
 // NewReport builds a Report. s is nil (with pingErr set) when the server
-// didn't respond; ip is empty when the public IP is unknown.
-func NewReport(s *Status, pingErr error, ip string) Report {
+// didn't respond; ip is empty when the public IP is unknown, and world when no
+// world is running.
+func NewReport(s *Status, pingErr error, ip, world string) Report {
 	r := Report{Instance: ReportInstance{State: "stopped"}, Details: json.RawMessage("null")}
 	if ip != "" {
 		r.Instance.IPAddress = &ip
+	}
+	if world != "" {
+		r.Instance.ActiveWorld = &world
 	}
 	if s != nil {
 		r.Instance.State = "running"
