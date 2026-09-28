@@ -140,6 +140,8 @@ Helper Scripts
   registers every other world on the volume, so all of them keep their backup
   timers. It doesn't start anything.
 - **minecraft-active.sh**: the boot unit's script (see "Which world runs").
+  Installed in ``/usr/local/libexec``, not on the ``PATH``, since only the
+  unit runs it.
 - **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
   ``minecraftctl map build`` used by the map-build units.
 - **backup-maps.sh**: uploads a world's maps to the S3 map bucket.
