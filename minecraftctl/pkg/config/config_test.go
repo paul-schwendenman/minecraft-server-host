@@ -243,8 +243,8 @@ maps:
 		if mapConfig.Defaults.Zoomout != 2 {
 			t.Errorf("Default zoomout should be 2, got %d", mapConfig.Defaults.Zoomout)
 		}
-		if mapConfig.Defaults.ImageFormat != "jpeg" {
-			t.Errorf("Default imageformat should be jpeg, got %q", mapConfig.Defaults.ImageFormat)
+		if mapConfig.Defaults.ImageFormat != "webp" {
+			t.Errorf("Default imageformat should be webp, got %q", mapConfig.Defaults.ImageFormat)
 		}
 
 		// Check that map inherited defaults
