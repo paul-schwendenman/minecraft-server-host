@@ -280,6 +280,9 @@ var worldStartCmd = &cobra.Command{
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := refuseIfOtherWorldRunning(args[0]); err != nil {
+			return err
+		}
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Start(unit)
 	},
@@ -302,6 +305,9 @@ var worldRestartCmd = &cobra.Command{
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := refuseIfOtherWorldRunning(args[0]); err != nil {
+			return err
+		}
 		unit := systemd.FormatUnitName("minecraft", args[0], systemd.UnitService)
 		return systemd.Restart(unit)
 	},

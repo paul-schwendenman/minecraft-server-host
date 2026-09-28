@@ -91,6 +91,7 @@ wrap_script() {
     sed \
         -e "s|/srv/minecraft-server|${MINECRAFT_HOME}|g" \
         -e "s|/run/autoshutdown|${STATE_DIR}|g" \
+        -e "s|/run/minecraft-switch.lock|${TEST_TEMP_DIR}/run/minecraft-switch.lock|g" \
         -e "s|/etc/minecraft.env|${MINECRAFT_ENV}|g" \
         -e "s|/opt/minecraft|${TEST_TEMP_DIR}/opt/minecraft|g" \
         "$script_path" > "$wrapped_script"

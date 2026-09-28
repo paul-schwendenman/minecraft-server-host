@@ -144,6 +144,44 @@ func IsEnabled(unit string) (bool, error) {
 	return true, nil
 }
 
+// Unit is a loaded unit as listed by `systemctl list-units`.
+type Unit struct {
+	Name   string // e.g. minecraft@default.service
+	Active string // ACTIVE column: active, activating, deactivating, ...
+	Sub    string // SUB column: running, auto-restart, stop-sigterm, ...
+}
+
+// ListUnits lists the loaded units matching pattern (a glob such as
+// "minecraft@*.service") whose active state is one of states. With no states,
+// every loaded unit matching pattern is listed.
+func ListUnits(pattern string, states ...string) ([]Unit, error) {
+	args := []string{"list-units", "--all", "--plain", "--no-legend", "--no-pager"}
+	if len(states) > 0 {
+		args = append(args, "--state="+strings.Join(states, ","))
+	}
+	args = append(args, pattern)
+
+	out, err := execCommand("systemctl", args...).Output()
+	if err != nil {
+		return nil, fmt.Errorf("systemctl %s failed: %w", strings.Join(args, " "), err)
+	}
+	return parseListUnits(string(out)), nil
+}
+
+// parseListUnits parses `systemctl list-units --plain --no-legend` output:
+// UNIT LOAD ACTIVE SUB DESCRIPTION, one unit per line.
+func parseListUnits(out string) []Unit {
+	var units []Unit
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 4 {
+			continue
+		}
+		units = append(units, Unit{Name: fields[0], Active: fields[2], Sub: fields[3]})
+	}
+	return units
+}
+
 // GetActiveState returns the active state of a unit (active, inactive, failed, etc.)
 func GetActiveState(unit string) string {
 	cmd := exec.Command("systemctl", "show", "-p", "ActiveState", "--value", unit)

@@ -10,6 +10,7 @@ sudo install -Dm755 "${SRC_DIR}/autoshutdown.sh" "${DEST_BIN}/autoshutdown.sh"
 sudo install -Dm644 "${SRC_DIR}/autoshutdown.service" "${DEST_ETC}/autoshutdown.service"
 sudo install -Dm644 "${SRC_DIR}/autoshutdown.timer" "${DEST_ETC}/autoshutdown.timer"
 sudo install -Dm440 "${SRC_DIR}/minecraft-shutdown.sudoers" "${DEST_SUDOERS}/minecraft-shutdown"
+sudo install -Dm644 "${SRC_DIR}/minecraft-switch-lock.conf" /etc/tmpfiles.d/minecraft-switch-lock.conf
 
 sudo systemctl daemon-reload
 sudo systemctl enable autoshutdown.timer

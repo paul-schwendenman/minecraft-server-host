@@ -35,6 +35,6 @@ func main() {
 		} else {
 			log.Error().Err(err).Msg("command failed")
 		}
-		os.Exit(1)
+		os.Exit(exitCode(err))
 	}
 }

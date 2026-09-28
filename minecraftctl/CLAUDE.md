@@ -25,7 +25,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 
 | Command | File | Description |
 |---------|------|-------------|
-| `world` | `cmd/minecraftctl/world.go` | list, info, create, register, upgrade, status, start, stop, restart, enable, disable, logs, backup |
+| `world` | `cmd/minecraftctl/world.go`, `world_switch.go` | list, info, create, register, upgrade, switch, status, start, stop, restart, enable, disable, logs, backup |
 | `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, config, backup |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `status` | `cmd/minecraftctl/status.go` | Server status like the web UI: version, active players, EC2 public IP |
@@ -38,6 +38,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 
 **World service commands:**
 - `world status|start|stop|restart|enable|disable <world>` - Control `minecraft@<world>.service`
+- `world switch <world>` - Stop the running world and start another (`pkg/worlds/switch.go`); distinct exit codes per outcome. `start`/`restart` refuse while another world runs
 - `world logs <world>` - View logs via journalctl (`-f` to follow, `-n` for lines)
 - `world backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-world-backup@<world>`
 

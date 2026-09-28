@@ -59,12 +59,13 @@ Which world runs
 Only one world runs at a time: every world uses port 25565 and RCON 25575.
 Worlds are **not** enabled at boot one by one. ``minecraft-active.service``
 reads the instance's ``ActiveWorld`` tag from instance metadata once
-cloud-init has finished and starts that world. The control lambda sets the tag
-(``POST /start?world=<name>``); see ``docs/plans/world-switching-plan.md``.
+cloud-init has finished and starts that world with ``minecraftctl world
+switch``. The control lambda sets the tag (``POST /start?world=<name>``); see
+``docs/plans/world-switching-plan.md``.
 
-If the tag is missing, or the world can't start, it falls back to
-``MC_DEFAULT_WORLD`` from ``/etc/minecraft.env`` (Terraform's ``world_name``,
-usually ``default``). A world can start when its directory has:
+If the tag is missing, or the world can't start or doesn't come up, it falls
+back to ``MC_DEFAULT_WORLD`` from ``/etc/minecraft.env`` (Terraform's
+``world_name``, usually ``default``). A world can start when its directory has:
 
 - ``eula.txt`` with ``eula=true``
 - ``server.properties`` with ``enable-rcon=true`` (autoshutdown and
@@ -73,6 +74,12 @@ usually ``default``). A world can start when its directory has:
 
 ``world/level.dat`` isn't required: Minecraft writes it on a world's first
 start. Check the log with ``journalctl -u minecraft-active``.
+
+To switch worlds on a running server over SSH, use ``sudo minecraftctl world
+switch <name>``: it refuses while players are online (``--force`` warns them
+and switches anyway), and goes back to the previous world if the new one
+doesn't come up. The switch lasts until the next boot, when the tag wins
+again. ``world start`` refuses while another world is running.
 
 Included Tools & Scripts
 ------------------------
@@ -104,7 +111,8 @@ Systemd Units
   tag at boot (see above).
 - **autoshutdown.timer** / **autoshutdown.service**: every 5 minutes; powers
   the instance off when no world is running, or after two checks with no
-  players. An interactive SSH session skips shutdown.
+  players. An interactive SSH session, or a ``minecraftctl world switch`` in
+  progress (it holds ``/run/minecraft-switch.lock``), skips shutdown.
 - **minecraft-map-build@.timer** / **.service**: renders a world's maps every
   15 minutes while that world runs. The timer requires the world's
   ``minecraft@`` unit, so it's enabled per world but never started on its own.
