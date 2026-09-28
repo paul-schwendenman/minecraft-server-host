@@ -89,7 +89,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 ```yaml
 defaults:
   zoomout: 6
-  imageformat: jpeg
+  imageformat: webp
 maps:
   - name: overworld      # Map name (used in URLs/paths)
     dimension: overworld # Minecraft dimension to render

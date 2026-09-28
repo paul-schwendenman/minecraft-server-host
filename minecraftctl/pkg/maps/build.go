@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/paul/minecraftctl/pkg/config"
@@ -128,13 +129,14 @@ func (b *Builder) buildMap(
 	worldMtime int64,
 	opts BuildOptions,
 ) error {
+	outputSubdir := mapDef.OutputSubdir
+	if outputSubdir == "" {
+		outputSubdir = mapDef.Name
+	}
+	mapOutput := filepath.Join(worldMapsDir, outputSubdir)
+
 	// Check if rebuild is needed
 	if !opts.Force {
-		outputSubdir := mapDef.OutputSubdir
-		if outputSubdir == "" {
-			outputSubdir = mapDef.Name
-		}
-		mapOutput := filepath.Join(worldMapsDir, outputSubdir)
 		manifestPath := filepath.Join(mapOutput, "manifest.json")
 
 		if manifest, err := readManifest(manifestPath); err == nil {
@@ -143,6 +145,16 @@ func (b *Builder) buildMap(
 				return nil
 			}
 		}
+	}
+
+	// uNmINeD's viewer loads every tile with the one format in its properties
+	// file, and an incremental render only redraws changed regions. So when a
+	// map is rendered in a new format, re-render all of it, or the unchanged
+	// regions show as holes.
+	if prev := renderedImageFormat(mapOutput); prev != "" && !strings.EqualFold(prev, defaults.ImageFormat) {
+		log.Info().Str("map", mapDef.Name).Str("from", prev).Str("to", defaults.ImageFormat).
+			Msg("image format changed, re-rendering the whole map")
+		opts.Force = true
 	}
 
 	// Verify dimension exists
@@ -159,13 +171,6 @@ func (b *Builder) buildMap(
 	if mapDef.Zoomin != nil {
 		zoomin = *mapDef.Zoomin
 	}
-
-	// Build base command
-	outputSubdir := mapDef.OutputSubdir
-	if outputSubdir == "" {
-		outputSubdir = mapDef.Name
-	}
-	mapOutput := filepath.Join(worldMapsDir, outputSubdir)
 
 	baseArgs := []string{
 		"web", "render",
@@ -337,6 +342,22 @@ func (b *Builder) addMapOptions(args []string, opts config.MapOptions) []string 
 		}
 	}
 	return args
+}
+
+var imageFormatRe = regexp.MustCompile(`imageFormat:\s*"([^"]*)"`)
+
+// renderedImageFormat returns the image format a map was last rendered with,
+// from uNmINeD's unmined.map.properties.js, or "" if it hasn't been rendered.
+func renderedImageFormat(mapOutput string) string {
+	data, err := os.ReadFile(filepath.Join(mapOutput, "unmined.map.properties.js"))
+	if err != nil {
+		return ""
+	}
+	m := imageFormatRe.FindSubmatch(data)
+	if m == nil {
+		return ""
+	}
+	return string(m[1])
 }
 
 // patchPropertiesMaxZoom updates the maxZoom value in unmined.map.properties.js

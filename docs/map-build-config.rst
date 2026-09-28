@@ -33,7 +33,7 @@ Example Configuration
    defaults:
      zoomout: 2
      zoomin: 1
-     imageformat: jpeg
+     imageformat: webp
      chunkprocessors: 4
 
    maps:
@@ -97,9 +97,15 @@ Key                Type    Description
 =================  ======  ================================================
 ``zoomout``        int     Default zoom-out levels (typical: ``2``)
 ``zoomin``         int     Default zoom-in levels (typical: ``1``)
-``imageformat``    str     Output format (``jpeg``, ``png``, ``webp``)
+``imageformat``    str     Output format (``webp``, ``png``, ``jpeg``); default ``webp``
 ``chunkprocessors`` int    Number of chunks processed concurrently
 =================  ======  ================================================
+
+Use ``webp`` (the default). The pinned uNmINeD build (``0.20.10-dev``) crashes
+encoding JPEG tiles, and its lossless webp tiles are smaller than JPEG ones
+anyway. Changing a map's format is safe: the next build that renders the map
+sees the old format in ``unmined.map.properties.js`` and re-renders all of it
+(as if ``--force``), since the viewer can only load tiles in one format.
 
 
 Maps
