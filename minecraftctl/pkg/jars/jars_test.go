@@ -66,6 +66,28 @@ func TestListJars(t *testing.T) {
 		}
 	})
 
+	t.Run("checksums come from checksums.txt", func(t *testing.T) {
+		dir := t.TempDir()
+		createTestJar(t, dir, "1.20.1", "content1")
+		createTestJar(t, dir, "1.20.4", "content2")
+		SaveChecksum("1.20.1", "recorded", dir)
+
+		jars, err := ListJars(dir)
+		if err != nil {
+			t.Fatalf("ListJars failed: %v", err)
+		}
+		got := make(map[string]string)
+		for _, jar := range jars {
+			got[jar.Version] = jar.Checksum
+		}
+		if got["1.20.1"] != "recorded" {
+			t.Errorf("Expected recorded checksum for 1.20.1, got %q", got["1.20.1"])
+		}
+		if got["1.20.4"] != "" {
+			t.Errorf("Expected empty checksum for 1.20.4, got %q", got["1.20.4"])
+		}
+	})
+
 	t.Run("ignores non-jar files", func(t *testing.T) {
 		dir := t.TempDir()
 		createTestJar(t, dir, "1.20.1", "content")

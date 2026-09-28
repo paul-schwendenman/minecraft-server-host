@@ -132,6 +132,7 @@ func TestJarListCmdExecution(t *testing.T) {
 		setupTestConfig(t, dir)
 
 		createTestJarFile(t, dir, "1.20.1", "test content")
+		jars.SaveChecksum("1.20.1", sha256sumContent("test content"), dir)
 
 		output, err := captureStdout(t, func() error {
 			return jarListCmd.RunE(jarListCmd, []string{})

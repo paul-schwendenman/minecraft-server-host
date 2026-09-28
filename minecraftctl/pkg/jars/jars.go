@@ -30,11 +30,19 @@ type JarInfo struct {
 	InstalledAt time.Time
 }
 
-// ListJars returns a list of all installed JARs in the jars directory
+// ListJars returns a list of all installed JARs in the jars directory.
+// Checksums come from checksums.txt rather than hashing each JAR, which is
+// slow on a cold EBS volume; use VerifyJar to check a JAR against its file.
 func ListJars(jarsDir string) ([]JarInfo, error) {
 	entries, err := os.ReadDir(jarsDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read jars directory: %w", err)
+	}
+
+	checksums, err := LoadChecksums(jarsDir)
+	if err != nil {
+		log.Warn().Err(err).Msg("failed to load checksums.txt")
+		checksums = map[string]string{}
 	}
 
 	var jars []JarInfo
@@ -53,13 +61,19 @@ func ListJars(jarsDir string) ([]JarInfo, error) {
 		version := strings.TrimPrefix(name, jarPrefix)
 		version = strings.TrimSuffix(version, jarSuffix)
 
-		info, err := GetJarInfo(version, jarsDir)
+		fileInfo, err := entry.Info()
 		if err != nil {
 			log.Warn().Err(err).Str("version", version).Msg("failed to get jar info")
 			continue
 		}
 
-		jars = append(jars, *info)
+		jars = append(jars, JarInfo{
+			Version:     version,
+			Path:        filepath.Join(jarsDir, name),
+			Size:        fileInfo.Size(),
+			Checksum:    checksums[name],
+			InstalledAt: fileInfo.ModTime(),
+		})
 	}
 
 	return jars, nil

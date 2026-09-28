@@ -1,34 +1,35 @@
+# Only versions with worlds in prod are installed; uncomment to add others back.
 minecraft_jars = [
-  {
-    version = "1.14.3"
-    url     = "https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar"
-    sha256  = "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38"
-  },
-  {
-    version = "1.15.2"
-    url     = "https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar"
-    sha256  = "80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a"
-  },
-  {
-    version = "1.16.1"
-    url     = "https://launcher.mojang.com/v1/objects/a412fd69db1f81db3f511c1463fd304675244077/server.jar"
-    sha256  = "2782d547724bc3ffc0ef6e97b2790e75c1df89241f9d4645b58c706f5e6c935b"
-  },
-  {
-    version = "1.16.3"
-    url     = "https://launcher.mojang.com/v1/objects/f02f4473dbf152c23d7d484952121db0b36698cb/server.jar"
-    sha256  = "32e450e74c081aec06dcfbadfa5ba9aa1c7f370bd869e658caec0c3004f7ad5b"
-  },
+  # {
+  #   version = "1.14.3"
+  #   url     = "https://launcher.mojang.com/v1/objects/d0d0fe2b1dc6ab4c65554cb734270872b72dadd6/server.jar"
+  #   sha256  = "942256f0bfec40f2331b1b0c55d7a683b86ee40e51fa500a2aa76cf1f1041b38"
+  # },
+  # {
+  #   version = "1.15.2"
+  #   url     = "https://launcher.mojang.com/v1/objects/bb2b6b1aefcd70dfd1892149ac3a215f6c636b07/server.jar"
+  #   sha256  = "80cf86dc2004ec6a2dc0183d1c75a9af3ba0669f7c332e4247afb1d76fb67e8a"
+  # },
+  # {
+  #   version = "1.16.1"
+  #   url     = "https://launcher.mojang.com/v1/objects/a412fd69db1f81db3f511c1463fd304675244077/server.jar"
+  #   sha256  = "2782d547724bc3ffc0ef6e97b2790e75c1df89241f9d4645b58c706f5e6c935b"
+  # },
+  # {
+  #   version = "1.16.3"
+  #   url     = "https://launcher.mojang.com/v1/objects/f02f4473dbf152c23d7d484952121db0b36698cb/server.jar"
+  #   sha256  = "32e450e74c081aec06dcfbadfa5ba9aa1c7f370bd869e658caec0c3004f7ad5b"
+  # },
   {
     version = "1.16.4"
     url     = "https://launcher.mojang.com/v1/objects/35139deedbd5182953cf1caa23835da59ca3d7cd/server.jar"
     sha256  = "444d30d903a1ef489b6737bb9d021494faf23434ca8568fd72ce2e3d40b32506"
   },
-  {
-    version = "1.18.1"
-    url     = "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar"
-    sha256  = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
-  },
+  # {
+  #   version = "1.18.1"
+  #   url     = "https://launcher.mojang.com/v1/objects/125e5adf40c659fd3bce3e66e67a16bb49ecc1b9/server.jar"
+  #   sha256  = "ebcd120ad81480b968a548df6ffb83b88075e95195c8ff63d461c9df4df5dbdf"
+  # },
   {
     version = "1.19"
     url     = "https://piston-data.mojang.com/v1/objects/e00c4052dac1d59a1188b2aa9d5a87113aaf1122/server.jar"
@@ -39,49 +40,49 @@ minecraft_jars = [
     url     = "https://piston-data.mojang.com/v1/objects/f69c284232d7c7580bd89a5a4931c3581eae1378/server.jar"
     sha256  = "b26727069ef5f61c704add9a378ac90e3d271fd7876c0bd3dcfbe9fd0bec4d96"
   },
-  {
-    version = "1.21.8"
-    url     = "https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar"
-    sha256  = "2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7"
-  },
-  {
-    version = "1.21.9"
-    url     = "https://piston-data.mojang.com/v1/objects/11e54c2081420a4d49db3007e66c80a22579ff2a/server.jar"
-    sha256  = "ebc5161abcd57523c14a04ce108f0b671da0d0d74a28926b19a7d139ebabaf31"
-  },
-  {
-    version = "1.21.10"
-    url     = "https://piston-data.mojang.com/v1/objects/95495a7f485eedd84ce928cef5e223b757d2f764/server.jar"
-    sha256  = "5bb64dc47379903e8f288bd6a4b276e889075c5c0f4c0b714e958d835c1874e7"
-  },
-  {
-    version = "1.21.11"
-    url     = "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar"
-    sha256  = "f83b8e093865806f931c7e34aae41b177d4c076335263dd124c75d6d65dd1726"
-  },
-  {
-    version = "26.1"
-    url     = "https://piston-data.mojang.com/v1/objects/3872a7f07a1a595e651aef8b058dfc2bb3772f46/server.jar"
-    sha256  = "98ab064389a8b34d48ac3d4c5ed858dd9433d0dfd1a12e1cbbda916448d92994"
-  },
-  {
-    version = "26.1.1"
-    url     = "https://piston-data.mojang.com/v1/objects/49c8195703ad0ba4f0a4efbccfd85a4a8ca57431/server.jar"
-    sha256  = "d792784979722dc35144acffb953554e707445c62450550044c4281e632cbbcc"
-  },
-  {
-    version = "26.1.2"
-    url     = "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
-    sha256  = "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42"
-  },
-  {
-    version = "26.2"
-    url     = "https://piston-data.mojang.com/v1/objects/823e2250d24b3ddac457a60c92a6a941943fcd6a/server.jar"
-    sha256  = "cdacdfb25898de5e4b4b0e5ddcc2722f77067e46605709c2d886c000ebb63ec5"
-  },
+  # {
+  #   version = "1.21.8"
+  #   url     = "https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar"
+  #   sha256  = "2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7"
+  # },
+  # {
+  #   version = "1.21.9"
+  #   url     = "https://piston-data.mojang.com/v1/objects/11e54c2081420a4d49db3007e66c80a22579ff2a/server.jar"
+  #   sha256  = "ebc5161abcd57523c14a04ce108f0b671da0d0d74a28926b19a7d139ebabaf31"
+  # },
+  # {
+  #   version = "1.21.10"
+  #   url     = "https://piston-data.mojang.com/v1/objects/95495a7f485eedd84ce928cef5e223b757d2f764/server.jar"
+  #   sha256  = "5bb64dc47379903e8f288bd6a4b276e889075c5c0f4c0b714e958d835c1874e7"
+  # },
+  # {
+  #   version = "1.21.11"
+  #   url     = "https://piston-data.mojang.com/v1/objects/64bb6d763bed0a9f1d632ec347938594144943ed/server.jar"
+  #   sha256  = "f83b8e093865806f931c7e34aae41b177d4c076335263dd124c75d6d65dd1726"
+  # },
+  # {
+  #   version = "26.1"
+  #   url     = "https://piston-data.mojang.com/v1/objects/3872a7f07a1a595e651aef8b058dfc2bb3772f46/server.jar"
+  #   sha256  = "98ab064389a8b34d48ac3d4c5ed858dd9433d0dfd1a12e1cbbda916448d92994"
+  # },
+  # {
+  #   version = "26.1.1"
+  #   url     = "https://piston-data.mojang.com/v1/objects/49c8195703ad0ba4f0a4efbccfd85a4a8ca57431/server.jar"
+  #   sha256  = "d792784979722dc35144acffb953554e707445c62450550044c4281e632cbbcc"
+  # },
+  # {
+  #   version = "26.1.2"
+  #   url     = "https://piston-data.mojang.com/v1/objects/97ccd4c0ed3f81bbb7bfacddd1090b0c56f9bc51/server.jar"
+  #   sha256  = "cd47e7c38328f64768fd17af8fcd8b22496b40b63d4ffee81e71ae059fedcb42"
+  # },
+  # {
+  #   version = "26.2"
+  #   url     = "https://piston-data.mojang.com/v1/objects/823e2250d24b3ddac457a60c92a6a941943fcd6a/server.jar"
+  #   sha256  = "cdacdfb25898de5e4b4b0e5ddcc2722f77067e46605709c2d886c000ebb63ec5"
+  # },
   {
     version = "26.3"
     url     = "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar"
     sha256  = "d052f14d7a173734fba553711e5b570162e2f2a313267ee31a21b975a679be64"
-  }
+  },
 ]
