@@ -9,7 +9,7 @@ RequiresMountsFor=/srv/minecraft-server
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/bin/minecraft-active.sh
+ExecStart=/usr/local/libexec/minecraft-active.sh
 
 [Install]
 WantedBy=cloud-final.service

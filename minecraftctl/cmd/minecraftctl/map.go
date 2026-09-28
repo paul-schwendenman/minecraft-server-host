@@ -243,7 +243,7 @@ var mapConfigGenerateCmd = &cobra.Command{
 			Defaults: config.MapDefaults{
 				Zoomout:         zoomoutDefault,
 				Zoomin:          zoominDefault,
-				ImageFormat:     "jpeg",
+				ImageFormat:     "webp",
 				ChunkProcessors: 4,
 			},
 			Maps: []config.MapDefinition{
@@ -493,7 +493,7 @@ var mapConfigEditCmd = &cobra.Command{
 				Defaults: config.MapDefaults{
 					Zoomout:         6,
 					Zoomin:          0,
-					ImageFormat:     "jpeg",
+					ImageFormat:     "webp",
 					ChunkProcessors: 4,
 				},
 				Maps: []config.MapDefinition{

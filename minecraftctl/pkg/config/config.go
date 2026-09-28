@@ -283,8 +283,10 @@ func LoadMapConfig(worldPath string) (*MapConfig, error) {
 	if !v.IsSet("defaults.zoomin") {
 		mapConfig.Defaults.Zoomin = 1
 	}
+	// Not jpeg: uNmINeD 0.20.10-dev crashes encoding JPEG tiles, and its
+	// lossless webp tiles come out smaller than JPEG anyway.
 	if mapConfig.Defaults.ImageFormat == "" {
-		mapConfig.Defaults.ImageFormat = "jpeg"
+		mapConfig.Defaults.ImageFormat = "webp"
 	}
 	if mapConfig.Defaults.ChunkProcessors == 0 {
 		mapConfig.Defaults.ChunkProcessors = 2

@@ -185,12 +185,15 @@ minecraftctl status
 minecraftctl status --host 10.0.0.5 --port 25566
 ```
 
-Also prints the instance's public IP when running on EC2.
+Also prints the world that's running (from systemd; while a world is still loading it
+says so rather than "not running") and the instance's public IP when running on EC2.
 
 Use `--json` for machine-readable output. `instance` and `dns_record` have the same
 shape as the control API's `/status`, and `details` is the raw server response, as
 returned by the details API (`null` plus an `error` message if the server didn't
 respond). `dns_record` values are always `null` because DNS isn't visible from the server.
+`instance.active_world` is the world actually running (`null` if none), where the API's is
+the `ActiveWorld` tag, i.e. the world picked to run.
 
 ```bash
 minecraftctl status --json | jq '.details.players.online'

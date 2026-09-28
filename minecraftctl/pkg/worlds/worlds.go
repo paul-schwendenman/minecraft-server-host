@@ -329,7 +329,7 @@ func CreateWorld(worldName string, opts CreateWorldOptions) error {
 defaults:
   zoomout: 2
   zoomin: 1
-  imageformat: jpeg
+  imageformat: webp
   chunkprocessors: 4
 
 maps:
