@@ -35,7 +35,10 @@ var jarListCmd = &cobra.Command{
 		fmt.Fprintln(w, "VERSION\tSIZE\tCHECKSUM\tINSTALLED")
 		for _, jar := range jarList {
 			sizeStr := formatSize(jar.Size)
-			checksumStr := jar.Checksum[:8] + "..."
+			checksumStr := "-"
+			if len(jar.Checksum) >= 8 {
+				checksumStr = jar.Checksum[:8] + "..."
+			}
 			installedStr := jar.InstalledAt.Format("2006-01-02 15:04")
 			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", jar.Version, sizeStr, checksumStr, installedStr)
 		}
