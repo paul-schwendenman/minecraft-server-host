@@ -1,5 +1,5 @@
 <script>
-	import { ServerStatus } from '@minecraft/ui';
+	import { ServerStatus, WorldStartButton } from '@minecraft/ui';
 	import { status } from '@minecraft/data';
 
 	let serverStatus = status.refresh();
@@ -19,7 +19,11 @@
 	{#await serverStatus}
 		<p class="my-2">Loading...</p>
 	{:then}
-		<ServerStatus />
+		<ServerStatus>
+			{#snippet startButton()}
+				<WorldStartButton class="flex-2" />
+			{/snippet}
+		</ServerStatus>
 	{:catch error}
 		<p class="my-2 text-red-700">{error.message}</p>
 		<button on:click={handleRefresh} class="btn w-full sm:w-auto"> Retry </button>
