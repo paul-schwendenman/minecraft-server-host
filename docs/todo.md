@@ -33,6 +33,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 ## Big ideas
 
 - [ ] **`minecraftctl serve` API**: an API served from the game server itself. So far this is only one line in [minecraftctl-plan.md](plans/minecraftctl-plan.md) (Phase 10). It needs a design doc first: what it exposes, how it authenticates, and how it relates to the control lambda.
+- [ ] **Self-bootstrapping `minecraftctl setup`** ([plan](plans/minecraftctl-setup-plan.md)): download the prebuilt CLI onto a fresh Linux box, run one command, and get a working server with autoshutdown (and optionally backups). Single machine only, no web UI or lambdas. Embed the unit files and scripts in the binary and have Packer call `setup`, so there's one install path. Autoshutdown's idle action becomes `poweroff` (EC2) or `stop` (home box/VPS). Wake-on-join comes later.
 - [ ] **Create worlds from a UI**: pick a name, version, seed, difficulty and so on, then play it straight away. `minecraftctl` already has the building blocks (`jar download`, `world create --version --seed`). What's missing is a way to trigger them remotely: `minecraftctl serve`, or the same tag/watcher glue as [world switching](plans/world-switching-plan.md) phase 3.
 
 ## Housekeeping
