@@ -46,7 +46,7 @@
 			{#if startButton}
 				{@render startButton()}
 			{:else}
-				<StartButton class="flex-2" />
+				<StartButton class="flex-1" />
 			{/if}
 		{:else if $status.instance?.state == 'running'}
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
