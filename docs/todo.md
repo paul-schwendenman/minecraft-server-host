@@ -43,4 +43,5 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [x] Checklists in `minecraftctl-plan.md` and `minecraftctl-migration-plan.md` checked against the code and updated (2026-09-23).
 - [ ] Delete stale local branches. Five are gone. `replace-map-viewer` (5 commits) and `testing-backup` (16 commits) are still here, local-only and unmerged: decide whether to keep them or drop them.
 - [ ] `packer/readme.rst` is stale: it still lists `mcrcon` (no longer installed) and `map-rebuild.timer/service` (now `minecraft-map-build@`), and describes `rebuild-map.sh` as rendering with uNmINeD directly.
+- [ ] Clean build state out of the AMI: the test instance's journal (2026-09-29) still had three ~5 min boots from Packer builds, so the AMI ships the builder's journal and probably its `/etc/machine-id`. At the end of `minecraft.pkr.hcl`, run `journalctl --rotate --vacuum-time=1s` and truncate `/etc/machine-id` so each instance starts with its own ID and an empty journal.
 - [ ] Pin the packer version in CI. check against the other versions in tool-versions too like terraform
