@@ -39,6 +39,10 @@
 	let pending = $state(false);
 	let error = $state('');
 	let notice = $state('');
+	// The status the message was shown against: it's hidden once the status
+	// updates (the next Refresh), so "Switching to…" doesn't linger
+	let messageStatus: unknown = $state.raw(null);
+	const showMessage = $derived($status === messageStatus);
 
 	const activeWorld = $derived($status.instance?.active_world);
 
@@ -65,6 +69,7 @@
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
+			messageStatus = $status;
 			pending = false;
 		}
 	};
@@ -77,8 +82,10 @@
 	<div class="relative flex {className}">
 		<AsyncButton class="flex-1 rounded-r-none" {action}>{label}</AsyncButton>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- Anchored to the group's left edge and at least 15rem wide, so the menu
+		     stays readable when the button is narrow -->
 		<div
-			class="dropdown static dropdown-end dropdown-top md:dropdown-bottom"
+			class="dropdown static dropdown-start dropdown-top md:dropdown-bottom"
 			onkeydown={(e) => e.key === 'Escape' && closeMenu()}
 		>
 			<div
@@ -101,7 +108,7 @@
 			</div>
 			<ul
 				tabindex="-1"
-				class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-full flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
+				class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-full min-w-60 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
 			>
 				<li class="menu-title">{menuTitle}</li>
 				{#if disabledReason}
@@ -125,8 +132,10 @@
 	</div>
 {/if}
 
-{#if error}
-	<p class="w-full text-error">{error}</p>
-{:else if notice}
-	<p class="w-full">{notice}</p>
+<!-- order-last: in a flex row of buttons, the message goes below all of them
+     rather than splitting the row -->
+{#if showMessage && error}
+	<p class="order-last w-full text-error">{error}</p>
+{:else if showMessage && notice}
+	<p class="order-last w-full">{notice}</p>
 {/if}

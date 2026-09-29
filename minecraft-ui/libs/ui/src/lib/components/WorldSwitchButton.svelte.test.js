@@ -85,6 +85,18 @@ describe('WorldSwitchButton', () => {
 		await expect.element(screen.getByText(/Switching to old/)).toBeInTheDocument();
 	});
 
+	it('hides the switching message once the status refreshes', async () => {
+		const screen = render(WorldSwitchButton);
+
+		await screen.getByRole('button', { name: 'Switch to a different world' }).click();
+		await screen.getByRole('button', { name: 'old' }).click();
+		await expect.element(screen.getByText(/Switching to old/)).toBeInTheDocument();
+
+		mockStatus.set({ instance: { state: 'running', active_world: 'old' }, dns_record: {} });
+
+		await expect.element(screen.getByText(/Switching to old/)).not.toBeInTheDocument();
+	});
+
 	it("disables the running world's entry", async () => {
 		const screen = render(WorldSwitchButton);
 
