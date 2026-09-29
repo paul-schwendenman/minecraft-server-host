@@ -64,6 +64,10 @@ Options:
 
 Leaning **b**: it's opt-in and matches what we did by hand.
 
+**Update 2026-09-29:** **a** is done. Uploading maps when a world stopped
+(an `ExecStopPost` hook) added ~8s to every stop and world switch, even though
+maps only change when they're built, so the upload moved to `OnSuccess=` on the build.
+
 ### 3. Build progress
 
 Have the map builder (`minecraftctl/pkg/maps/build.go`) write a progress file,

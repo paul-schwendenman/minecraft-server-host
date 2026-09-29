@@ -13,6 +13,13 @@ import (
 const (
 	defaultRegion    = "us-east-2"
 	defaultWorldsDir = "/srv/minecraft-server"
+
+	// Host is recorded as the host of every snapshot, instead of the machine's
+	// hostname. Every new instance gets a new hostname, and restic picks the
+	// parent snapshot (so it can skip unchanged files) and groups snapshots
+	// for `forget` by host. Each bucket belongs to one environment, so one
+	// name is enough.
+	Host = "minecraft"
 )
 
 // Config holds the backup configuration
@@ -84,8 +91,9 @@ func (c *Config) runResticOutput(args ...string) (string, error) {
 
 // InitRepository initializes the restic repository if it doesn't exist
 func (c *Config) InitRepository() error {
-	// Check if repo exists by trying to list snapshots
-	_, err := c.runResticOutput("snapshots", "--quiet")
+	// Check if repo exists by reading its config, which (unlike listing
+	// snapshots) doesn't grow with the repository
+	_, err := c.runResticOutput("cat", "config")
 	if err == nil {
 		return nil // Repo already exists
 	}
@@ -125,18 +133,22 @@ func (c *Config) Create(world string) error {
 		fmt.Printf("Backing up world: %s...\n", world)
 	}
 
-	err := c.runRestic("backup", backupPath,
+	if err := c.runRestic(backupArgs(backupPath, tag)...); err != nil {
+		return err
+	}
+
+	fmt.Println("Backup complete.")
+	return nil
+}
+
+func backupArgs(path, tag string) []string {
+	return []string{"backup", path,
+		"--host", Host,
 		"--tag", tag,
 		"--exclude", "*.log",
 		"--exclude", "logs/",
 		"--exclude", "crash-reports/",
-	)
-	if err != nil {
-		return err
 	}
-
-	fmt.Println("\nBackup complete. Recent snapshots:")
-	return c.runRestic("snapshots", "--latest", "3", "--tag", tag)
 }
 
 // Restore restores a snapshot

@@ -128,10 +128,14 @@ Systemd Units
 - **minecraft-map-build@.timer** / **.service**: renders a world's maps every
   15 minutes while that world runs. The timer requires the world's
   ``minecraft@`` unit, so it's enabled per world but never started on its own.
+  Each successful build starts ``minecraft-map-backup@`` to upload the maps.
 - **minecraft-map-backup@.timer** / **.service**: uploads a world's rendered
-  maps to S3 twice a day.
+  maps to S3, after each build and twice a day.
 - **minecraft-world-backup@.timer** / **.service**: daily restic snapshot of
-  a world's ``world/`` directory.
+  a world's ``world/`` directory. ``minecraft@.service`` also takes one when a
+  world stops. Snapshots are recorded under host ``minecraft`` rather than the
+  instance's hostname, and the backup units share a restic cache in
+  ``/var/cache/restic``.
 - **minecraft-world-backup.timer**, **minecraft-world-prune.timer**,
   **minecraft-map-backup.timer**, **minecraft-map-build-daily@.timer**:
   weekly full backups, prune and a daily map-build fallback. Installed but not

@@ -1,6 +1,9 @@
 [Unit]
 Description=Build Minecraft map for %i
 After=minecraft@%i.service
+# Upload the maps once they're built. Maps only change here, so this replaces
+# uploading them when the world stops, which held up every stop by ~8s.
+OnSuccess=minecraft-map-backup@%i.service
 
 [Service]
 Type=oneshot
