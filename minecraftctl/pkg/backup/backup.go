@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -157,7 +158,14 @@ func (c *Config) Create(world string) error {
 		fmt.Printf("Backing up world: %s...\n", world)
 	}
 
-	if err := c.runRestic(backupArgs(backupPath, tag)...); err != nil {
+	args := backupArgs(backupPath, tag)
+	if tag == "all" {
+		// Caddy's TLS certificates: re-issued if lost, and only readable by
+		// the caddy user, so including them makes every `all` backup fail
+		// (restic exits 3 on unreadable files)
+		args = append(args, "--exclude", filepath.Join(c.WorldsDir, "caddy"))
+	}
+	if err := c.runRestic(args...); err != nil {
 		return err
 	}
 
