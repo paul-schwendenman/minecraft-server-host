@@ -3,7 +3,8 @@
 Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
 The plan was reviewed on 2026-09-25; the phase 1 changes it asked for (marked
 **Review** below) are in the code too. **Phase 2 implemented** (2026-09-25),
-not yet tried on test. Phase 3 is proposed. Written 2026-09-24.
+tried on test 2026-09-28. **Phase 3 implemented** (2026-09-28), not yet
+deployed or tried on test. Written 2026-09-24.
 
 ## Problem
 
@@ -226,8 +227,8 @@ has to do the switch. Options considered:
 check simply starts whatever the tag says. **A** is the fallback if B turns out
 to be fiddly.
 
-Before building B, check on test that a tag change reaches instance metadata
-without a reboot. AWS says it does.
+Checked on test (2026-09-28): a tag change reaches instance metadata without a
+reboot.
 
 ### Keep `minecraftctl` platform-agnostic
 
@@ -330,10 +331,23 @@ is running, and point to `world switch`.
 
 ## Phase 3: watcher, lambda and UI
 
-**Player policy.** `world switch` refuses while players are online, but the UI
-was going to warn that switching kicks everyone off. Proposed: the watcher
-refuses (no `--force`), and the maps app shows the player count and disables
-**Play** until the server is empty. Forcing a switch stays an SSH-only action.
+**Player policy (decided 2026-09-28): refuse while players are online.** No
+switch from the UI kicks anyone off. Forcing a switch stays an SSH-only action
+(`world switch --force`). Three layers enforce it:
+
+- **Maps app:** shows the player count and disables **Play** on other worlds
+  until the server is empty, with the reason.
+- **Control lambda:** `/switch?world=<other>` on a running instance pings the
+  server (as the details lambda does) and returns 409 if anyone's online,
+  *before* setting the tag. Without this, a stale page would set the tag, the
+  watcher would refuse and retry every tick, and the switch would stay
+  pending: firing whenever the server next empties, maybe hours later, or at
+  the next boot if the server shut down first. If the ping fails (the world
+  is still loading), also 409: nobody can tell whether it's empty.
+- **Watcher:** calls `world switch` without `--force`, so it refuses too. This
+  covers a player joining between the lambda's check and the switch. It
+  retries on the next tick (exit 3), so that race resolves itself once the
+  player leaves.
 
 **Watcher.** A timer (option B) in `packer/` that acts only on tag changes, as
 above, and handles `world switch`'s exit codes as in the phase 2 table. A
@@ -342,8 +356,19 @@ doesn't retry until the tag changes again.
 
 **Lambda and UI.**
 
-- `/start?world=` on a running instance with a different world: set the tag
-  and return 202 instead of 409. The watcher does the switch.
+- **A separate `POST /switch?world=<name>`** (decided 2026-09-29) rather than
+  reusing `/start?world=`. The page sends the request that matches the state
+  it saw, and the lambda refuses the other: a page that saw the server
+  stopped sends `/start`, which gets 409 if someone started a world
+  meanwhile, instead of switching the world under them. The two also have
+  different contracts: `/start` boots the instance (200), `/switch` sets the
+  tag for the watcher (202) and checks players first.
+  - `/switch` on a running instance with a different world: 409 with players
+    online or the world not answering (see the player policy), else set the
+    tag and return 202. Same world: 200, nothing to do. Stopped or starting:
+    409.
+  - `/start?world=` stays as in phase 1: 409 when a different world is
+    running or starting.
 - The maps app enables **Play** on other worlds while the server is running
   and empty (see the player policy above).
 
@@ -427,11 +452,32 @@ Phase 2 (`minecraftctl world switch`):
 
 Phase 3:
 
-1. Settle the player policy.
-2. Confirm on test that tag changes reach metadata while the instance runs.
-3. The watcher timer (option B) in `packer/`, acting only on tag changes.
-4. Lambda returns 202 instead of 409 for a running instance, and the maps app
-   allows switching while it runs.
+1. ~~Settle the player policy~~: refuse while players are online (above).
+2. ~~Confirm on test that tag changes reach metadata while the instance
+   runs~~: confirmed 2026-09-28. `create-tags` on the running test instance
+   showed up in `/meta-data/tags/instance/ActiveWorld` within seconds, with no
+   reboot. A one-minute watcher timer is plenty.
+3. ~~The watcher timer (option B) in `packer/`, acting only on tag
+   changes~~: `minecraft-world-watch.{sh,service,timer}`. Boot writes the tag
+   it acted on to `/run/minecraft-world-tag`, so the watcher neither redoes
+   nor retries what boot did.
+4. ~~Lambda returns 202 instead of 409 for a running instance, and the maps
+   app allows switching while it runs~~: done, as a separate
+   `POST /switch` (`/start?world=` still refuses a running server). The
+   lambda pings the server (`mcstatus`, now a runtime dependency) and refuses
+   with 409 while anyone's online or it isn't answering; its timeout went
+   from the default 3 s to 10 s for the ping. **Play** on a world page switches when the server runs
+   another world with nobody online. The Controls page has the same split
+   button while running: **Stop**, plus a "Switch to a world" menu, disabled
+   (with the reason) until nobody's online. `WorldStartButton` and
+   `WorldSwitchButton` are thin wrappers over one `WorldMenuButton`, and a
+   shared `playersOnline` store feeds both it and **Play**.
+5. Try it on test (new AMI, lambda deploy, `terraform apply` for the timeout):
+   - **Play** another world while the server runs, empty: switches within a
+     minute or two; `journalctl -t minecraft-world-watch`;
+   - with a player online: **Play** is disabled, and the API returns 409;
+   - set the tag by hand to a world that can't start: logged, not retried;
+   - `world switch` by hand over SSH: the watcher leaves it alone.
 
 ## Open questions
 

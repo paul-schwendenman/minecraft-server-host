@@ -71,6 +71,8 @@ export function mockServer(): Plugin {
 
 			// ---------- State ----------
 			let errorThreshold = 0.9;
+			// Players in the last details response; /switch refuses while any are online
+			let lastPlayersOnline: number | null = null;
 			const state: ServerStatusResponse = {
 				instance: { state: 'stopped', ip_address: undefined, active_world: 'default' },
 				dns_record: { name: 'minecraft.example.com.', value: '10.0.0.1', type: 'A' }
@@ -133,7 +135,7 @@ export function mockServer(): Plugin {
 								return send(
 									res,
 									{
-										detail: `Server is running ${state.instance.active_world}; stop it before switching worlds`
+										detail: `Server is running ${state.instance.active_world}; switch worlds instead of starting`
 									},
 									409
 								);
@@ -148,6 +150,41 @@ export function mockServer(): Plugin {
 							state.instance.ip_address = ipv4.random('10.0.0.0', 8) as string;
 						}, 1000);
 						return send(res, { message: 'Success' });
+					}
+
+					if (path === '/switch') {
+						const world = new URL(req.url, 'http://mock').searchParams.get('world') ?? '';
+						if (!mockWorlds.some((w) => w.world === world)) {
+							return send(res, { detail: `Unknown world: ${world}` }, 400);
+						}
+						if (state.instance.state === 'pending') {
+							return send(res, { detail: "Server is starting; try again once it's running" }, 409);
+						}
+						if (state.instance.state !== 'running') {
+							return send(
+								res,
+								{ detail: `Server is ${state.instance.state}; start it instead of switching` },
+								409
+							);
+						}
+						if (world === state.instance.active_world) {
+							return send(res, { message: 'Success', world });
+						}
+						if (lastPlayersOnline === null) {
+							return send(
+								res,
+								{ detail: "Server isn't answering yet; try again once the world has loaded" },
+								409
+							);
+						}
+						if (lastPlayersOnline > 0) {
+							const who =
+								lastPlayersOnline === 1 ? '1 player is' : `${lastPlayersOnline} players are`;
+							return send(res, { detail: `${who} online; switch once the server is empty` }, 409);
+						}
+						await sleep(250);
+						state.instance.active_world = world;
+						return send(res, { message: 'Switching', world }, 202);
 					}
 
 					if (path === '/stop') {
@@ -181,12 +218,15 @@ export function mockServer(): Plugin {
 							return res.end();
 						}
 						if (Math.random() < errorThreshold) {
+							lastPlayersOnline = null;
 							res.statusCode = [500, 503, 504][Math.floor(Math.random() * 3)];
 							return res.end();
 						}
 						await sleep(333);
 						const sample = [details.zero, details.one, details.two];
-						return send(res, sample[Math.floor(Math.random() * 3)]);
+						const reply = sample[Math.floor(Math.random() * 3)];
+						lastPlayersOnline = reply.players.online;
+						return send(res, reply);
 					}
 
 					if (path === '/worlds') {
@@ -211,7 +251,8 @@ export function mockServer(): Plugin {
 						return send(res, mapData);
 					}
 
-					next();
+					// An unmocked API route would otherwise fall through to the app's HTML
+					return send(res, { detail: `No mock for ${req.method} ${path}` }, 404);
 				}
 			);
 		}

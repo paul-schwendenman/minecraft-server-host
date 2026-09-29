@@ -1,0 +1,12 @@
+[Unit]
+Description=Check the ActiveWorld instance tag every minute
+
+[Timer]
+OnBootSec=2min
+# Counted from when the last check finished, so a slow switch (a big world can
+# take minutes to load) never overlaps the next check.
+OnUnitInactiveSec=1min
+AccuracySec=5s
+
+[Install]
+WantedBy=timers.target

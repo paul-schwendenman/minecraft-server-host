@@ -107,6 +107,8 @@ resource "aws_lambda_function" "control" {
   role          = aws_iam_role.lambda_exec.arn
   handler       = "app.main.handler"
   runtime       = "python3.13"
+  # /start?world= on a running server pings it (up to 3 s) before switching
+  timeout = 10
 
   filename         = var.control_zip_path
   source_code_hash = filebase64sha256(var.control_zip_path)

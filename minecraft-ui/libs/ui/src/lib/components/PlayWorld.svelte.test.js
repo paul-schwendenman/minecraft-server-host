@@ -1,11 +1,28 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { mockStatus } = vi.hoisted(() => {
+const { mockStatus, mockPlayersOnline } = vi.hoisted(() => {
 	let value = {};
 	/** @type {Set<(v: any) => void>} */
 	const subscribers = new Set();
+	/** @type {number | null} */
+	let playersValue = null;
+	/** @type {Set<(v: any) => void>} */
+	const playersSubscribers = new Set();
 	return {
+		mockPlayersOnline: {
+			/** @param {(v: any) => void} callback */
+			subscribe: (callback) => {
+				playersSubscribers.add(callback);
+				callback(playersValue);
+				return () => playersSubscribers.delete(callback);
+			},
+			/** @param {number | null} newValue */
+			set: (newValue) => {
+				playersValue = newValue;
+				playersSubscribers.forEach((callback) => callback(playersValue));
+			}
+		},
 		mockStatus: {
 			/** @param {(v: any) => void} callback */
 			subscribe: (callback) => {
@@ -19,13 +36,15 @@ const { mockStatus } = vi.hoisted(() => {
 				subscribers.forEach((callback) => callback(value));
 			},
 			refresh: vi.fn(() => Promise.resolve()),
-			startWorld: vi.fn(() => Promise.resolve())
+			startWorld: vi.fn(() => Promise.resolve()),
+			switchWorld: vi.fn(() => Promise.resolve())
 		}
 	};
 });
 
 vi.mock('@minecraft/data', () => ({
-	status: mockStatus
+	status: mockStatus,
+	playersOnline: mockPlayersOnline
 }));
 
 import PlayWorld from './PlayWorld.svelte';
@@ -37,11 +56,17 @@ import PlayWorld from './PlayWorld.svelte';
 const setServer = (state, activeWorld = 'default') =>
 	mockStatus.set({ instance: { state, active_world: activeWorld }, dns_record: {} });
 
+/** @param {number} online players the server list ping reports */
+const setPlayers = (online) => mockPlayersOnline.set(online);
+
 describe('PlayWorld', () => {
 	beforeEach(() => {
 		mockStatus.refresh.mockClear();
 		mockStatus.startWorld.mockReset();
 		mockStatus.startWorld.mockImplementation(() => Promise.resolve());
+		mockStatus.switchWorld.mockReset();
+		mockStatus.switchWorld.mockImplementation(() => Promise.resolve());
+		mockPlayersOnline.set(null);
 	});
 
 	it('refreshes a previously loaded status on mount', async () => {
@@ -68,6 +93,7 @@ describe('PlayWorld', () => {
 		await screen.getByRole('button', { name: 'Play old' }).click();
 
 		expect(mockStatus.startWorld).toHaveBeenCalledWith('old');
+		expect(mockStatus.switchWorld).not.toHaveBeenCalled();
 	});
 
 	it('shows the world as running when it is the active world', async () => {
@@ -79,26 +105,75 @@ describe('PlayWorld', () => {
 		await expect.element(screen.getByRole('button', { name: 'Play old' })).not.toBeInTheDocument();
 	});
 
-	it('disables Play while another world is running', async () => {
+	it('disables Play until it knows nobody is online', async () => {
 		setServer('running', 'default');
 
 		const screen = render(PlayWorld, { world: 'old' });
 
-		await expect.element(screen.getByText('Stop it to play this world.')).toBeInTheDocument();
 		await expect.element(screen.getByRole('button', { name: 'Play old' })).toBeDisabled();
 	});
 
-	it('shows the API error when starting fails', async () => {
-		setServer('stopped');
-		mockStatus.startWorld.mockImplementation(() =>
-			Promise.reject(new Error('Server is running default; stop it before switching worlds'))
+	it('disables Play while players are online', async () => {
+		setServer('running', 'default');
+		setPlayers(2);
+
+		const screen = render(PlayWorld, { world: 'old' });
+
+		await expect.element(screen.getByText(/2 players online/)).toBeInTheDocument();
+		await expect.element(screen.getByRole('button', { name: 'Play old' })).toBeDisabled();
+	});
+
+	it('disables Play while the server is starting another world', async () => {
+		setServer('pending', 'default');
+		setPlayers(0);
+
+		const screen = render(PlayWorld, { world: 'old' });
+
+		await expect.element(screen.getByText(/Try again once it's running/)).toBeInTheDocument();
+		await expect.element(screen.getByRole('button', { name: 'Play old' })).toBeDisabled();
+	});
+
+	it('switches worlds when the server is running and empty', async () => {
+		setServer('running', 'default');
+		setPlayers(0);
+
+		const screen = render(PlayWorld, { world: 'old' });
+		await expect.element(screen.getByText(/with nobody online/)).toBeInTheDocument();
+		await screen.getByRole('button', { name: 'Play old' }).click();
+
+		expect(mockStatus.switchWorld).toHaveBeenCalledWith('old');
+		expect(mockStatus.startWorld).not.toHaveBeenCalled();
+		await expect.element(screen.getByText(/Switching to/)).toBeInTheDocument();
+		await expect.element(screen.getByRole('button', { name: 'Play old' })).not.toBeInTheDocument();
+	});
+
+	it('shows the API error when a switch is refused', async () => {
+		setServer('running', 'default');
+		setPlayers(0);
+		mockStatus.switchWorld.mockImplementation(() =>
+			Promise.reject(new Error('1 player is online; switch once the server is empty'))
 		);
 
 		const screen = render(PlayWorld, { world: 'old' });
 		await screen.getByRole('button', { name: 'Play old' }).click();
 
 		await expect
-			.element(screen.getByText('Server is running default; stop it before switching worlds'))
+			.element(screen.getByText('1 player is online; switch once the server is empty'))
+			.toBeInTheDocument();
+		await expect.element(screen.getByText(/Switching to/)).not.toBeInTheDocument();
+	});
+
+	it('shows the API error when starting fails', async () => {
+		setServer('stopped');
+		mockStatus.startWorld.mockImplementation(() =>
+			Promise.reject(new Error('Server is running default; switch worlds instead of starting'))
+		);
+
+		const screen = render(PlayWorld, { world: 'old' });
+		await screen.getByRole('button', { name: 'Play old' }).click();
+
+		await expect
+			.element(screen.getByText('Server is running default; switch worlds instead of starting'))
 			.toBeInTheDocument();
 	});
 

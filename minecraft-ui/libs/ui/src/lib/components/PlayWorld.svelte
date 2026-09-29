@@ -2,16 +2,24 @@
 	import { onMount } from 'svelte';
 	import AsyncButton from './AsyncButton.svelte';
 	import Spinner from './Spinner.svelte';
-	import { status } from '@minecraft/data';
+	import { status, playersOnline } from '@minecraft/data';
 
 	let { world }: { world: string } = $props();
 
 	let error = $state('');
 	let refreshing = $state(false);
+	// Set once the API accepts a switch; the instance's watcher does it within a
+	// minute, and the status can't show that it's still loading
+	let switching = $state(false);
 
 	const serverState = $derived($status.instance?.state);
 	const activeWorld = $derived($status.instance?.active_world);
 	const isUp = $derived(serverState === 'pending' || serverState === 'running');
+	const playersPhrase = $derived($playersOnline === 1 ? '1 player' : `${$playersOnline} players`);
+	// Switching is refused while anyone's online (the API checks too)
+	const canSwitch = $derived(
+		serverState === 'running' && activeWorld !== world && $playersOnline === 0
+	);
 
 	const run = async (action: () => Promise<void>) => {
 		error = '';
@@ -23,9 +31,15 @@
 	};
 
 	const handlePlay = () => run(() => status.startWorld(world));
+	const handleSwitch = () =>
+		run(async () => {
+			await status.switchWorld(world);
+			switching = true;
+		});
 	const handleRefresh = async () => {
 		if (refreshing) return;
 		refreshing = true;
+		switching = false;
 		await run(() => status.refresh());
 		refreshing = false;
 	};
@@ -38,7 +52,9 @@
 <div class="card border border-base-300 bg-base-200">
 	<div class="card-body flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
 		<p>
-			{#if !serverState}
+			{#if switching}
+				Switching to <strong>{world}</strong>. It'll be ready in a minute or two.
+			{:else if !serverState}
 				Checking the server…
 			{:else if serverState === 'stopped'}
 				The server is off.
@@ -48,8 +64,15 @@
 				{:else}
 					<strong>{world}</strong> is running.
 				{/if}
+			{:else if serverState === 'pending'}
+				The server is starting <strong>{activeWorld}</strong>. Try again once it's running.
+			{:else if isUp && $playersOnline === null}
+				The server is running <strong>{activeWorld}</strong>.
+			{:else if isUp && $playersOnline === 0}
+				The server is running <strong>{activeWorld}</strong> with nobody online.
 			{:else if isUp}
-				The server is running <strong>{activeWorld}</strong>. Stop it to play this world.
+				The server is running <strong>{activeWorld}</strong> with {playersPhrase} online. You can switch
+				once it's empty.
 			{:else if serverState === 'stopping'}
 				The server is stopping. Try again once it's off.
 			{:else}
@@ -60,7 +83,9 @@
 		<div class="flex items-center gap-1">
 			{#if serverState === 'stopped'}
 				<AsyncButton action={handlePlay}>Play {world}</AsyncButton>
-			{:else if isUp && activeWorld !== world}
+			{:else if canSwitch && !switching}
+				<AsyncButton action={handleSwitch}>Play {world}</AsyncButton>
+			{:else if isUp && activeWorld !== world && !switching}
 				<button class="btn btn-lg min-h-12 btn-neutral sm:btn-md" disabled>Play {world}</button>
 			{/if}
 			{#if serverState}

@@ -60,7 +60,8 @@ Only one world runs at a time: every world uses port 25565 and RCON 25575.
 Worlds are **not** enabled at boot one by one. ``minecraft-active.service``
 reads the instance's ``ActiveWorld`` tag from instance metadata once
 cloud-init has finished and starts that world with ``minecraftctl world
-switch``. The control lambda sets the tag (``POST /start?world=<name>``); see
+switch``. The control lambda sets the tag (``POST /start?world=<name>`` on a
+stopped server, ``POST /switch?world=<name>`` on a running one); see
 ``docs/plans/world-switching-plan.md``.
 
 If the tag is missing, or the world can't start or doesn't come up, it falls
@@ -75,11 +76,20 @@ back to ``MC_DEFAULT_WORLD`` from ``/etc/minecraft.env`` (Terraform's
 ``world/level.dat`` isn't required: Minecraft writes it on a world's first
 start. Check the log with ``journalctl -u minecraft-active``.
 
+While the server runs, ``minecraft-world-watch.timer`` checks the tag every
+minute. When the tag *changes* (the maps app's **Play** on a running, empty
+server), it runs ``minecraftctl world switch <tag>``. It never forces: with
+players online the switch is refused and retried a minute later. A world that
+can't start or doesn't come up isn't retried until the tag changes again.
+``/run/minecraft-world-tag`` holds the last tag value acted on (boot writes it
+too). Check the log with ``journalctl -t minecraft-world-watch``.
+
 To switch worlds on a running server over SSH, use ``sudo minecraftctl world
 switch <name>``: it refuses while players are online (``--force`` warns them
 and switches anyway), and goes back to the previous world if the new one
-doesn't come up. The switch lasts until the next boot, when the tag wins
-again. ``world start`` refuses while another world is running.
+doesn't come up. The watcher only acts on tag changes, so the switch lasts
+until the tag changes or the next boot, when the tag wins again.
+``world start`` refuses while another world is running.
 
 Included Tools & Scripts
 ------------------------
@@ -109,6 +119,8 @@ Systemd Units
   stops.
 - **minecraft-active.service**: starts the world named by the ``ActiveWorld``
   tag at boot (see above).
+- **minecraft-world-watch.timer** / **.service**: every minute, switches
+  worlds when the ``ActiveWorld`` tag changes (see above).
 - **autoshutdown.timer** / **autoshutdown.service**: every 5 minutes; powers
   the instance off when no world is running, or after two checks with no
   players. An interactive SSH session, or a ``minecraftctl world switch`` in
@@ -139,7 +151,9 @@ Helper Scripts
   otherwise creates it with ``minecraftctl world create``. Either way it then
   registers every other world on the volume, so all of them keep their backup
   timers. It doesn't start anything.
-- **minecraft-active.sh**: the boot unit's script (see "Which world runs").
+- **minecraft-active.sh**, **minecraft-world-watch.sh**: the boot unit's and
+  the tag watcher's scripts, in ``/usr/local/libexec`` (see "Which world
+  runs").
   Installed in ``/usr/local/libexec``, not on the ``PATH``, since only the
   unit runs it.
 - **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
