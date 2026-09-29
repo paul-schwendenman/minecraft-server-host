@@ -56,3 +56,22 @@ export const status = createStatus();
 export const details = derived(status, ($status) =>
 	$status?.instance?.state === 'running' ? getDetails($status.instance.ip_address) : null
 );
+
+/**
+ * Players online while the server runs, from the details ping; null while
+ * it's unknown (stopped, not answering yet, or still being asked). Switching
+ * worlds is only offered at 0: the API refuses it while anyone's online.
+ */
+export const playersOnline = derived(
+	details,
+	($details, set) => {
+		set(null);
+		if (!$details) return;
+		let current = true;
+		$details.then((d) => current && set(d.players.online)).catch(() => {});
+		return () => {
+			current = false;
+		};
+	},
+	null as number | null
+);

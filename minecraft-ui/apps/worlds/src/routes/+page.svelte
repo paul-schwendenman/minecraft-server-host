@@ -1,5 +1,5 @@
 <script>
-	import { ServerStatus, WorldStartButton } from '@minecraft/ui';
+	import { ServerStatus, WorldStartButton, WorldSwitchButton } from '@minecraft/ui';
 	import { status } from '@minecraft/data';
 
 	let serverStatus = status.refresh();
@@ -22,6 +22,9 @@
 		<ServerStatus>
 			{#snippet startButton()}
 				<WorldStartButton class="flex-2" />
+			{/snippet}
+			{#snippet stopButton()}
+				<WorldSwitchButton class="flex-1" />
 			{/snippet}
 		</ServerStatus>
 	{:catch error}

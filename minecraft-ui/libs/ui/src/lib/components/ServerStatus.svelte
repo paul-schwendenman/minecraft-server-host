@@ -5,9 +5,10 @@
 	import StartButton from './StartButton.svelte';
 	import { status } from '@minecraft/data';
 
-	// startButton replaces the plain Start shown while the server is stopped;
-	// the maps app passes a WorldStartButton, to choose the world first.
-	let { startButton }: { startButton?: Snippet } = $props();
+	// startButton and stopButton replace the plain Start (server stopped) and
+	// Stop (running). The maps app passes WorldStartButton and
+	// WorldSwitchButton, which add a menu of worlds to start or switch to.
+	let { startButton, stopButton }: { startButton?: Snippet; stopButton?: Snippet } = $props();
 
 	const handleRefresh = () => {
 		return status.refresh();
@@ -52,7 +53,11 @@
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
 				<AsyncButton class="flex-2" action={handleSyncDNS}>Update DNS</AsyncButton>
 			{/if}
-			<AsyncButton class="flex-1" action={handleStop}>Stop</AsyncButton>
+			{#if stopButton}
+				{@render stopButton()}
+			{:else}
+				<AsyncButton class="flex-1" action={handleStop}>Stop</AsyncButton>
+			{/if}
 		{/if}
 		<AsyncButton class="flex-1" action={handleRefresh}>Refresh</AsyncButton>
 	</div>

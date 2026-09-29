@@ -467,8 +467,11 @@ Phase 3:
    lambda pings the server (`mcstatus`, now a runtime dependency) and refuses
    with 409 while anyone's online or it isn't answering; its timeout went
    from the default 3 s to 10 s for the ping. **Play** on a world page switches when the server runs
-   another world with nobody online. The Controls page's Start dropdown still
-   only shows while stopped.
+   another world with nobody online. The Controls page has the same split
+   button while running: **Stop**, plus a "Switch to a world" menu, disabled
+   (with the reason) until nobody's online. `WorldStartButton` and
+   `WorldSwitchButton` are thin wrappers over one `WorldMenuButton`, and a
+   shared `playersOnline` store feeds both it and **Play**.
 5. Try it on test (new AMI, lambda deploy, `terraform apply` for the timeout):
    - **Play** another world while the server runs, empty: switches within a
      minute or two; `journalctl -t minecraft-world-watch`;

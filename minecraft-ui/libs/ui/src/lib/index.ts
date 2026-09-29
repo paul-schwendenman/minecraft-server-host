@@ -6,4 +6,6 @@ export { default as ActivePlayerMessage } from './components/ActivePlayerMessage
 export { default as ServerVersion } from './components/ServerVersion.svelte';
 export { default as PlayWorld } from './components/PlayWorld.svelte';
 export { default as StartButton } from './components/StartButton.svelte';
+export { default as WorldMenuButton } from './components/WorldMenuButton.svelte';
 export { default as WorldStartButton } from './components/WorldStartButton.svelte';
+export { default as WorldSwitchButton } from './components/WorldSwitchButton.svelte';

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import AsyncButton from './AsyncButton.svelte';
 	import Spinner from './Spinner.svelte';
-	import { status, details } from '@minecraft/data';
+	import { status, playersOnline } from '@minecraft/data';
 
 	let { world }: { world: string } = $props();
 
@@ -11,26 +11,15 @@
 	// Set once the API accepts a switch; the instance's watcher does it within a
 	// minute, and the status can't show that it's still loading
 	let switching = $state(false);
-	// Players online while another world runs; null until the ping answers.
-	// Switching is refused while anyone's online (the API checks too).
-	let playersOnline: number | null = $state(null);
 
 	const serverState = $derived($status.instance?.state);
 	const activeWorld = $derived($status.instance?.active_world);
 	const isUp = $derived(serverState === 'pending' || serverState === 'running');
-	const playersPhrase = $derived(playersOnline === 1 ? '1 player' : `${playersOnline} players`);
+	const playersPhrase = $derived($playersOnline === 1 ? '1 player' : `${$playersOnline} players`);
+	// Switching is refused while anyone's online (the API checks too)
 	const canSwitch = $derived(
-		serverState === 'running' && activeWorld !== world && playersOnline === 0
+		serverState === 'running' && activeWorld !== world && $playersOnline === 0
 	);
-
-	$effect(() => {
-		const pending = $details;
-		playersOnline = null;
-		if (!pending) return;
-		let current = true;
-		pending.then((d) => current && (playersOnline = d.players.online)).catch(() => {});
-		return () => (current = false);
-	});
 
 	const run = async (action: () => Promise<void>) => {
 		error = '';
@@ -77,9 +66,9 @@
 				{/if}
 			{:else if serverState === 'pending'}
 				The server is starting <strong>{activeWorld}</strong>. Try again once it's running.
-			{:else if isUp && playersOnline === null}
+			{:else if isUp && $playersOnline === null}
 				The server is running <strong>{activeWorld}</strong>.
-			{:else if isUp && playersOnline === 0}
+			{:else if isUp && $playersOnline === 0}
 				The server is running <strong>{activeWorld}</strong> with nobody online.
 			{:else if isUp}
 				The server is running <strong>{activeWorld}</strong> with {playersPhrase} online. You can switch

@@ -1,26 +1,26 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const { mockStatus, mockDetails } = vi.hoisted(() => {
+const { mockStatus, mockPlayersOnline } = vi.hoisted(() => {
 	let value = {};
 	/** @type {Set<(v: any) => void>} */
 	const subscribers = new Set();
-	/** @type {any} */
-	let detailsValue = null;
+	/** @type {number | null} */
+	let playersValue = null;
 	/** @type {Set<(v: any) => void>} */
-	const detailsSubscribers = new Set();
+	const playersSubscribers = new Set();
 	return {
-		mockDetails: {
+		mockPlayersOnline: {
 			/** @param {(v: any) => void} callback */
 			subscribe: (callback) => {
-				detailsSubscribers.add(callback);
-				callback(detailsValue);
-				return () => detailsSubscribers.delete(callback);
+				playersSubscribers.add(callback);
+				callback(playersValue);
+				return () => playersSubscribers.delete(callback);
 			},
-			/** @param {any} newValue */
+			/** @param {number | null} newValue */
 			set: (newValue) => {
-				detailsValue = newValue;
-				detailsSubscribers.forEach((callback) => callback(detailsValue));
+				playersValue = newValue;
+				playersSubscribers.forEach((callback) => callback(playersValue));
 			}
 		},
 		mockStatus: {
@@ -44,7 +44,7 @@ const { mockStatus, mockDetails } = vi.hoisted(() => {
 
 vi.mock('@minecraft/data', () => ({
 	status: mockStatus,
-	details: mockDetails
+	playersOnline: mockPlayersOnline
 }));
 
 import PlayWorld from './PlayWorld.svelte';
@@ -57,7 +57,7 @@ const setServer = (state, activeWorld = 'default') =>
 	mockStatus.set({ instance: { state, active_world: activeWorld }, dns_record: {} });
 
 /** @param {number} online players the server list ping reports */
-const setPlayers = (online) => mockDetails.set(Promise.resolve({ players: { online, max: 20 } }));
+const setPlayers = (online) => mockPlayersOnline.set(online);
 
 describe('PlayWorld', () => {
 	beforeEach(() => {
@@ -66,7 +66,7 @@ describe('PlayWorld', () => {
 		mockStatus.startWorld.mockImplementation(() => Promise.resolve());
 		mockStatus.switchWorld.mockReset();
 		mockStatus.switchWorld.mockImplementation(() => Promise.resolve());
-		mockDetails.set(null);
+		mockPlayersOnline.set(null);
 	});
 
 	it('refreshes a previously loaded status on mount', async () => {
