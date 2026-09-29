@@ -2,6 +2,7 @@ package backup
 
 import (
 	"os"
+	"os/user"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -29,5 +30,49 @@ func TestOwnedBy(t *testing.T) {
 	}
 	if ownedBy(filepath.Join(dir, "missing"), os.Getuid()) {
 		t.Error("ownedBy(missing dir) = true, want false")
+	}
+}
+
+func TestCommandRunsAsCredential(t *testing.T) {
+	c := &Config{Repository: "s3:example/bucket", Password: "pw"}
+	cred := &Credential{Uid: 996, Gid: 996, Groups: []uint32{996}, Home: "/home/minecraft"}
+
+	cmd := c.command(cred, "snapshots")
+
+	if cmd.SysProcAttr == nil || cmd.SysProcAttr.Credential == nil {
+		t.Fatal("command() didn't set a credential")
+	}
+	if got := cmd.SysProcAttr.Credential.Uid; got != 996 {
+		t.Errorf("credential uid = %d, want 996", got)
+	}
+	if !slices.Contains(cmd.Env, "HOME=/home/minecraft") {
+		t.Errorf("env missing HOME=/home/minecraft: %v", cmd.Env)
+	}
+}
+
+func TestCommandWithoutCredentialRunsAsCaller(t *testing.T) {
+	c := &Config{Repository: "s3:example/bucket", Password: "pw"}
+
+	cmd := c.command(nil, "snapshots")
+
+	if cmd.SysProcAttr != nil {
+		t.Errorf("command(nil) set SysProcAttr: %+v", cmd.SysProcAttr)
+	}
+	if !slices.Contains(cmd.Env, "RESTIC_REPOSITORY=s3:example/bucket") {
+		t.Errorf("env missing RESTIC_REPOSITORY: %v", cmd.Env)
+	}
+}
+
+func TestLookupCredentialCurrentUser(t *testing.T) {
+	u, err := user.Current()
+	if err != nil {
+		t.Skip(err)
+	}
+	cred, err := LookupCredential(u.Username)
+	if err != nil {
+		t.Fatalf("LookupCredential(%s): %v", u.Username, err)
+	}
+	if int(cred.Uid) != os.Getuid() || cred.Home != u.HomeDir {
+		t.Errorf("LookupCredential(%s) = %+v, want uid %d home %s", u.Username, cred, os.Getuid(), u.HomeDir)
 	}
 }

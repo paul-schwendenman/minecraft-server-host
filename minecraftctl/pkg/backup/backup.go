@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/paul/minecraftctl/pkg/envfile"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -23,12 +24,16 @@ const (
 	// name is enough.
 	Host = "minecraft"
 
-	// CacheDir is restic's cache when it's owned by the user running
-	// minecraftctl. restic's default is ~/.cache, but minecraft@.service
-	// runs the on-stop backup with ProtectHome, which hides it. Only its
-	// owner uses it, so a run as root can't leave files there that the
-	// minecraft user can't update; other users get restic's default.
+	// CacheDir is restic's cache when it's owned by the user restic runs as.
+	// restic's default is ~/.cache, but minecraft@.service runs the on-stop
+	// backup with ProtectHome, which hides it. Other users get restic's
+	// default, so none of them can leave files there its owner can't update.
 	CacheDir = "/var/cache/restic"
+
+	// RunAsUser is who restic runs as when minecraftctl runs as root, so
+	// every run shares CacheDir, and restored files belong to the user that
+	// runs the worlds instead of the numeric owner recorded in the snapshot.
+	RunAsUser = "minecraft"
 )
 
 // Config holds the backup configuration
@@ -36,6 +41,8 @@ type Config struct {
 	Repository string
 	Password   string
 	WorldsDir  string
+	// RunAs is who restic runs as, or nil for the current user
+	RunAs *Credential
 }
 
 // LoadConfig loads backup configuration from environment
@@ -67,23 +74,45 @@ func LoadConfig() (*Config, error) {
 		worldsDir = defaultWorldsDir
 	}
 
-	return &Config{
+	cfg := &Config{
 		Repository: fmt.Sprintf("s3:s3.%s.amazonaws.com/%s", region, bucket),
 		Password:   password,
 		WorldsDir:  worldsDir,
-	}, nil
+	}
+	if os.Geteuid() == 0 {
+		cred, err := LookupCredential(RunAsUser)
+		if err != nil {
+			log.Warn().Err(err).Msgf("can't run restic as %s, running it as root", RunAsUser)
+		} else {
+			cfg.RunAs = cred
+		}
+	}
+	return cfg, nil
 }
 
-// env is the environment restic runs with
-func (c *Config) env() []string {
+// command builds a restic command, run as runAs (nil: the current user)
+func (c *Config) command(runAs *Credential, args ...string) *exec.Cmd {
+	cmd := exec.Command("restic", args...)
 	env := append(os.Environ(),
 		"RESTIC_REPOSITORY="+c.Repository,
 		"RESTIC_PASSWORD="+c.Password,
 	)
-	if os.Getenv("RESTIC_CACHE_DIR") == "" && ownedBy(CacheDir, os.Getuid()) {
+	uid := os.Getuid()
+	if runAs != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{
+			Uid:    runAs.Uid,
+			Gid:    runAs.Gid,
+			Groups: runAs.Groups,
+		}}
+		uid = int(runAs.Uid)
+		// sudo leaves HOME as root's, which restic can't use as runAs
+		env = append(env, "HOME="+runAs.Home)
+	}
+	if os.Getenv("RESTIC_CACHE_DIR") == "" && ownedBy(CacheDir, uid) {
 		env = append(env, "RESTIC_CACHE_DIR="+CacheDir)
 	}
-	return env
+	cmd.Env = env
+	return cmd
 }
 
 // ownedBy reports whether path is a directory owned by uid
@@ -96,21 +125,21 @@ func ownedBy(path string, uid int) bool {
 	return ok && int(st.Uid) == uid
 }
 
-// runRestic executes a restic command with the configured environment
-func (c *Config) runRestic(args ...string) error {
-	cmd := exec.Command("restic", args...)
-	cmd.Env = c.env()
+func run(cmd *exec.Cmd) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	return cmd.Run()
 }
 
-// runResticOutput executes a restic command and returns the output
+// runRestic executes a restic command as c.RunAs
+func (c *Config) runRestic(args ...string) error {
+	return run(c.command(c.RunAs, args...))
+}
+
+// runResticOutput executes a restic command as c.RunAs and returns the output
 func (c *Config) runResticOutput(args ...string) (string, error) {
-	cmd := exec.Command("restic", args...)
-	cmd.Env = c.env()
-	out, err := cmd.CombinedOutput()
+	out, err := c.command(c.RunAs, args...).CombinedOutput()
 	return string(out), err
 }
 
@@ -200,7 +229,10 @@ func (c *Config) Restore(snapshot string, target string) error {
 		}
 	}
 
-	return c.runRestic(args...)
+	// Run as the caller, not c.RunAs: restic also restores the metadata of
+	// every directory above the world (/, /srv), which fails for anyone but
+	// root. Restored files keep the owners recorded in the snapshot.
+	return run(c.command(nil, args...))
 }
 
 // Prune removes old snapshots according to retention policy
