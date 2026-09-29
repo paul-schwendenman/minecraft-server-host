@@ -1,8 +1,13 @@
-<script>
+<script lang="ts">
+	import type { Snippet } from 'svelte';
 	import ServerDetails from './ServerDetails.svelte';
 	import AsyncButton from './AsyncButton.svelte';
 	import StartButton from './StartButton.svelte';
 	import { status } from '@minecraft/data';
+
+	// startButton replaces the plain Start shown while the server is stopped;
+	// the maps app passes a WorldStartButton, to choose the world first.
+	let { startButton }: { startButton?: Snippet } = $props();
 
 	const handleRefresh = () => {
 		return status.refresh();
@@ -38,7 +43,11 @@
 	</div>
 	<div class="flex flex-col flex-wrap gap-1 sm:flex-row">
 		{#if $status.instance?.state == 'stopped'}
-			<StartButton class="flex-2" />
+			{#if startButton}
+				{@render startButton()}
+			{:else}
+				<StartButton class="flex-2" />
+			{/if}
 		{:else if $status.instance?.state == 'running'}
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
 				<AsyncButton class="flex-2" action={handleSyncDNS}>Update DNS</AsyncButton>
