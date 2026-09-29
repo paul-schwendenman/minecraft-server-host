@@ -337,7 +337,7 @@ switch from the UI kicks anyone off. Forcing a switch stays an SSH-only action
 
 - **Maps app:** shows the player count and disables **Play** on other worlds
   until the server is empty, with the reason.
-- **Control lambda:** `/start?world=<other>` on a running instance pings the
+- **Control lambda:** `/switch?world=<other>` on a running instance pings the
   server (as the details lambda does) and returns 409 if anyone's online,
   *before* setting the tag. Without this, a stale page would set the tag, the
   watcher would refuse and retry every tick, and the switch would stay
@@ -356,9 +356,19 @@ doesn't retry until the tag changes again.
 
 **Lambda and UI.**
 
-- `/start?world=` on a running instance with a different world: set the tag
-  and return 202 instead of 409. The watcher does the switch.
-- `/start?world=` returns 409 with players online (see the player policy).
+- **A separate `POST /switch?world=<name>`** (decided 2026-09-29) rather than
+  reusing `/start?world=`. The page sends the request that matches the state
+  it saw, and the lambda refuses the other: a page that saw the server
+  stopped sends `/start`, which gets 409 if someone started a world
+  meanwhile, instead of switching the world under them. The two also have
+  different contracts: `/start` boots the instance (200), `/switch` sets the
+  tag for the watcher (202) and checks players first.
+  - `/switch` on a running instance with a different world: 409 with players
+    online or the world not answering (see the player policy), else set the
+    tag and return 202. Same world: 200, nothing to do. Stopped or starting:
+    409.
+  - `/start?world=` stays as in phase 1: 409 when a different world is
+    running or starting.
 - The maps app enables **Play** on other worlds while the server is running
   and empty (see the player policy above).
 
@@ -452,10 +462,11 @@ Phase 3:
    it acted on to `/run/minecraft-world-tag`, so the watcher neither redoes
    nor retries what boot did.
 4. ~~Lambda returns 202 instead of 409 for a running instance, and the maps
-   app allows switching while it runs~~: done. The lambda pings the server
-   (`mcstatus`, now a runtime dependency) and refuses with 409 while anyone's
-   online or it isn't answering; its timeout went from the default 3 s to
-   10 s for the ping. **Play** on a world page switches when the server runs
+   app allows switching while it runs~~: done, as a separate
+   `POST /switch` (`/start?world=` still refuses a running server). The
+   lambda pings the server (`mcstatus`, now a runtime dependency) and refuses
+   with 409 while anyone's online or it isn't answering; its timeout went
+   from the default 3 s to 10 s for the ping. **Play** on a world page switches when the server runs
    another world with nobody online. The Controls page's Start dropdown still
    only shows while stopped.
 5. Try it on test (new AMI, lambda deploy, `terraform apply` for the timeout):

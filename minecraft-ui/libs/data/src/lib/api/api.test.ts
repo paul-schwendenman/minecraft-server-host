@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getStatus } from './status.js';
-import { startInstance, startWorld } from './start.js';
+import { startInstance, startWorld, switchWorld } from './start.js';
 import { stopInstance } from './stop.js';
 import { syncDnsRecord } from './syncDns.js';
 import { getDetails } from './details.js';
@@ -121,13 +121,13 @@ describe('startWorld', () => {
 
 	it('throws the API detail message on a conflict', async () => {
 		const mockFetch = createMockFetchText(
-			'{"detail":"Server is running default; stop it before switching worlds"}',
+			'{"detail":"Server is running default; switch worlds instead of starting"}',
 			false,
 			409
 		);
 
 		await expect(startWorld('old', mockFetch)).rejects.toThrow(
-			'Server is running default; stop it before switching worlds'
+			'Server is running default; switch worlds instead of starting'
 		);
 	});
 
@@ -274,5 +274,30 @@ describe('getWorldMap', () => {
 		const mockFetch = createMockFetch('Map not found', false, 404);
 
 		await expect(getWorldMap('survival', 'nonexistent', mockFetch)).rejects.toThrow();
+	});
+});
+
+describe('switchWorld', () => {
+	it('posts to /switch with the world as a query parameter', async () => {
+		const mockFetch = createMockFetchText('{"message":"Switching","world":"old"}');
+
+		await switchWorld('old', mockFetch);
+
+		expect(mockFetch).toHaveBeenCalledWith(
+			expect.stringContaining('/switch?world=old'),
+			expect.objectContaining({ method: 'POST' })
+		);
+	});
+
+	it('throws the API detail message when refused', async () => {
+		const mockFetch = createMockFetchText(
+			'{"detail":"1 player is online; switch once the server is empty"}',
+			false,
+			409
+		);
+
+		await expect(switchWorld('old', mockFetch)).rejects.toThrow(
+			'1 player is online; switch once the server is empty'
+		);
 	});
 });

@@ -3,6 +3,7 @@ import {
 	getStatus,
 	startInstance,
 	startWorld,
+	switchWorld,
 	stopInstance,
 	syncDnsRecord,
 	getDetails
@@ -22,6 +23,10 @@ function createStatus() {
 		},
 		startWorld: async (world: string) => {
 			await startWorld(world);
+			set(await getStatus());
+		},
+		switchWorld: async (world: string) => {
+			await switchWorld(world);
 			set(await getStatus());
 		}
 	};

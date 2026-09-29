@@ -44,7 +44,7 @@
 	const handlePlay = () => run(() => status.startWorld(world));
 	const handleSwitch = () =>
 		run(async () => {
-			await status.startWorld(world);
+			await status.switchWorld(world);
 			switching = true;
 		});
 	const handleRefresh = async () => {

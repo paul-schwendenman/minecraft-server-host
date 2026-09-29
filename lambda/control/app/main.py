@@ -29,15 +29,62 @@ def status():
 
 @app.post("/start")
 def start(world: Optional[str] = None):
-    """Start the instance, optionally choosing which world it runs.
+    """Start the instance, optionally choosing which world it boots into.
 
-    On a running server, a different world is a switch: the tag is set and the
-    instance's watcher (minecraft-world-watch) switches within a minute, so the
-    response is 202. Switches are refused while anyone's online.
+    Only for a stopped server: a different world on a running one is 409 (use
+    /switch). Keeping the two apart means a page that saw the server stopped
+    can't switch the world under someone who started it meanwhile.
     """
     if world is None:
         return aws.start_instance(settings["INSTANCE_ID"])
 
+    check_known_world(world)
+    instance = aws.get_instance(settings["INSTANCE_ID"])
+    state = instance["State"]["Name"]
+    active = aws.get_active_world(instance)
+
+    if state in ("pending", "running"):
+        if world != active:
+            raise HTTPException(
+                409, f"Server is running {active}; switch worlds instead of starting"
+            )
+        return {"message": "Success", "world": world}
+    if state != "stopped":
+        raise HTTPException(409, f"Server is {state}; try again once it has stopped")
+
+    aws.set_active_world(settings["INSTANCE_ID"], world)
+    aws.start_instance(settings["INSTANCE_ID"])
+    return {"message": "Success", "world": world}
+
+
+@app.post("/switch")
+def switch(world: str):
+    """Switch a running server to another world.
+
+    Sets the tag; the instance's watcher (minecraft-world-watch) does the
+    switch within a minute, so the response is 202. Refused (409) while anyone's
+    online, while the world is loading, and when the server isn't running (use
+    /start).
+    """
+    check_known_world(world)
+    instance = aws.get_instance(settings["INSTANCE_ID"])
+    state = instance["State"]["Name"]
+    active = aws.get_active_world(instance)
+
+    if state == "pending":
+        raise HTTPException(409, "Server is starting; try again once it's running")
+    if state != "running":
+        raise HTTPException(409, f"Server is {state}; start it instead of switching")
+    if world == active:
+        return {"message": "Success", "world": world}
+
+    check_server_empty(instance)
+    aws.set_active_world(settings["INSTANCE_ID"], world)
+    return JSONResponse(status_code=202, content={"message": "Switching", "world": world})
+
+
+def check_known_world(world: str) -> None:
+    """Refuse a world that isn't in the published world manifest."""
     try:
         worlds = aws.list_worlds()
     except Exception as e:
@@ -45,27 +92,6 @@ def start(world: Optional[str] = None):
         raise HTTPException(503, "World list unavailable")
     if world not in worlds:
         raise HTTPException(400, f"Unknown world: {world}")
-
-    instance = aws.get_instance(settings["INSTANCE_ID"])
-    state = instance["State"]["Name"]
-    active = aws.get_active_world(instance)
-
-    if state in ("pending", "running") and world == active:
-        return {"message": "Success", "world": world}
-    if state == "pending":
-        raise HTTPException(409, "Server is starting; try again once it's running")
-    if state == "running":
-        check_server_empty(instance)
-        aws.set_active_world(settings["INSTANCE_ID"], world)
-        return JSONResponse(
-            status_code=202, content={"message": "Switching", "world": world}
-        )
-    if state != "stopped":
-        raise HTTPException(409, f"Server is {state}; try again once it has stopped")
-
-    aws.set_active_world(settings["INSTANCE_ID"], world)
-    aws.start_instance(settings["INSTANCE_ID"])
-    return {"message": "Success", "world": world}
 
 
 def check_server_empty(instance) -> None:

@@ -127,8 +127,16 @@ class TestFastAPIEndpoints:
         tags = [{"Key": "ActiveWorld", "Value": world}] if world else []
         return {"State": {"Name": state}, "Tags": tags, "PublicIpAddress": "203.0.113.7"}
 
-    def _start_world(self, world, state="stopped", active=None, worlds=None, players=0):
-        """POST /start?world= with the AWS helpers mocked; returns (response, mocks).
+    def _start_world(self, world, **kwargs):
+        """POST /start?world=; see _post_world."""
+        return self._post_world("/start", world, **kwargs)
+
+    def _switch_world(self, world, state="running", **kwargs):
+        """POST /switch?world=; see _post_world."""
+        return self._post_world("/switch", world, state=state, **kwargs)
+
+    def _post_world(self, path, world, state="stopped", active=None, worlds=None, players=0):
+        """POST path?world= with the AWS helpers mocked; returns (response, mocks).
 
         players is what the server list ping reports, or an exception it raises.
         """
@@ -141,7 +149,7 @@ class TestFastAPIEndpoints:
              patch("app.main.aws.set_active_world") as mock_set, \
              patch("app.main.aws.start_instance") as mock_start, \
              patch("app.main.server.players_online", **ping) as self.mock_ping:
-            response = TestClient(app).post("/start", params={"world": world})
+            response = TestClient(app).post(path, params={"world": world})
         return response, mock_set, mock_start
 
     def test_start_world_when_stopped_sets_tag_then_starts(self):
@@ -160,8 +168,8 @@ class TestFastAPIEndpoints:
         mock_start.assert_not_called()
 
     def test_switch_while_running_and_empty_sets_tag_only(self):
-        response, mock_set, mock_start = self._start_world(
-            "old", state="running", active="default"
+        response, mock_set, mock_start = self._switch_world(
+            "old", active="default"
         )
 
         assert response.status_code == 202
@@ -171,8 +179,8 @@ class TestFastAPIEndpoints:
         mock_start.assert_not_called()
 
     def test_switch_refused_with_players_online(self):
-        response, mock_set, mock_start = self._start_world(
-            "old", state="running", active="default", players=2
+        response, mock_set, mock_start = self._switch_world(
+            "old", active="default", players=2
         )
 
         assert response.status_code == 409
@@ -181,8 +189,8 @@ class TestFastAPIEndpoints:
         mock_start.assert_not_called()
 
     def test_switch_refused_with_one_player_online(self):
-        response, mock_set, _ = self._start_world(
-            "old", state="running", active="default", players=1
+        response, mock_set, _ = self._switch_world(
+            "old", active="default", players=1
         )
 
         assert response.status_code == 409
@@ -190,8 +198,8 @@ class TestFastAPIEndpoints:
         mock_set.assert_not_called()
 
     def test_switch_refused_when_server_not_answering(self):
-        response, mock_set, _ = self._start_world(
-            "old", state="running", active="default", players=TimeoutError("timed out")
+        response, mock_set, _ = self._switch_world(
+            "old", active="default", players=TimeoutError("timed out")
         )
 
         assert response.status_code == 409
@@ -199,7 +207,7 @@ class TestFastAPIEndpoints:
         mock_set.assert_not_called()
 
     def test_switch_while_pending_conflicts(self):
-        response, mock_set, mock_start = self._start_world(
+        response, mock_set, mock_start = self._switch_world(
             "old", state="pending", active="default"
         )
 
@@ -207,6 +215,47 @@ class TestFastAPIEndpoints:
         self.mock_ping.assert_not_called()
         mock_set.assert_not_called()
         mock_start.assert_not_called()
+
+    def test_switch_while_stopped_conflicts(self):
+        response, mock_set, mock_start = self._switch_world("old", state="stopped")
+
+        assert response.status_code == 409
+        assert "start it instead" in response.json()["detail"]
+        self.mock_ping.assert_not_called()
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_switch_to_running_world_is_a_no_op(self):
+        response, mock_set, _ = self._switch_world("old", active="old")
+
+        assert response.status_code == 200
+        self.mock_ping.assert_not_called()
+        mock_set.assert_not_called()
+
+    def test_switch_unknown_world_is_rejected(self):
+        response, mock_set, _ = self._switch_world("nope", active="default")
+
+        assert response.status_code == 400
+        self.mock_ping.assert_not_called()
+        mock_set.assert_not_called()
+
+    def test_start_different_world_while_running_conflicts(self):
+        # A page that saw the server stopped mustn't switch it under someone
+        response, mock_set, mock_start = self._start_world(
+            "old", state="running", active="default"
+        )
+
+        assert response.status_code == 409
+        assert "switch worlds instead" in response.json()["detail"]
+        self.mock_ping.assert_not_called()
+        mock_set.assert_not_called()
+        mock_start.assert_not_called()
+
+    def test_start_different_world_while_pending_conflicts(self):
+        response, mock_set, _ = self._start_world("old", state="pending", active="default")
+
+        assert response.status_code == 409
+        mock_set.assert_not_called()
 
     def test_start_untagged_running_instance_counts_as_default(self):
         response, mock_set, _ = self._start_world("default", state="running")
@@ -231,15 +280,18 @@ class TestFastAPIEndpoints:
         mock_set.assert_not_called()
         mock_start.assert_not_called()
 
-    def test_start_world_when_world_list_unavailable(self):
+    @pytest.mark.parametrize("path", ["/start", "/switch"])
+    def test_world_list_unavailable(self, path):
         from fastapi.testclient import TestClient
         from app.main import app
 
         with patch("app.main.aws.list_worlds", side_effect=Exception("boom")), \
+             patch("app.main.aws.set_active_world") as mock_set, \
              patch("app.main.aws.start_instance") as mock_start:
-            response = TestClient(app).post("/start", params={"world": "old"})
+            response = TestClient(app).post(path, params={"world": "old"})
 
         assert response.status_code == 503
+        mock_set.assert_not_called()
         mock_start.assert_not_called()
 
     @patch("app.main.aws.stop_instance")

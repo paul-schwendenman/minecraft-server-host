@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Switch worlds when this instance's ActiveWorld tag changes while it runs.
 #
-# The control lambda sets the tag (POST /start?world=<name> on a running
+# The control lambda sets the tag (POST /switch?world=<name> on a running
 # server); this runs every minute from minecraft-world-watch.timer and calls
 # `minecraftctl world switch`, which does the work. Like minecraft-active.sh,
 # it's AWS glue: minecraftctl knows nothing about tags.

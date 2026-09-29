@@ -60,7 +60,8 @@ Only one world runs at a time: every world uses port 25565 and RCON 25575.
 Worlds are **not** enabled at boot one by one. ``minecraft-active.service``
 reads the instance's ``ActiveWorld`` tag from instance metadata once
 cloud-init has finished and starts that world with ``minecraftctl world
-switch``. The control lambda sets the tag (``POST /start?world=<name>``); see
+switch``. The control lambda sets the tag (``POST /start?world=<name>`` on a
+stopped server, ``POST /switch?world=<name>`` on a running one); see
 ``docs/plans/world-switching-plan.md``.
 
 If the tag is missing, or the world can't start or doesn't come up, it falls

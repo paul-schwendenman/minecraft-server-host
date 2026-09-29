@@ -36,7 +36,8 @@ const { mockStatus, mockDetails } = vi.hoisted(() => {
 				subscribers.forEach((callback) => callback(value));
 			},
 			refresh: vi.fn(() => Promise.resolve()),
-			startWorld: vi.fn(() => Promise.resolve())
+			startWorld: vi.fn(() => Promise.resolve()),
+			switchWorld: vi.fn(() => Promise.resolve())
 		}
 	};
 });
@@ -63,6 +64,8 @@ describe('PlayWorld', () => {
 		mockStatus.refresh.mockClear();
 		mockStatus.startWorld.mockReset();
 		mockStatus.startWorld.mockImplementation(() => Promise.resolve());
+		mockStatus.switchWorld.mockReset();
+		mockStatus.switchWorld.mockImplementation(() => Promise.resolve());
 		mockDetails.set(null);
 	});
 
@@ -90,6 +93,7 @@ describe('PlayWorld', () => {
 		await screen.getByRole('button', { name: 'Play old' }).click();
 
 		expect(mockStatus.startWorld).toHaveBeenCalledWith('old');
+		expect(mockStatus.switchWorld).not.toHaveBeenCalled();
 	});
 
 	it('shows the world as running when it is the active world', async () => {
@@ -137,7 +141,8 @@ describe('PlayWorld', () => {
 		await expect.element(screen.getByText(/with nobody online/)).toBeInTheDocument();
 		await screen.getByRole('button', { name: 'Play old' }).click();
 
-		expect(mockStatus.startWorld).toHaveBeenCalledWith('old');
+		expect(mockStatus.switchWorld).toHaveBeenCalledWith('old');
+		expect(mockStatus.startWorld).not.toHaveBeenCalled();
 		await expect.element(screen.getByText(/Switching to/)).toBeInTheDocument();
 		await expect.element(screen.getByRole('button', { name: 'Play old' })).not.toBeInTheDocument();
 	});
@@ -145,7 +150,7 @@ describe('PlayWorld', () => {
 	it('shows the API error when a switch is refused', async () => {
 		setServer('running', 'default');
 		setPlayers(0);
-		mockStatus.startWorld.mockImplementation(() =>
+		mockStatus.switchWorld.mockImplementation(() =>
 			Promise.reject(new Error('1 player is online; switch once the server is empty'))
 		);
 
@@ -161,14 +166,14 @@ describe('PlayWorld', () => {
 	it('shows the API error when starting fails', async () => {
 		setServer('stopped');
 		mockStatus.startWorld.mockImplementation(() =>
-			Promise.reject(new Error('Server is running default; stop it before switching worlds'))
+			Promise.reject(new Error('Server is running default; switch worlds instead of starting'))
 		);
 
 		const screen = render(PlayWorld, { world: 'old' });
 		await screen.getByRole('button', { name: 'Play old' }).click();
 
 		await expect
-			.element(screen.getByText('Server is running default; stop it before switching worlds'))
+			.element(screen.getByText('Server is running default; switch worlds instead of starting'))
 			.toBeInTheDocument();
 	});
 
