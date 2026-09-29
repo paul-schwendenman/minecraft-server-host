@@ -24,7 +24,7 @@
 				<WorldStartButton class="flex-2" />
 			{/snippet}
 			{#snippet stopButton()}
-				<WorldSwitchButton class="flex-1" />
+				<WorldSwitchButton class="flex-2" />
 			{/snippet}
 		</ServerStatus>
 	{:catch error}

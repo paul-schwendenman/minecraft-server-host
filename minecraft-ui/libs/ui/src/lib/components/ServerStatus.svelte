@@ -51,9 +51,11 @@
 			{/if}
 		{:else if $status.instance?.state == 'running'}
 			{#if $status.instance?.ip_address != $status.dns_record?.value}
+				<!-- Plain Stop until DNS is synced: three buttons with a split one is
+				     crowded, and nobody can connect by name to switch worlds yet -->
 				<AsyncButton class="flex-2" action={handleSyncDNS}>Update DNS</AsyncButton>
-			{/if}
-			{#if stopButton}
+				<AsyncButton class="flex-1" action={handleStop}>Stop</AsyncButton>
+			{:else if stopButton}
 				{@render stopButton()}
 			{:else}
 				<AsyncButton class="flex-1" action={handleStop}>Stop</AsyncButton>

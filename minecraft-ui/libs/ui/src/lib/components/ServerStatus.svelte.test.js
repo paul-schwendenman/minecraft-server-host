@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-svelte';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { createRawSnippet } from 'svelte';
 
 // Use vi.hoisted to define mocks before vi.mock is hoisted
 const { mockStatus, mockDetails } = vi.hoisted(() => {
@@ -161,5 +162,39 @@ describe('ServerStatus', () => {
 			const screen = render(ServerStatus);
 			await expect.element(screen.getByRole('button', { name: 'Update DNS' })).toBeInTheDocument();
 		});
+
+		it('shows a plain Stop instead of the stopButton until DNS is synced', async () => {
+			mockStatus.set({
+				instance: { state: 'running', ip_address: '10.0.0.1' },
+				dns_record: { value: '10.0.0.2' }
+			});
+
+			const screen = render(ServerStatus, { stopButton: customStop });
+			await expect
+				.element(screen.getByRole('button', { name: 'Stop', exact: true }))
+				.toBeInTheDocument();
+			await expect
+				.element(screen.getByRole('button', { name: 'Custom stop' }))
+				.not.toBeInTheDocument();
+		});
+	});
+
+	describe('stopButton', () => {
+		it('replaces the plain Stop once DNS is synced', async () => {
+			mockStatus.set({
+				instance: { state: 'running', ip_address: '10.0.0.1' },
+				dns_record: { value: '10.0.0.1' }
+			});
+
+			const screen = render(ServerStatus, { stopButton: customStop });
+			await expect.element(screen.getByRole('button', { name: 'Custom stop' })).toBeInTheDocument();
+			await expect
+				.element(screen.getByRole('button', { name: 'Stop', exact: true }))
+				.not.toBeInTheDocument();
+		});
 	});
 });
+
+const customStop = createRawSnippet(() => ({
+	render: () => '<button>Custom stop</button>'
+}));
