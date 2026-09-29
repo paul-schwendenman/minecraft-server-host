@@ -16,7 +16,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
 - [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. (`all` now excludes `caddy/`, which made it exit 3.)
 
-- [x] **Snapshot the archive worlds on prod** (2026-09-25, `minecraft-prod-backups`): `old` `fe1f73d5`, `world.bak` `bba9dbb6`, `world.bak2` `a86f58fe`, `world.bak-1.19.2` `3295efea`, `all` `b4ea6c04`.
+- [x] **Snapshot the archive worlds on prod** (2026-09-25, `minecraft-prod-backups`): `old` `2c4d15e2`, `world.bak` `2569de9a`, `world.bak2` `092b5292`, `world.bak-1.19.2` `d3e627a5`, `all` `494c2982`.
 - [ ] **World switching** ([plan](plans/world-switching-plan.md)): phase 1 adds a **Play** button in the maps app. It calls `/start?world=`, the control lambda sets an `ActiveWorld` EC2 tag and starts the instance, and a `minecraft-active.service` boot unit starts that world. Phase 2 adds `minecraftctl world switch` for switching over SSH. Phase 3 switches from the UI while the server is running: a watcher on the instance calls `world switch`. The controls app stays unchanged. Every world's jar and map are already on prod (checked 2026-09-24).
 
 - [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. (`old`'s history is already in the pre-rewrite sync at `s3://minecraft-backup-001/logs/`; nothing more to save there.) Decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
@@ -38,7 +38,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 
 ## Housekeeping
 
-- [ ] Delete `old` from test once you're happy with it on prod. Snapshots `b3d4542b` (world) and `69bbeeb7` (all) are in `minecraft-prod-backups` (2026-09-24).
+- [ ] Delete `old` from test once you're happy with it on prod. Snapshots `b75cdcd0` (world) and `00ccb5fe` (all) are in `minecraft-prod-backups` (2026-09-24).
 
 - [x] Checklists in `minecraftctl-plan.md` and `minecraftctl-migration-plan.md` checked against the code and updated (2026-09-23).
 - [ ] Delete stale local branches. Five are gone. `replace-map-viewer` (5 commits) and `testing-backup` (16 commits) are still here, local-only and unmerged: decide whether to keep them or drop them.
