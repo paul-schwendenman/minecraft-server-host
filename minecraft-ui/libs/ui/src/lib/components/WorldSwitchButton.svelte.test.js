@@ -106,24 +106,42 @@ describe('WorldSwitchButton', () => {
 		await expect.element(screen.getByRole('button', { name: 'old' })).toBeEnabled();
 	});
 
-	it('disables every world while players are online, and says why', async () => {
+	it('disables the menu while players are online, and says why', async () => {
 		mockPlayersOnline.set(2);
 
 		const screen = render(WorldSwitchButton);
-		await screen.getByRole('button', { name: 'Switch to a different world' }).click();
+		const toggle = screen.getByRole('button', { name: 'Switch to a different world' });
 
-		await expect.element(screen.getByText(/2 players are online/)).toBeInTheDocument();
-		await expect.element(screen.getByRole('button', { name: 'old' })).toBeDisabled();
+		await expect.element(toggle).toBeDisabled();
+		expect(toggle.element().closest('[data-tip]')?.getAttribute('data-tip')).toBe(
+			'Switch worlds once the server is empty (2 players online)'
+		);
+		await expect.element(screen.getByRole('button', { name: 'old' })).not.toBeInTheDocument();
+		// Stop still works
+		await expect.element(screen.getByRole('button', { name: 'Stop', exact: true })).toBeEnabled();
 	});
 
-	it('disables every world until the player count is known', async () => {
+	it('disables the menu until the player count is known', async () => {
 		mockPlayersOnline.set(null);
 
 		const screen = render(WorldSwitchButton);
-		await screen.getByRole('button', { name: 'Switch to a different world' }).click();
+		const toggle = screen.getByRole('button', { name: 'Switch to a different world' });
 
-		await expect.element(screen.getByText(/Checking who's online/)).toBeInTheDocument();
-		await expect.element(screen.getByRole('button', { name: 'old' })).toBeDisabled();
+		await expect.element(toggle).toBeDisabled();
+		expect(toggle.element().closest('[data-tip]')?.getAttribute('data-tip')).toMatch(
+			/Checking who's online/
+		);
+	});
+
+	it('enables the menu once the server empties', async () => {
+		mockPlayersOnline.set(1);
+		const screen = render(WorldSwitchButton);
+		const toggle = screen.getByRole('button', { name: 'Switch to a different world' });
+		await expect.element(toggle).toBeDisabled();
+
+		mockPlayersOnline.set(0);
+
+		await expect.element(toggle).toBeEnabled();
 	});
 
 	it('shows the API error when a switch is refused', async () => {

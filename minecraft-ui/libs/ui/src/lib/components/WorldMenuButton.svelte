@@ -28,7 +28,7 @@
 		onPick: (world: string) => Promise<string | void>;
 		/** Disable the active world's entry (nothing to do for it) */
 		disableCurrent?: boolean;
-		/** When set, every entry is disabled and this says why */
+		/** When set, the menu can't be opened, and this says why (tooltip) */
 		disabledReason?: string;
 		class?: string;
 	} = $props();
@@ -81,56 +81,73 @@
 	<!-- The menu is positioned against this group, so it matches its width -->
 	<div class="relative flex {className}">
 		<AsyncButton class="flex-1 rounded-r-none" {action}>{label}</AsyncButton>
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<!-- Anchored to the group's left edge and at least 15rem wide, so the menu
-		     stays readable when the button is narrow -->
-		<div
-			class="dropdown static dropdown-start dropdown-top md:dropdown-bottom"
-			onkeydown={(e) => e.key === 'Escape' && closeMenu()}
-		>
-			<div
-				tabindex="0"
-				role="button"
-				aria-label={menuLabel}
-				class="btn btn-lg min-h-12 rounded-l-none border-l-base-content/10 btn-neutral sm:btn-md"
-			>
-				{#if pending}
-					<Spinner />
-				{:else}
-					<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-						<path
-							fill-rule="evenodd"
-							d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-							clip-rule="evenodd"
-						/>
-					</svg>
-				{/if}
+		{#if disabledReason}
+			<!-- Greyed out rather than hidden, so the layout doesn't jump as the
+			     reason comes and goes; the tooltip (on the wrapper, since a
+			     disabled button gets no hover) says why -->
+			<div class="tooltip" data-tip={disabledReason}>
+				<button
+					class="btn btn-lg min-h-12 rounded-l-none border-l-base-content/10 btn-neutral sm:btn-md"
+					aria-label={menuLabel}
+					aria-description={disabledReason}
+					disabled
+				>
+					{@render chevron()}
+				</button>
 			</div>
-			<ul
-				tabindex="-1"
-				class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-full min-w-60 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
+		{:else}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<!-- Anchored to the group's left edge and at least 15rem wide, so the
+			     menu stays readable when the button is narrow -->
+			<div
+				class="dropdown static dropdown-start dropdown-top md:dropdown-bottom"
+				onkeydown={(e) => e.key === 'Escape' && closeMenu()}
 			>
-				<li class="menu-title">{menuTitle}</li>
-				{#if disabledReason}
-					<li class="px-4 pb-2 text-sm text-base-content/70">{disabledReason}</li>
-				{/if}
-				{#each worlds as world (world)}
-					<li class={{ 'menu-disabled': !!disabledReason }}>
-						<button
-							onclick={() => handlePick(world)}
-							disabled={pending || !!disabledReason || (disableCurrent && world === activeWorld)}
-						>
-							<span class="flex-1 text-left">{world}</span>
-							{#if world === activeWorld}
-								<span class="text-xs text-base-content/60">current</span>
-							{/if}
-						</button>
-					</li>
-				{/each}
-			</ul>
-		</div>
+				<div
+					tabindex="0"
+					role="button"
+					aria-label={menuLabel}
+					class="btn btn-lg min-h-12 rounded-l-none border-l-base-content/10 btn-neutral sm:btn-md"
+				>
+					{#if pending}
+						<Spinner />
+					{:else}
+						{@render chevron()}
+					{/if}
+				</div>
+				<ul
+					tabindex="-1"
+					class="dropdown-content menu z-10 mb-1 md:mt-1 md:mb-0 max-h-72 w-full min-w-60 flex-nowrap overflow-y-auto rounded-box border border-base-300 bg-base-100 p-2 shadow"
+				>
+					<li class="menu-title">{menuTitle}</li>
+					{#each worlds as world (world)}
+						<li>
+							<button
+								onclick={() => handlePick(world)}
+								disabled={pending || (disableCurrent && world === activeWorld)}
+							>
+								<span class="flex-1 text-left">{world}</span>
+								{#if world === activeWorld}
+									<span class="text-xs text-base-content/60">current</span>
+								{/if}
+							</button>
+						</li>
+					{/each}
+				</ul>
+			</div>
+		{/if}
 	</div>
 {/if}
+
+{#snippet chevron()}
+	<svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+		<path
+			fill-rule="evenodd"
+			d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+			clip-rule="evenodd"
+		/>
+	</svg>
+{/snippet}
 
 <!-- order-last: in a flex row of buttons, the message goes below all of them
      rather than splitting the row -->

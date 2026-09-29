@@ -10,9 +10,9 @@
 		$playersOnline === null
 			? "Checking who's online…"
 			: $playersOnline === 1
-				? '1 player is online. You can switch once the server is empty.'
+				? 'Switch worlds once the server is empty (1 player online)'
 				: $playersOnline > 1
-					? `${$playersOnline} players are online. You can switch once the server is empty.`
+					? `Switch worlds once the server is empty (${$playersOnline} players online)`
 					: ''
 	);
 
