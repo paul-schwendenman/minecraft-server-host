@@ -39,9 +39,24 @@ if [[ -z "${TOKEN}" ]]; then
   log "Could not get an instance metadata token"
   exit 0
 fi
-# A missing tag is a 404, which leaves TAG empty
-TAG=$(curl -sf -H "X-aws-ec2-metadata-token: ${TOKEN}" \
-  "${IMDS}/meta-data/tags/instance/ActiveWorld" || true)
+# Only a 404 means the tag is gone. Any other failure (a 5xx, a reset, a
+# timeout) must leave HANDLED_FILE alone: treating it as "no tag" would clear
+# it, and the unchanged tag would look new once metadata recovers, undoing a
+# switch made over SSH or retrying a world already given up on.
+if ! RESPONSE=$(curl -s -w '\n%{http_code}' -H "X-aws-ec2-metadata-token: ${TOKEN}" \
+  "${IMDS}/meta-data/tags/instance/ActiveWorld"); then
+  log "Could not read the ActiveWorld tag; will try again"
+  exit 0
+fi
+HTTP_CODE="${RESPONSE##*$'\n'}"
+case "${HTTP_CODE}" in
+  200) TAG="${RESPONSE%$'\n'*}" ;;
+  404) TAG="" ;;
+  *)
+    log "Could not read the ActiveWorld tag (HTTP ${HTTP_CODE}); will try again"
+    exit 0
+    ;;
+esac
 
 if [[ ! -e "${HANDLED_FILE}" ]]; then
   # minecraft-active.sh didn't record what it started; take the current tag

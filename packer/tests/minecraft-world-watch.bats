@@ -31,15 +31,21 @@ EOF
     chmod +x "${MOCK_BIN}/minecraftctl"
 }
 
-# Mock IMDS: the token request succeeds; the tag request returns $1, or 404s
-# (curl -f exits 22) when $1 is empty, as IMDS does for a missing tag.
+# Mock IMDS: the token request succeeds; the tag request answers with body $1
+# and HTTP status $2 (default 200, or 404 when $1 is empty, as IMDS does for a
+# missing tag), printed the way `curl -w '\n%{http_code}'` does. A status of
+# "fail" makes curl itself fail (connection reset, timeout).
 mock_imds_tag() {
     local tag="$1"
+    local code="${2:-}"
+    if [[ -z "${code}" ]]; then
+        if [[ -n "${tag}" ]]; then code=200; else code=404; fi
+    fi
     cat > "${MOCK_BIN}/curl" << EOF
 #!/usr/bin/env bash
 if [[ "\$*" == *"/api/token"* ]]; then echo "token"; exit 0; fi
-if [[ -z "${tag}" ]]; then exit 22; fi
-echo -n "${tag}"
+if [[ "${code}" == "fail" ]]; then exit 56; fi
+printf '%s\n%s' "${tag}" "${code}"
 EOF
     chmod +x "${MOCK_BIN}/curl"
 }
@@ -164,6 +170,41 @@ handled() {
     run bash "$SCRIPT"
 
     assert_mock_called_with "minecraftctl world switch second"
+}
+
+@test "minecraft-world-watch: keeps the handled tag when the tag request errors" {
+    # An IMDS 500 isn't "no tag": clearing HANDLED would make the unchanged
+    # tag look new later, undoing an SSH switch or retrying a failed world
+    handled "second"
+    mock_imds_tag "" 500
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [[ "$output" == *"HTTP 500"* ]]
+    ! assert_mock_called_with "minecraftctl"
+    [ "$(cat "${HANDLED}")" = "second" ]
+}
+
+@test "minecraft-world-watch: keeps the handled tag when the tag request fails" {
+    handled "second"
+    mock_imds_tag "" fail
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    ! assert_mock_called_with "minecraftctl"
+    [ "$(cat "${HANDLED}")" = "second" ]
+}
+
+@test "minecraft-world-watch: reads a tag with dots and dashes intact" {
+    handled "default"
+    mock_imds_tag "world.bak-1.19.2"
+
+    run bash "$SCRIPT"
+
+    assert_mock_called_with "minecraftctl world switch world.bak-1.19.2"
+    [ "$(cat "${HANDLED}")" = "world.bak-1.19.2" ]
 }
 
 @test "minecraft-world-watch: does nothing when IMDS is unreachable" {
