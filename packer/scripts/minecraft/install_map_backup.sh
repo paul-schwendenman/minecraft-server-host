@@ -14,8 +14,6 @@ sudo install -Dm644 "${SRC_DIR}/minecraft-map-backup@.timer" /etc/systemd/system
 sudo install -Dm644 "${SRC_DIR}/minecraft-map-backup.service" /etc/systemd/system/minecraft-map-backup.service
 sudo install -Dm644 "${SRC_DIR}/minecraft-map-backup.timer" /etc/systemd/system/minecraft-map-backup.timer
 
-sudo mkdir -p /etc/systemd/system/minecraft@.service.d
-sudo install -Dm644 "${SRC_DIR}/minecraft-override-backup.conf" /etc/systemd/system/minecraft@.service.d/minecraft-backup.conf
 
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload

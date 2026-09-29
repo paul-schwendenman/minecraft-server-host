@@ -82,7 +82,7 @@ module "mc_stack" {
   ssh_cidr_blocks = [
     "104.230.245.46/32",
   ]
-  world_version     = "1.21.8"
+  world_version     = "26.3"
   availability_zone = "us-east-2b"
 
   iam_instance_profile = module.ec2_role.instance_profile_name

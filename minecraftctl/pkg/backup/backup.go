@@ -5,14 +5,35 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/paul/minecraftctl/pkg/envfile"
+	"github.com/rs/zerolog/log"
 )
 
 const (
 	defaultRegion    = "us-east-2"
 	defaultWorldsDir = "/srv/minecraft-server"
+
+	// Host is recorded as the host of every snapshot, instead of the machine's
+	// hostname. Every new instance gets a new hostname, and restic picks the
+	// parent snapshot (so it can skip unchanged files) and groups snapshots
+	// for `forget` by host. Each bucket belongs to one environment, so one
+	// name is enough.
+	Host = "minecraft"
+
+	// CacheDir is restic's cache when it's owned by the user restic runs as.
+	// restic's default is ~/.cache, but minecraft@.service runs the on-stop
+	// backup with ProtectHome, which hides it. Other users get restic's
+	// default, so none of them can leave files there its owner can't update.
+	CacheDir = "/var/cache/restic"
+
+	// RunAsUser is who restic runs as when minecraftctl runs as root, so
+	// every run shares CacheDir, and restored files belong to the user that
+	// runs the worlds instead of the numeric owner recorded in the snapshot.
+	RunAsUser = "minecraft"
 )
 
 // Config holds the backup configuration
@@ -20,6 +41,8 @@ type Config struct {
 	Repository string
 	Password   string
 	WorldsDir  string
+	// RunAs is who restic runs as, or nil for the current user
+	RunAs *Credential
 }
 
 // LoadConfig loads backup configuration from environment
@@ -51,41 +74,80 @@ func LoadConfig() (*Config, error) {
 		worldsDir = defaultWorldsDir
 	}
 
-	return &Config{
+	cfg := &Config{
 		Repository: fmt.Sprintf("s3:s3.%s.amazonaws.com/%s", region, bucket),
 		Password:   password,
 		WorldsDir:  worldsDir,
-	}, nil
+	}
+	if os.Geteuid() == 0 {
+		cred, err := LookupCredential(RunAsUser)
+		if err != nil {
+			log.Warn().Err(err).Msgf("can't run restic as %s, running it as root", RunAsUser)
+		} else {
+			cfg.RunAs = cred
+		}
+	}
+	return cfg, nil
 }
 
-// runRestic executes a restic command with the configured environment
-func (c *Config) runRestic(args ...string) error {
+// command builds a restic command, run as runAs (nil: the current user)
+func (c *Config) command(runAs *Credential, args ...string) *exec.Cmd {
 	cmd := exec.Command("restic", args...)
-	cmd.Env = append(os.Environ(),
+	env := append(os.Environ(),
 		"RESTIC_REPOSITORY="+c.Repository,
 		"RESTIC_PASSWORD="+c.Password,
 	)
+	uid := os.Getuid()
+	if runAs != nil {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Credential: &syscall.Credential{
+			Uid:    runAs.Uid,
+			Gid:    runAs.Gid,
+			Groups: runAs.Groups,
+		}}
+		uid = int(runAs.Uid)
+		// sudo leaves HOME as root's, which restic can't use as runAs
+		env = append(env, "HOME="+runAs.Home)
+	}
+	if os.Getenv("RESTIC_CACHE_DIR") == "" && ownedBy(CacheDir, uid) {
+		env = append(env, "RESTIC_CACHE_DIR="+CacheDir)
+	}
+	cmd.Env = env
+	return cmd
+}
+
+// ownedBy reports whether path is a directory owned by uid
+func ownedBy(path string, uid int) bool {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	return ok && int(st.Uid) == uid
+}
+
+func run(cmd *exec.Cmd) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	return cmd.Run()
 }
 
-// runResticOutput executes a restic command and returns the output
+// runRestic executes a restic command as c.RunAs
+func (c *Config) runRestic(args ...string) error {
+	return run(c.command(c.RunAs, args...))
+}
+
+// runResticOutput executes a restic command as c.RunAs and returns the output
 func (c *Config) runResticOutput(args ...string) (string, error) {
-	cmd := exec.Command("restic", args...)
-	cmd.Env = append(os.Environ(),
-		"RESTIC_REPOSITORY="+c.Repository,
-		"RESTIC_PASSWORD="+c.Password,
-	)
-	out, err := cmd.CombinedOutput()
+	out, err := c.command(c.RunAs, args...).CombinedOutput()
 	return string(out), err
 }
 
 // InitRepository initializes the restic repository if it doesn't exist
 func (c *Config) InitRepository() error {
-	// Check if repo exists by trying to list snapshots
-	_, err := c.runResticOutput("snapshots", "--quiet")
+	// Check if repo exists by reading its config, which (unlike listing
+	// snapshots) doesn't grow with the repository
+	_, err := c.runResticOutput("cat", "config")
 	if err == nil {
 		return nil // Repo already exists
 	}
@@ -125,18 +187,29 @@ func (c *Config) Create(world string) error {
 		fmt.Printf("Backing up world: %s...\n", world)
 	}
 
-	err := c.runRestic("backup", backupPath,
+	args := backupArgs(backupPath, tag)
+	if tag == "all" {
+		// Caddy's TLS certificates: re-issued if lost, and only readable by
+		// the caddy user, so including them makes every `all` backup fail
+		// (restic exits 3 on unreadable files)
+		args = append(args, "--exclude", filepath.Join(c.WorldsDir, "caddy"))
+	}
+	if err := c.runRestic(args...); err != nil {
+		return err
+	}
+
+	fmt.Println("Backup complete.")
+	return nil
+}
+
+func backupArgs(path, tag string) []string {
+	return []string{"backup", path,
+		"--host", Host,
 		"--tag", tag,
 		"--exclude", "*.log",
 		"--exclude", "logs/",
 		"--exclude", "crash-reports/",
-	)
-	if err != nil {
-		return err
 	}
-
-	fmt.Println("\nBackup complete. Recent snapshots:")
-	return c.runRestic("snapshots", "--latest", "3", "--tag", tag)
 }
 
 // Restore restores a snapshot
@@ -156,7 +229,10 @@ func (c *Config) Restore(snapshot string, target string) error {
 		}
 	}
 
-	return c.runRestic(args...)
+	// Run as the caller, not c.RunAs: restic also restores the metadata of
+	// every directory above the world (/, /srv), which fails for anyone but
+	// root. Restored files keep the owners recorded in the snapshot.
+	return run(c.command(nil, args...))
 }
 
 // Prune removes old snapshots according to retention policy
