@@ -19,7 +19,7 @@
 		/** Main button text */
 		label: string;
 		/** Main button action */
-		action: () => Promise<unknown>;
+		action: () => Promise<void>;
 		/** Accessible name of the menu toggle */
 		menuLabel: string;
 		/** Heading inside the menu */
@@ -45,6 +45,7 @@
 	const showMessage = $derived($status === messageStatus);
 
 	const activeWorld = $derived($status.instance?.active_world);
+	const reasonId = $props.id();
 
 	onMount(async () => {
 		try {
@@ -89,11 +90,12 @@
 				<button
 					class="btn btn-lg min-h-12 rounded-l-none border-l-base-content/10 btn-neutral sm:btn-md"
 					aria-label={menuLabel}
-					aria-description={disabledReason}
+					aria-describedby={reasonId}
 					disabled
 				>
 					{@render chevron()}
 				</button>
+				<span id={reasonId} class="sr-only">{disabledReason}</span>
 			</div>
 		{:else}
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
