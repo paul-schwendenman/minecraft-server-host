@@ -23,6 +23,15 @@ permissions:
   id-token: write
   contents: read
 
+# Serialize builds so a minecraft build (e.g. from a cli-released dispatch)
+# never starts while a base build is still in flight — otherwise it picks up
+# the previous base AMI via most_recent. Queued runs wait rather than cancel
+# the running one. Note GitHub keeps only one *pending* run per group, so a
+# third trigger arriving while one is queued replaces the queued run.
+concurrency:
+  group: packer-build
+  cancel-in-progress: false
+
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
