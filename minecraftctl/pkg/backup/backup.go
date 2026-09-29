@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"github.com/paul/minecraftctl/pkg/envfile"
 )
@@ -20,6 +21,13 @@ const (
 	// for `forget` by host. Each bucket belongs to one environment, so one
 	// name is enough.
 	Host = "minecraft"
+
+	// CacheDir is restic's cache when it's owned by the user running
+	// minecraftctl. restic's default is ~/.cache, but minecraft@.service
+	// runs the on-stop backup with ProtectHome, which hides it. Only its
+	// owner uses it, so a run as root can't leave files there that the
+	// minecraft user can't update; other users get restic's default.
+	CacheDir = "/var/cache/restic"
 )
 
 // Config holds the backup configuration
@@ -65,13 +73,32 @@ func LoadConfig() (*Config, error) {
 	}, nil
 }
 
-// runRestic executes a restic command with the configured environment
-func (c *Config) runRestic(args ...string) error {
-	cmd := exec.Command("restic", args...)
-	cmd.Env = append(os.Environ(),
+// env is the environment restic runs with
+func (c *Config) env() []string {
+	env := append(os.Environ(),
 		"RESTIC_REPOSITORY="+c.Repository,
 		"RESTIC_PASSWORD="+c.Password,
 	)
+	if os.Getenv("RESTIC_CACHE_DIR") == "" && ownedBy(CacheDir, os.Getuid()) {
+		env = append(env, "RESTIC_CACHE_DIR="+CacheDir)
+	}
+	return env
+}
+
+// ownedBy reports whether path is a directory owned by uid
+func ownedBy(path string, uid int) bool {
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return false
+	}
+	st, ok := info.Sys().(*syscall.Stat_t)
+	return ok && int(st.Uid) == uid
+}
+
+// runRestic executes a restic command with the configured environment
+func (c *Config) runRestic(args ...string) error {
+	cmd := exec.Command("restic", args...)
+	cmd.Env = c.env()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -81,10 +108,7 @@ func (c *Config) runRestic(args ...string) error {
 // runResticOutput executes a restic command and returns the output
 func (c *Config) runResticOutput(args ...string) (string, error) {
 	cmd := exec.Command("restic", args...)
-	cmd.Env = append(os.Environ(),
-		"RESTIC_REPOSITORY="+c.Repository,
-		"RESTIC_PASSWORD="+c.Password,
-	)
+	cmd.Env = c.env()
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }

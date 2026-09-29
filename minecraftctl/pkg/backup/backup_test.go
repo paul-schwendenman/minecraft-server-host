@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -14,5 +16,18 @@ func TestBackupArgsUseFixedHost(t *testing.T) {
 	}
 	if args[0] != "backup" || args[1] != "/srv/minecraft-server/default/world" {
 		t.Errorf("backupArgs() = %v, want backup <path> first", args)
+	}
+}
+
+func TestOwnedBy(t *testing.T) {
+	dir := t.TempDir()
+	if !ownedBy(dir, os.Getuid()) {
+		t.Errorf("ownedBy(%s, own uid) = false, want true", dir)
+	}
+	if ownedBy(dir, os.Getuid()+1) {
+		t.Errorf("ownedBy(%s, other uid) = true, want false", dir)
+	}
+	if ownedBy(filepath.Join(dir, "missing"), os.Getuid()) {
+		t.Error("ownedBy(missing dir) = true, want false")
 	}
 }
