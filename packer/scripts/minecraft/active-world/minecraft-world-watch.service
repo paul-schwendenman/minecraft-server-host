@@ -1,0 +1,10 @@
+[Unit]
+Description=Switch worlds when the ActiveWorld instance tag changes
+# Boot starts the tagged world first; only watch for changes after that.
+After=minecraft-active.service network-online.target
+Wants=network-online.target
+RequiresMountsFor=/srv/minecraft-server
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/minecraft-world-watch.sh

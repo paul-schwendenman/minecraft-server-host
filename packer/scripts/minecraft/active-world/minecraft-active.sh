@@ -16,6 +16,9 @@ set -euo pipefail
 # running.
 
 IMDS="http://169.254.169.254/latest"
+# The tag value this boot acted on. minecraft-world-watch.sh only switches when
+# the tag differs from it, so it doesn't redo (or retry) what boot did.
+HANDLED_FILE="/run/minecraft-world-tag"
 
 log() {
   echo "$1"
@@ -39,6 +42,9 @@ if [[ -n "${TOKEN}" ]]; then
 else
   log "Could not get an instance metadata token"
 fi
+
+# Even if the tagged world doesn't start, don't let the watcher retry it
+printf '%s' "${WORLD}" > "${HANDLED_FILE}" || log "Could not write ${HANDLED_FILE}"
 
 if [[ -z "${WORLD}" ]]; then
   log "No ActiveWorld tag, using ${DEFAULT_WORLD}"

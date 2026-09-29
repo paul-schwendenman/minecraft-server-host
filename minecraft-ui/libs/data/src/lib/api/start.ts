@@ -11,8 +11,9 @@ export async function startInstance(fetchFn: typeof fetch = fetch): Promise<stri
 }
 
 /**
- * Start the server into a given world. The control API rejects this (409) when
- * the server is already running a different world.
+ * Start the server into a given world. On a running server this is a switch:
+ * the API accepts it (202) and the instance switches within a minute, or
+ * rejects it (409) while players are online or the world is still loading.
  */
 export async function startWorld(world: string, fetchFn: typeof fetch = fetch): Promise<string> {
 	const params = new URLSearchParams({ world });

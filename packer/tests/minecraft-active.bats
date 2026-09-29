@@ -59,6 +59,27 @@ EOF
     ! assert_mock_called_with "minecraftctl world switch default"
 }
 
+@test "minecraft-active: records the tag it acted on for the watcher" {
+    mock_imds_tag "nope"
+    mock_switch_failing "nope"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    # The tag, not the fallback: the watcher mustn't retry "nope"
+    [ "$(cat "${TEST_TEMP_DIR}/run/minecraft-world-tag")" = "nope" ]
+}
+
+@test "minecraft-active: records an empty tag when there is none" {
+    mock_imds_tag ""
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ -f "${TEST_TEMP_DIR}/run/minecraft-world-tag" ]
+    [ -z "$(cat "${TEST_TEMP_DIR}/run/minecraft-world-tag")" ]
+}
+
 @test "minecraft-active: passes dotted world names through" {
     mock_imds_tag "world.bak-1.19.2"
 

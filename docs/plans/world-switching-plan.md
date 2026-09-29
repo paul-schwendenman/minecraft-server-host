@@ -3,7 +3,8 @@
 Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
 The plan was reviewed on 2026-09-25; the phase 1 changes it asked for (marked
 **Review** below) are in the code too. **Phase 2 implemented** (2026-09-25),
-not yet tried on test. Phase 3 is proposed. Written 2026-09-24.
+tried on test 2026-09-28. **Phase 3 implemented** (2026-09-28), not yet
+deployed or tried on test. Written 2026-09-24.
 
 ## Problem
 
@@ -446,9 +447,23 @@ Phase 3:
    runs~~: confirmed 2026-09-28. `create-tags` on the running test instance
    showed up in `/meta-data/tags/instance/ActiveWorld` within seconds, with no
    reboot. A one-minute watcher timer is plenty.
-3. The watcher timer (option B) in `packer/`, acting only on tag changes.
-4. Lambda returns 202 instead of 409 for a running instance, and the maps app
-   allows switching while it runs.
+3. ~~The watcher timer (option B) in `packer/`, acting only on tag
+   changes~~: `minecraft-world-watch.{sh,service,timer}`. Boot writes the tag
+   it acted on to `/run/minecraft-world-tag`, so the watcher neither redoes
+   nor retries what boot did.
+4. ~~Lambda returns 202 instead of 409 for a running instance, and the maps
+   app allows switching while it runs~~: done. The lambda pings the server
+   (`mcstatus`, now a runtime dependency) and refuses with 409 while anyone's
+   online or it isn't answering; its timeout went from the default 3 s to
+   10 s for the ping. **Play** on a world page switches when the server runs
+   another world with nobody online. The Controls page's Start dropdown still
+   only shows while stopped.
+5. Try it on test (new AMI, lambda deploy, `terraform apply` for the timeout):
+   - **Play** another world while the server runs, empty: switches within a
+     minute or two; `journalctl -t minecraft-world-watch`;
+   - with a player online: **Play** is disabled, and the API returns 409;
+   - set the tag by hand to a world that can't start: logged, not retried;
+   - `world switch` by hand over SSH: the watcher leaves it alone.
 
 ## Open questions
 

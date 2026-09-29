@@ -141,6 +141,11 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "shellcheck: minecraft/active-world/minecraft-world-watch.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/active-world/minecraft-world-watch.sh"
+    [ "$status" -eq 0 ]
+}
+
 @test "shellcheck: minecraft/active-world/minecraft-active.sh" {
     run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/active-world/minecraft-active.sh"
     echo "$output"
