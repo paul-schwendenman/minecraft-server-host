@@ -9,6 +9,7 @@
 		gradient,
 		labToCss,
 		similar,
+		type Blend,
 		type Block,
 		type Face,
 		type GradientStep
@@ -23,6 +24,14 @@
 	const FACES: { value: Face; label: string }[] = [
 		{ value: 'side', label: 'Side' },
 		{ value: 'top', label: 'Top' }
+	];
+	const BLENDS: { value: Blend; label: string; title: string }[] = [
+		{
+			value: 'straight',
+			label: 'Straight',
+			title: 'Direct color blend; distant hues meet in gray'
+		},
+		{ value: 'hue', label: 'Hue', title: 'Travel around the color wheel, staying saturated' }
 	];
 	const SIMILAR_COUNT = 15;
 
@@ -43,6 +52,7 @@
 	let toId = $state(params.get('to') ?? 'cut_sandstone');
 	let seedId = $state(params.get('seed') ?? 'oak_planks');
 	let steps = $state(intParam('steps', 7, 3, 12));
+	let blend = $state<Blend>(params.get('blend') === 'hue' ? 'hue' : 'straight');
 	let texture = $state(intParam('texture', 30, 0, 100));
 	let seeThrough = $state(params.get('see') === '1');
 	let animated = $state(params.get('anim') !== '0');
@@ -51,7 +61,7 @@
 		Object.entries({
 			mode,
 			face,
-			...(mode === 'gradient' ? { from: fromId, to: toId, steps } : { seed: seedId }),
+			...(mode === 'gradient' ? { from: fromId, to: toId, steps, blend } : { seed: seedId }),
 			texture,
 			...(seeThrough ? { see: 1 } : {}),
 			...(animated ? {} : { anim: 0 })
@@ -78,7 +88,7 @@
 	const seed = $derived(byId.get(seedId) ?? pickable[0]);
 
 	const gradientSteps: GradientStep[] = $derived(
-		gradient(from, to, pool, { face, steps, textureWeight })
+		gradient(from, to, pool, { face, steps, textureWeight, blend })
 	);
 	const similarBlocks: Block[] = $derived(
 		similar(seed, pool, { face, count: SIMILAR_COUNT, textureWeight })
@@ -166,10 +176,22 @@
 				{@render blockButton('From', from, 'from')}
 				<button class="btn btn-circle btn-ghost btn-sm" onclick={swap} aria-label="Swap">⇄</button>
 				{@render blockButton('To', to, 'to')}
-				<label class="ml-auto flex items-center gap-3 text-sm">
-					<span class="whitespace-nowrap">{steps} blocks</span>
-					<input type="range" class="range w-32 range-sm" min="3" max="12" bind:value={steps} />
-				</label>
+				<div class="ml-auto flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+					<div class="join" aria-label="Blend">
+						{#each BLENDS as b (b.value)}
+							<button
+								class="btn join-item btn-sm"
+								class:btn-active={blend === b.value}
+								title={b.title}
+								onclick={() => (blend = b.value)}>{b.label}</button
+							>
+						{/each}
+					</div>
+					<label class="flex items-center gap-3">
+						<span class="whitespace-nowrap">{steps} blocks</span>
+						<input type="range" class="range w-32 range-sm" min="3" max="12" bind:value={steps} />
+					</label>
+				</div>
 			</div>
 		{:else}
 			<div class="flex flex-wrap items-center gap-2">

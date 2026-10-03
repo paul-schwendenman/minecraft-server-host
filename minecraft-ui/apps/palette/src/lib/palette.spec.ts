@@ -4,6 +4,8 @@ import {
 	gradient,
 	hueSortKey,
 	labDistance,
+	lerpLab,
+	lerpLch,
 	similar,
 	sortByHue,
 	type Block,
@@ -106,5 +108,57 @@ describe('sortByHue', () => {
 
 	it('treats low chroma as gray', () => {
 		expect(hueSortKey([0.5, 0.01, 0.01])[0]).toBe(0);
+	});
+});
+
+const chroma = ([, a, b]: Lab) => Math.hypot(a, b);
+const hue = ([, a, b]: Lab) => (Math.atan2(b, a) * 180) / Math.PI;
+/** OKLCh (lightness, chroma, hue degrees) -> OKLab */
+const lch = (l: number, c: number, h: number): Lab => [
+	l,
+	c * Math.cos((h * Math.PI) / 180),
+	c * Math.sin((h * Math.PI) / 180)
+];
+
+describe('lerpLch', () => {
+	const red = lch(0.5, 0.15, 30);
+	const teal = lch(0.7, 0.1, 200);
+
+	it('hits both endpoints', () => {
+		expect(labDistance(lerpLch(red, teal, 0), red)).toBeCloseTo(0);
+		expect(labDistance(lerpLch(red, teal, 1), teal)).toBeCloseTo(0);
+	});
+
+	it('keeps chroma through the middle where a straight line goes gray', () => {
+		expect(chroma(lerpLab(red, teal, 0.5))).toBeLessThan(0.03);
+		expect(chroma(lerpLch(red, teal, 0.5))).toBeCloseTo(0.125);
+		expect(lerpLch(red, teal, 0.5)[0]).toBeCloseTo(0.6);
+	});
+
+	it('takes the short way around the hue wheel', () => {
+		const mid = lerpLch(lch(0.5, 0.1, 170), lch(0.5, 0.1, -170), 0.5);
+		expect(Math.abs(hue(mid))).toBeCloseTo(180);
+	});
+
+	it('holds the colored hue when blending to gray', () => {
+		const gray = lch(0.9, 0.001, 270);
+		const mid = lerpLch(red, gray, 0.5);
+		expect(hue(mid)).toBeCloseTo(30);
+		expect(chroma(mid)).toBeCloseTo(0.0755, 3);
+	});
+});
+
+describe('gradient blend', () => {
+	const from = block('red', lch(0.5, 0.15, 30));
+	const to = block('teal', lch(0.7, 0.1, 200));
+	const grayish = block('grayish', [0.6, 0, 0]);
+	const yellowGreen = block('yellow-green', lch(0.6, 0.12, 115));
+	const pool = [from, to, grayish, yellowGreen];
+
+	it('straight blend picks the gray middle, hue blend the colorful one', () => {
+		const middle = (blend: 'straight' | 'hue') =>
+			gradient(from, to, pool, { face: 'side', steps: 3, blend })[1].block.id;
+		expect(middle('straight')).toBe('grayish');
+		expect(middle('hue')).toBe('yellow-green');
 	});
 });

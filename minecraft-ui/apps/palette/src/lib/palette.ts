@@ -62,6 +62,31 @@ export function lerpLab(a: Lab, b: Lab, t: number): Lab {
 	return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 
+/** Below this OKLCh chroma a color is effectively gray and its hue is meaningless */
+const ACHROMATIC = 0.02;
+
+/**
+ * Interpolate in OKLCh: lightness and chroma linearly, hue the short way
+ * around the wheel. Keeps saturation through the middle instead of passing
+ * through gray like a straight OKLab line does between distant hues.
+ */
+export function lerpLch(a: Lab, b: Lab, t: number): Lab {
+	const ca = Math.hypot(a[1], a[2]);
+	const cb = Math.hypot(b[1], b[2]);
+	let ha = Math.atan2(a[2], a[1]);
+	let hb = Math.atan2(b[2], b[1]);
+	// Blending to/from gray: hold the colored end's hue and just fade chroma
+	if (ca < ACHROMATIC) ha = hb;
+	if (cb < ACHROMATIC) hb = ha;
+	let dh = hb - ha;
+	if (dh > Math.PI) dh -= 2 * Math.PI;
+	else if (dh < -Math.PI) dh += 2 * Math.PI;
+	const l = a[0] + (b[0] - a[0]) * t;
+	const c = ca + (cb - ca) * t;
+	const h = ha + dh * t;
+	return [l, c * Math.cos(h), c * Math.sin(h)];
+}
+
 export function labToCss([l, a, b]: Lab): string {
 	return `oklab(${l} ${a} ${b})`;
 }
@@ -121,15 +146,19 @@ export interface GradientStep {
 	target: Lab;
 }
 
+/** `straight`: OKLab line (can pass through gray); `hue`: around the OKLCh hue wheel */
+export type Blend = 'straight' | 'hue';
+
 export interface GradientOptions {
 	face: Face;
 	steps: number;
 	textureWeight?: number;
+	blend?: Blend;
 }
 
 /**
  * Blend from `from` to `to` in `steps` blocks (endpoints included), picking the
- * closest unused block to each evenly spaced point on the OKLab line between them.
+ * closest unused block to each evenly spaced color between them (see `Blend`).
  */
 export function gradient(
 	from: Block,
@@ -137,7 +166,8 @@ export function gradient(
 	pool: Block[],
 	options: GradientOptions
 ): GradientStep[] {
-	const { face, textureWeight = 0 } = options;
+	const { face, textureWeight = 0, blend = 'straight' } = options;
+	const lerp = blend === 'hue' ? lerpLch : lerpLab;
 	const steps = Math.max(2, Math.round(options.steps));
 	const a = from.faces[face];
 	const b = to.faces[face];
@@ -146,7 +176,7 @@ export function gradient(
 	const result: GradientStep[] = [{ block: from, target: a.oklab }];
 	for (let i = 1; i < steps - 1; i++) {
 		const t = i / (steps - 1);
-		const target = lerpLab(a.oklab, b.oklab, t);
+		const target = lerp(a.oklab, b.oklab, t);
 		const targetNoise = a.noise + (b.noise - a.noise) * t;
 		let best: Block | undefined;
 		let bestCost = Infinity;
