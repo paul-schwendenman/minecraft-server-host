@@ -82,7 +82,7 @@ export function lerpLch(a: Lab, b: Lab, t: number): Lab {
 	if (dh > Math.PI) dh -= 2 * Math.PI;
 	else if (dh < -Math.PI) dh += 2 * Math.PI;
 	const l = a[0] + (b[0] - a[0]) * t;
-	const c = ca + (cb - ca) * t;
+	const c = Math.max(0, ca + (cb - ca) * t); // t outside 0-1 extrapolates
 	const h = ha + dh * t;
 	return [l, c * Math.cos(h), c * Math.sin(h)];
 }
@@ -142,18 +142,46 @@ export function similar(seed: Block, pool: Block[], options: SimilarOptions): Bl
 
 export interface GradientStep {
 	block: Block;
-	/** The ideal color for this step, for comparison against the block's actual color */
-	target: Lab;
+	/**
+	 * The ideal color for this step, for comparison against the block's actual
+	 * color. Absent for blocks restored from a shared list.
+	 */
+	target?: Lab;
 }
 
 /** `straight`: OKLab line (can pass through gray); `hue`: around the OKLCh hue wheel */
 export type Blend = 'straight' | 'hue';
 
-export interface GradientOptions {
+export interface BlendOptions {
 	face: Face;
-	steps: number;
 	textureWeight?: number;
 	blend?: Blend;
+}
+
+export interface GradientOptions extends BlendOptions {
+	steps: number;
+}
+
+/** Cheapest block in `pool` for a target color, skipping ids in `used`. */
+function nearestUnused(
+	pool: Block[],
+	used: Set<string>,
+	face: Face,
+	target: Lab,
+	targetNoise: number,
+	textureWeight: number
+): Block | undefined {
+	let best: Block | undefined;
+	let bestCost = Infinity;
+	for (const block of pool) {
+		if (used.has(block.id)) continue;
+		const c = cost(block, face, target, targetNoise, textureWeight);
+		if (c < bestCost) {
+			best = block;
+			bestCost = c;
+		}
+	}
+	return best;
 }
 
 /**
@@ -178,20 +206,49 @@ export function gradient(
 		const t = i / (steps - 1);
 		const target = lerp(a.oklab, b.oklab, t);
 		const targetNoise = a.noise + (b.noise - a.noise) * t;
-		let best: Block | undefined;
-		let bestCost = Infinity;
-		for (const block of pool) {
-			if (used.has(block.id)) continue;
-			const c = cost(block, face, target, targetNoise, textureWeight);
-			if (c < bestCost) {
-				best = block;
-				bestCost = c;
-			}
-		}
+		const best = nearestUnused(pool, used, face, target, targetNoise, textureWeight);
 		if (!best) break; // pool exhausted
 		used.add(best.id);
 		result.push({ block: best, target });
 	}
 	result.push({ block: to, target: b.oklab });
 	return result;
+}
+
+/**
+ * Insert a block at `position` (0 = before the first, `steps.length` = after
+ * the last) and return the new list, or null if every pool block is in use.
+ *
+ * Between two blocks it targets their blend midpoint. At either end it
+ * continues the gradient one step further, extrapolating from the two
+ * outermost blocks.
+ */
+export function insertAt(
+	steps: GradientStep[],
+	position: number,
+	pool: Block[],
+	options: BlendOptions
+): GradientStep[] | null {
+	const { face, textureWeight = 0, blend = 'straight' } = options;
+	if (steps.length < 2) return null;
+	const lerp = blend === 'hue' ? lerpLch : lerpLab;
+	const color = (i: number) => steps[i].block.faces[face];
+	const n = steps.length;
+
+	// Blend from `a` to `b` by `t`: 0.5 for a midpoint, 2 to step past `b`
+	const [a, b, t] =
+		position <= 0
+			? [color(1), color(0), 2]
+			: position >= n
+				? [color(n - 2), color(n - 1), 2]
+				: [color(position - 1), color(position), 0.5];
+	const [l, la, lb] = lerp(a.oklab, b.oklab, t);
+	const target: Lab = [Math.min(1, Math.max(0, l)), la, lb];
+	const noise = t === 0.5 ? (a.noise + b.noise) / 2 : b.noise;
+
+	const used = new Set(steps.map((s) => s.block.id));
+	const block = nearestUnused(pool, used, face, target, noise, textureWeight);
+	if (!block) return null;
+	const at = Math.min(n, Math.max(0, position));
+	return [...steps.slice(0, at), { block, target }, ...steps.slice(at)];
 }

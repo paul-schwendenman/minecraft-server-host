@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	blockPool,
 	gradient,
+	insertAt,
 	hueSortKey,
 	labDistance,
 	lerpLab,
@@ -9,6 +10,7 @@ import {
 	similar,
 	sortByHue,
 	type Block,
+	type GradientStep,
 	type Lab
 } from './palette';
 
@@ -93,7 +95,7 @@ describe('gradient', () => {
 
 	it('reports ideal target colors along the line', () => {
 		const steps = gradient(black, white, pool, { face: 'side', steps: 3 });
-		expect(labDistance(steps[1].target, [0.5, 0, 0])).toBeCloseTo(0);
+		expect(labDistance(steps[1].target!, [0.5, 0, 0])).toBeCloseTo(0);
 	});
 });
 
@@ -160,5 +162,56 @@ describe('gradient blend', () => {
 			gradient(from, to, pool, { face: 'side', steps: 3, blend })[1].block.id;
 		expect(middle('straight')).toBe('grayish');
 		expect(middle('hue')).toBe('yellow-green');
+	});
+});
+
+describe('insertAt', () => {
+	const pool = [black, white, ...grays];
+	const steps = gradient(black, white, pool, { face: 'side', steps: 3 }); // black, gray5, white
+	const ids = (list: GradientStep[] | null) => list?.map((s) => s.block.id);
+
+	it('between two blocks, inserts the closest unused block to their midpoint', () => {
+		const result = insertAt(steps, 1, pool, { face: 'side' });
+		expect(ids(result)).toEqual(['black', 'gray2', 'gray5', 'white']);
+		expect(labDistance(result![1].target!, [0.25, 0, 0])).toBeCloseTo(0);
+	});
+
+	it('at the ends, continues the gradient one more step', () => {
+		const mids = [grays[1], grays[2]].map((block) => ({ block })); // gray4, gray5
+		expect(ids(insertAt(mids, 2, pool, { face: 'side' }))).toEqual(['gray4', 'gray5', 'gray6']);
+		expect(ids(insertAt(mids, 0, pool, { face: 'side' }))).toEqual(['gray2', 'gray4', 'gray5']);
+	});
+
+	it('clamps extrapolated lightness', () => {
+		const result = insertAt(steps, 3, pool, { face: 'side' });
+		expect(result![3].target![0]).toBe(1);
+		expect(ids(result)).toEqual(['black', 'gray5', 'white', 'gray8']);
+	});
+
+	it('does not modify the original list', () => {
+		insertAt(steps, 2, pool, { face: 'side' });
+		expect(steps).toHaveLength(3);
+	});
+
+	it('skips blocks already in the palette', () => {
+		const result = insertAt(steps, 2, [black, white, grays[2], grays[3]], { face: 'side' });
+		expect(ids(result)).toEqual(['black', 'gray5', 'gray6', 'white']);
+	});
+
+	it('returns null when the pool is used up', () => {
+		expect(insertAt(steps, 1, [black, white, grays[2]], { face: 'side' })).toBeNull();
+	});
+
+	it('uses the hue blend for the midpoint', () => {
+		const red = block('red', lch(0.5, 0.15, 30));
+		const teal = block('teal', lch(0.7, 0.1, 200));
+		const grayish = block('grayish', [0.6, 0, 0]);
+		const yellowGreen = block('yellow-green', lch(0.6, 0.12, 115));
+		const pair = [{ block: red }, { block: teal }];
+		const pool = [red, teal, grayish, yellowGreen];
+		expect(insertAt(pair, 1, pool, { face: 'side' })?.[1].block.id).toBe('grayish');
+		expect(insertAt(pair, 1, pool, { face: 'side', blend: 'hue' })?.[1].block.id).toBe(
+			'yellow-green'
+		);
 	});
 });
