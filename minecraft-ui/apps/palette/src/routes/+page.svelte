@@ -4,6 +4,18 @@
 	import { resolve } from '$app/paths';
 	import BlockPicker from '$lib/BlockPicker.svelte';
 	import BlockTile from '$lib/BlockTile.svelte';
+	import Icon from '$lib/Icon.svelte';
+	import SchemeWall from '$lib/SchemeWall.svelte';
+	import {
+		extendGroup,
+		PRESET_INFO,
+		PRESETS,
+		ROLE_LABELS,
+		scheme,
+		type Preset,
+		type Role,
+		type SchemeGroup
+	} from '$lib/scheme';
 	import {
 		blockPool,
 		gradient,
@@ -19,8 +31,15 @@
 
 	let { data }: PageProps = $props();
 
-	type Mode = 'gradient' | 'similar';
-	type PickerTarget = 'from' | 'to' | 'seed';
+	type Mode = 'scheme' | 'gradient' | 'similar';
+	type PickerTarget = 'from' | 'to' | 'seed' | 'main' | 'accent';
+
+	const MODES: { value: Mode; label: string }[] = [
+		{ value: 'scheme', label: 'Scheme' },
+		{ value: 'gradient', label: 'Gradient' },
+		{ value: 'similar', label: 'Similar' }
+	];
+	const PRESET_KEYS = Object.keys(PRESETS) as Preset[];
 
 	const FACES: { value: Face; label: string }[] = [
 		{ value: 'side', label: 'Side' },
@@ -50,7 +69,7 @@
 		return Number.isNaN(n) ? fallback : Math.min(max, Math.max(min, n));
 	};
 
-	let mode = $state<Mode>(params.get('mode') === 'similar' ? 'similar' : 'gradient');
+	let mode = $state<Mode>(MODES.find((m) => m.value === params.get('mode'))?.value ?? 'scheme');
 	let face = $state<Face>(params.get('face') === 'top' ? 'top' : 'side');
 	let fromId = $state(params.get('from') ?? 'deepslate_tiles');
 	let toId = $state(params.get('to') ?? 'cut_sandstone');
@@ -60,6 +79,10 @@
 	let texture = $state(intParam('texture', 30, 0, 100));
 	let seeThrough = $state(params.get('see') === '1');
 	let animated = $state(params.get('anim') !== '0');
+	let mainId = $state(params.get('main') ?? 'spruce_planks');
+	let preset = $state<Preset>(PRESET_KEYS.find((p) => p === params.get('preset')) ?? 'earthy');
+	let accentId = $state<string | null>(params.get('accent'));
+	let shuffle = $state(intParam('shuffle', 0, 0, 1e9));
 
 	// --- palette ---
 	const pool = $derived(blockPool(blocks, { seeThrough, animated }));
@@ -113,8 +136,77 @@
 	const similarBlocks: Block[] = $derived(
 		similar(seed, pool, { face, count: SIMILAR_COUNT, textureWeight })
 	);
+
+	// --- scheme ---
+	const main = $derived(byId.get(mainId) ?? pickable[0]);
+	const accentBlock = $derived(accentId ? byId.get(accentId) : undefined);
+	// Schemes pick see-through blocks for their detail role themselves
+	const schemePool = $derived(pickable.filter((b) => animated || !b.animated));
+	const schemeOptions = $derived({ face, preset, accent: accentBlock, seed: shuffle });
+	const generatedScheme = $derived(scheme(main, schemePool, schemeOptions));
+
+	// Hand edits to the scheme, dropped when its generator settings change
+	const schemeKey = $derived(JSON.stringify([face, mainId, preset, accentId, shuffle, animated]));
+	type SchemeEdit = { key: string; groups: SchemeGroup[] };
+
+	/** `groups=main:a,b;trim:c` */
+	function schemeEditFromUrl(): SchemeEdit | null {
+		const groups = (params.get('groups') ?? '')
+			.split(';')
+			.map((part) => {
+				const [role, ids = ''] = part.split(':');
+				const blocks = ids.split(',').flatMap((id) => byId.get(id) ?? []);
+				return { role: role as Role, blocks };
+			})
+			.filter(
+				(g, i, all) =>
+					g.role in ROLE_LABELS && g.blocks.length && all.findIndex((x) => x.role === g.role) === i
+			);
+		return groups.length ? { key: schemeKey, groups } : null;
+	}
+
+	let schemeEdit = $state.raw<SchemeEdit | null>(schemeEditFromUrl());
+
+	const schemeGroups = $derived(
+		schemeEdit?.key === schemeKey ? schemeEdit.groups : generatedScheme
+	);
+	const schemeEdited = $derived(schemeGroups !== generatedScheme);
+	const schemeBlocks = $derived(schemeGroups.flatMap((g) => g.blocks));
+
+	function setGroups(groups: SchemeGroup[]) {
+		schemeEdit = { key: schemeKey, groups };
+	}
+
+	function addToGroup(index: number) {
+		const next = extendGroup(schemeGroups, index, main, schemePool, schemeOptions);
+		if (next) setGroups(next);
+	}
+
+	function removeFromGroup(groupIndex: number, blockIndex: number) {
+		setGroups(
+			schemeGroups
+				.map((g, i) =>
+					i === groupIndex ? { ...g, blocks: g.blocks.filter((_, j) => j !== blockIndex) } : g
+				)
+				.filter((g) => g.blocks.length)
+		);
+	}
+
+	function reshuffle() {
+		shuffle = 1 + Math.floor(Math.random() * 1e9);
+	}
+
+	function resetScheme() {
+		shuffle = 0;
+		schemeEdit = null;
+	}
+
 	const palette = $derived(
-		mode === 'gradient' ? gradientSteps.map((s) => s.block) : [seed, ...similarBlocks]
+		mode === 'scheme'
+			? schemeBlocks
+			: mode === 'gradient'
+				? gradientSteps.map((s) => s.block)
+				: [seed, ...similarBlocks]
 	);
 
 	// --- URL sync ---
@@ -122,15 +214,29 @@
 		Object.entries({
 			mode,
 			face,
-			...(mode === 'gradient' ? { from: fromId, to: toId, steps, blend } : { seed: seedId }),
-			...(mode === 'gradient' && isEdited
-				? { blocks: gradientSteps.map((s) => s.block.id).join(',') }
-				: {}),
-			texture,
-			...(seeThrough ? { see: 1 } : {}),
+			...(mode === 'scheme' && {
+				main: mainId,
+				preset,
+				...(accentId && { accent: accentId }),
+				...(shuffle && { shuffle }),
+				...(schemeEdited && {
+					groups: schemeGroups
+						.map((g) => `${g.role}:${g.blocks.map((b) => b.id).join(',')}`)
+						.join(';')
+				})
+			}),
+			...(mode === 'gradient' && { from: fromId, to: toId, steps, blend }),
+			...(mode === 'gradient' &&
+				isEdited && { blocks: gradientSteps.map((s) => s.block.id).join(',') }),
+			...(mode === 'similar' && { seed: seedId }),
+			...(mode !== 'scheme' && { texture }),
+			...(mode !== 'scheme' && seeThrough && { see: 1 }),
 			...(animated ? {} : { anim: 0 })
 		})
-			.map(([k, v]) => `${k}=${encodeURIComponent(v).replaceAll('%2C', ',')}`)
+			.map(
+				([k, v]) =>
+					`${k}=${encodeURIComponent(v).replaceAll('%2C', ',').replaceAll('%3A', ':').replaceAll('%3B', ';')}`
+			)
 			.join('&')
 	);
 
@@ -148,7 +254,9 @@
 	const pickerTitles: Record<PickerTarget, string> = {
 		from: 'Gradient start',
 		to: 'Gradient end',
-		seed: 'Find blocks similar to…'
+		seed: 'Find blocks similar to…',
+		main: 'Build a scheme around…',
+		accent: 'Accent color from…'
 	};
 
 	function openPicker(target: PickerTarget) {
@@ -160,6 +268,8 @@
 		// Regenerate between the visible ends (which edits may have changed)
 		if (pickerTarget === 'from') [fromId, toId] = [block.id, last.id];
 		else if (pickerTarget === 'to') [fromId, toId] = [first.id, block.id];
+		else if (pickerTarget === 'main') mainId = block.id;
+		else if (pickerTarget === 'accent') accentId = block.id;
 		else seedId = block.id;
 	}
 
@@ -178,20 +288,6 @@
 </script>
 
 <!-- Controls on the wall only appear on hover/focus, like coolors.co; always on touch screens -->
-{#snippet trashIcon()}
-	<svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2"
-		><path
-			d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6M10 11v6M14 11v6"
-		/></svg
-	>
-{/snippet}
-
-{#snippet plusIcon()}
-	<svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2.5"
-		><path d="M12 5v14M5 12h14" /></svg
-	>
-{/snippet}
-
 {#snippet addButton(position: number, placement: string, label: string)}
 	<!-- Full-height hover strip so the button appears when the pointer nears the edge -->
 	<div class="group/add absolute inset-y-0 {placement} z-10 flex w-10 items-center justify-center">
@@ -201,7 +297,7 @@
 			title={label}
 			onclick={() => addAt(position)}
 		>
-			{@render plusIcon()}
+			<Icon name="plus" class="size-5" />
 		</button>
 	</div>
 {/snippet}
@@ -223,18 +319,14 @@
 	<div class="flex flex-col gap-4 rounded-xl border border-base-300 bg-base-200/80 p-4 shadow">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<div role="tablist" class="tabs-box tabs">
-				<button
-					role="tab"
-					class="tab"
-					class:tab-active={mode === 'gradient'}
-					onclick={() => (mode = 'gradient')}>Gradient</button
-				>
-				<button
-					role="tab"
-					class="tab"
-					class:tab-active={mode === 'similar'}
-					onclick={() => (mode = 'similar')}>Similar</button
-				>
+				{#each MODES as m (m.value)}
+					<button
+						role="tab"
+						class="tab"
+						class:tab-active={mode === m.value}
+						onclick={() => (mode = m.value)}>{m.label}</button
+					>
+				{/each}
 			</div>
 
 			<div class="join" aria-label="Face to match">
@@ -248,7 +340,51 @@
 			</div>
 		</div>
 
-		{#if mode === 'gradient'}
+		{#if mode === 'scheme'}
+			<div class="flex flex-wrap items-center gap-2">
+				{@render blockButton('Main block', main, 'main')}
+				{#if preset === 'accent' || preset === 'twotone'}
+					<div class="flex items-center">
+						{#if accentBlock}
+							{@render blockButton('Accent from', accentBlock, 'accent')}
+							<button
+								class="btn btn-circle btn-ghost btn-xs"
+								aria-label="Use automatic accent"
+								title="Use automatic accent"
+								onclick={() => (accentId = null)}
+							>
+								<Icon name="x" />
+							</button>
+						{:else}
+							<button
+								class="btn h-auto py-2 normal-case btn-ghost"
+								onclick={() => openPicker('accent')}
+							>
+								<span class="flex flex-col items-start text-left">
+									<span class="text-xs text-base-content/60">Accent</span>
+									<span>Automatic</span>
+								</span>
+							</button>
+						{/if}
+					</div>
+				{/if}
+				<div class="ml-auto flex flex-wrap items-center gap-2">
+					<div class="join" aria-label="Scheme style">
+						{#each PRESET_KEYS as p (p)}
+							<button
+								class="btn join-item btn-sm"
+								class:btn-active={preset === p}
+								title={PRESET_INFO[p].title}
+								onclick={() => (preset = p)}>{PRESET_INFO[p].label}</button
+							>
+						{/each}
+					</div>
+					<button class="btn gap-1.5 btn-sm" onclick={reshuffle} title="Try close alternatives">
+						<Icon name="shuffle" /> Shuffle
+					</button>
+				</div>
+			</div>
+		{:else if mode === 'gradient'}
 			<div class="flex flex-wrap items-center gap-2">
 				{@render blockButton('From', first, 'from')}
 				<button class="btn btn-circle btn-ghost btn-sm" onclick={swap} aria-label="Swap">⇄</button>
@@ -289,16 +425,19 @@
 		{/if}
 
 		<div class="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-			<label class="flex items-center gap-3">
-				<span class="whitespace-nowrap" title="Prefer blocks with similarly busy or smooth textures"
-					>Match texture</span
-				>
-				<input type="range" class="range w-32 range-sm" min="0" max="100" bind:value={texture} />
-			</label>
-			<label class="flex cursor-pointer items-center gap-2">
-				<input type="checkbox" class="toggle toggle-sm" bind:checked={seeThrough} />
-				See-through blocks
-			</label>
+			{#if mode !== 'scheme'}
+				<label class="flex items-center gap-3">
+					<span
+						class="whitespace-nowrap"
+						title="Prefer blocks with similarly busy or smooth textures">Match texture</span
+					>
+					<input type="range" class="range w-32 range-sm" min="0" max="100" bind:value={texture} />
+				</label>
+				<label class="flex cursor-pointer items-center gap-2">
+					<input type="checkbox" class="toggle toggle-sm" bind:checked={seeThrough} />
+					See-through blocks
+				</label>
+			{/if}
 			<label class="flex cursor-pointer items-center gap-2">
 				<input type="checkbox" class="toggle toggle-sm" bind:checked={animated} />
 				Animated blocks
@@ -307,7 +446,15 @@
 	</div>
 
 	<!-- Seamless wall so textures can be judged side by side -->
-	{#if mode === 'gradient'}
+	{#if mode === 'scheme'}
+		<SchemeWall
+			groups={schemeGroups}
+			{face}
+			canAdd={schemeBlocks.length < MAX_BLOCKS}
+			onadd={addToGroup}
+			onremove={removeFromGroup}
+		/>
+	{:else if mode === 'gradient'}
 		<div class="flex overflow-hidden rounded-lg border border-base-300">
 			{#each gradientSteps as step, i (i)}
 				<div class="group relative min-w-0 flex-1">
@@ -320,7 +467,7 @@
 							title="Remove {step.block.name}"
 							onclick={() => remove(i)}
 						>
-							{@render trashIcon()}
+							<Icon name="trash" />
 						</button>
 					{/if}
 					{#if gradientSteps.length < MAX_BLOCKS}
@@ -352,18 +499,44 @@
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
 			<h2 class="text-lg font-bold">
-				{mode === 'gradient' ? 'Gradient' : `Closest to ${seed.name}`}
+				{mode === 'scheme'
+					? `${PRESET_INFO[preset].label} scheme`
+					: mode === 'gradient'
+						? 'Gradient'
+						: `Closest to ${seed.name}`}
 			</h2>
 			{#if mode === 'gradient' && isEdited}
 				<span class="badge badge-ghost badge-sm">Edited</span>
 				<button class="btn btn-ghost btn-xs" onclick={() => (edit = null)}>Reset</button>
+			{/if}
+			{#if mode === 'scheme' && (schemeEdited || shuffle)}
+				{#if schemeEdited}<span class="badge badge-ghost badge-sm">Edited</span>{/if}
+				<button class="btn btn-ghost btn-xs" onclick={resetScheme}>Reset</button>
 			{/if}
 		</div>
 		<button class="btn btn-sm" onclick={copyList}>{copied ? 'Copied!' : 'Copy list'}</button>
 	</div>
 
 	<ol class="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2">
-		{#if mode === 'gradient'}
+		{#if mode === 'scheme'}
+			{#each schemeGroups as group (group.role)}
+				{#each group.blocks as block (block.id)}
+					<li>
+						<button
+							class="flex w-full items-center gap-3 rounded-lg bg-base-200 p-2 text-left hover:bg-base-300"
+							onclick={() => (mainId = block.id)}
+							title="Build a scheme around {block.name}"
+						>
+							<BlockTile {block} {face} size={40} class="rounded-sm" />
+							<span class="flex flex-1 flex-col text-sm">
+								<span>{block.name}</span>
+								<span class="text-xs text-base-content/50">{ROLE_LABELS[group.role]}</span>
+							</span>
+						</button>
+					</li>
+				{/each}
+			{/each}
+		{:else if mode === 'gradient'}
 			{#each gradientSteps as step, i (i)}
 				<li class="flex items-center gap-3 rounded-lg bg-base-200 p-2">
 					<span class="w-5 text-right text-xs text-base-content/50">{i + 1}</span>
@@ -397,7 +570,8 @@
 	</ol>
 
 	<p class="text-xs text-base-content/50">
-		Minecraft {data.blockData.version} · {pool.length} blocks in pool
+		Minecraft {data.blockData.version} · {mode === 'scheme' ? schemePool.length : pool.length} blocks
+		in pool
 	</p>
 </div>
 

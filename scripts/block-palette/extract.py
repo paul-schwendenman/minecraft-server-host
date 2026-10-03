@@ -61,6 +61,7 @@ BLOCK_TINTS = {
 # Full cubes that aren't obtainable building blocks
 TECHNICAL_BLOCKS = {
     "barrier",
+    "frosted_ice",
     "command_block",
     "chain_command_block",
     "repeating_command_block",

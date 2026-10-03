@@ -71,6 +71,7 @@ FEATURE_BLOCKS = {
     "barrel",
     "beacon",
     "bee_nest",
+    "bedrock",
     "beehive",
     "budding_amethyst",
     "cartography_table",
@@ -85,6 +86,7 @@ FEATURE_BLOCKS = {
     "lodestone",
     "loom",
     "note_block",
+    "powder_snow",
     "reinforced_deepslate",
     "respawn_anchor",
     "sculk_catalyst",
@@ -104,6 +106,7 @@ FEATURE_BLOCKS = {
 FEATURE_PROPERTIES = {
     "crafting",
     "enabled",
+    "extended",
     "has_record",
     "honey_level",
     "lit",
@@ -264,7 +267,7 @@ def material(assets, block_id):
         return "light"
     if "terracotta" in block_id or (dye_of(block_id) and re.search(r"wool|concrete", block_id)):
         return "dyed"
-    if block_id in PLANT_BLOCKS or tag("leaves") or tag("mineable/hoe"):
+    if block_id in PLANT_BLOCKS or tag("leaves") or tag("mineable/hoe") or tag("nylium"):
         return "plant"
     if tag("logs") or tag("planks") or "bamboo" in block_id:
         return "wood"
