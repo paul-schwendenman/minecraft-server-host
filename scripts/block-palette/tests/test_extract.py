@@ -103,6 +103,18 @@ class TestDefaultParts:
         }
         assert extract.default_parts(state) == [{"model": "furnace"}]
 
+    def test_prefer_selects_state(self):
+        state = {
+            "variants": {
+                "lit=false,powered=false": {"model": "bulb"},
+                "lit=true,powered=false": {"model": "bulb_lit"},
+            }
+        }
+        assert extract.default_parts(state) == [{"model": "bulb"}]
+        assert extract.default_parts(state, frozenset({"lit=true"})) == [{"model": "bulb_lit"}]
+        # Unknown preference falls back to the default pick
+        assert extract.default_parts(state, frozenset({"nope=1"})) == [{"model": "bulb"}]
+
     def test_weighted_variant_takes_first(self):
         state = {"variants": {"": [{"model": "a"}, {"model": "b", "y": 90}]}}
         assert extract.default_parts(state) == [{"model": "a"}]

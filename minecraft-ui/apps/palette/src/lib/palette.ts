@@ -26,7 +26,21 @@ export interface Block {
 	animated: boolean;
 	translucent: boolean;
 	same_as?: string;
+	/** Extra-state records (e.g. lit copper bulbs): the block they're a state of */
+	variant_of?: string;
+	/** Representative id of the block's material set (spruce planks, logs, leaves...) */
+	family: string;
+	material: Material;
+	/** Shaped blocks this crafts into */
+	shapes?: Shape[];
+	dye?: string;
+	/** Ores, machines and workstations: distinctive, used sparingly */
+	feature?: boolean;
 }
+
+export type Material =
+	'wood' | 'stone' | 'earth' | 'dyed' | 'plant' | 'mineral' | 'glass' | 'light' | 'other';
+export type Shape = 'stairs' | 'slab' | 'wall' | 'fence' | 'carpet' | 'pane';
 
 export interface BlockData {
 	version: string;

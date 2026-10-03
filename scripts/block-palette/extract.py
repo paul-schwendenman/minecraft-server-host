@@ -19,6 +19,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+import metadata
+
 MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
 CACHE_DIR = Path.home() / ".cache" / "block-palette"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +71,29 @@ TECHNICAL_BLOCKS = {
     "test_instance_block",
 }
 
+# Extra records for non-default states that builders use as distinct blocks.
+# id -> (blockstate, state properties to prefer)
+EXTRA_STATES = {
+    "copper_bulb_lit": ("copper_bulb", {"lit=true"}),
+    "exposed_copper_bulb_lit": ("exposed_copper_bulb", {"lit=true"}),
+    "weathered_copper_bulb_lit": ("weathered_copper_bulb", {"lit=true"}),
+    "oxidized_copper_bulb_lit": ("oxidized_copper_bulb", {"lit=true"}),
+    "redstone_lamp_lit": ("redstone_lamp", {"lit=true"}),
+}
+
+# Blocks whose front is assembled from partial elements, given as full
+# textures instead. direction -> sprite
+FACE_OVERRIDES = {
+    "chiseled_bookshelf": {
+        "up": "block/chiseled_bookshelf_top",
+        "down": "block/chiseled_bookshelf_top",
+        "north": "block/chiseled_bookshelf_occupied",
+        "south": "block/chiseled_bookshelf_side",
+        "west": "block/chiseled_bookshelf_side",
+        "east": "block/chiseled_bookshelf_side",
+    },
+}
+
 
 # --- jar download ---------------------------------------------------------
 
@@ -117,18 +142,19 @@ def _strip_ns(name):
 
 
 class Assets:
-    """Read-only view of assets/minecraft inside a client jar (or a dict, for tests)."""
+    """Read-only view of assets/minecraft and data/minecraft inside a client
+    jar (or dicts, for tests)."""
 
-    def __init__(self, files):
+    def __init__(self, files, data=None):
         self._files = files
+        self._data = data or {}
         self._models = {}
+        self._tags = {}
 
     @classmethod
     def from_jar(cls, path):
         zf = zipfile.ZipFile(path)
-        prefix = "assets/minecraft/"
-        files = _LazyZip(zf, prefix)
-        return cls(files)
+        return cls(_LazyZip(zf, "assets/minecraft/"), _LazyZip(zf, "data/minecraft/"))
 
     def read_json(self, path):
         return json.loads(self._files[path])
@@ -170,6 +196,30 @@ class Assets:
     def is_animated(self, name):
         meta = f"textures/{_strip_ns(name)}.png.mcmeta"
         return self.exists(meta) and "animation" in self.read_json(meta)
+
+    def data_json(self, path):
+        return json.loads(self._data[path])
+
+    def data_paths(self, prefix):
+        return sorted(p for p in self._data if p.startswith(prefix) and p.endswith(".json"))
+
+    def tag(self, kind, name):
+        """Members of a tag (e.g. kind "block", name "logs"), nested tags expanded."""
+        name = _strip_ns(name)
+        key = (kind, name)
+        if key not in self._tags:
+            self._tags[key] = set()  # guards against cycles
+            path = f"tags/{kind}/{name}.json"
+            members = set()
+            if path in self._data:
+                for value in self.data_json(path)["values"]:
+                    value = value["id"] if isinstance(value, dict) else value
+                    if value.startswith("#"):
+                        members |= self.tag(kind, value[1:])
+                    else:
+                        members.add(_strip_ns(value))
+            self._tags[key] = members
+        return self._tags[key]
 
 
 class _LazyZip:
@@ -224,13 +274,17 @@ def rotate_direction(direction, x=0, y=0):
     return VECTOR_DIRS[(vx, vy, vz)]
 
 
-def default_parts(blockstate):
+def default_parts(blockstate, prefer=frozenset()):
     """Pick the models rendered for a block's default-looking state.
 
+    `prefer` is a set of "property=value" strings the chosen variant must
+    include when possible (e.g. {"lit=true"}).
     Returns a list of {"model", "x", "y"} dicts.
     """
     if "variants" in blockstate:
         variants = blockstate["variants"]
+        if prefer:
+            variants = {k: v for k, v in variants.items() if prefer <= set(k.split(","))} or variants
         # Prefer upright pillars, and front-facing-north directional blocks so
         # the north face (used as the side preview) shows the front
         key = next((k for k in ("", "axis=y") if k in variants), None)
@@ -445,17 +499,30 @@ def extract(assets, lang):
             textures[name] = png
         return texture_by_hash[digest]
 
-    # Shortest id first so e.g. "stone" is canonical over "infested_stone"
-    ids = sorted(assets.blockstate_ids(), key=lambda i: (len(i), i))
-    for block_id in ids:
+    # (record id, blockstate, preferred state), shortest id first so e.g.
+    # "stone" is canonical over "infested_stone"
+    targets = [(i, i, frozenset()) for i in assets.blockstate_ids()]
+    targets += [
+        (i, state, frozenset(prefer))
+        for i, (state, prefer) in EXTRA_STATES.items()
+        if assets.exists(f"blockstates/{state}.json")
+    ]
+    targets.sort(key=lambda t: (len(t[0]), t[0]))
+    for block_id, state_id, prefer in targets:
         if block_id in TECHNICAL_BLOCKS:
             continue
-        parts = default_parts(assets.read_json(f"blockstates/{block_id}.json"))
-        if not parts:
-            continue
-        faces = cube_faces(assets, parts)
-        if faces is None:
-            continue
+        if block_id in FACE_OVERRIDES:
+            faces = {
+                d: [{"sprite": sprite, "tinted": False, "force_translucent": False}]
+                for d, sprite in FACE_OVERRIDES[block_id].items()
+            }
+        else:
+            parts = default_parts(assets.read_json(f"blockstates/{state_id}.json"), prefer)
+            if not parts:
+                continue
+            faces = cube_faces(assets, parts)
+            if faces is None:
+                continue
 
         tinted = any(layer["tinted"] for layers in faces.values() for layer in layers)
         tint = BLOCK_TINTS.get(block_id)
@@ -468,9 +535,10 @@ def extract(assets, lang):
             layer["sprite"] for layers in faces.values() for layer in layers
         }
 
+        name = lang.get(f"block.minecraft.{state_id}", state_id)
         record = {
             "id": block_id,
-            "name": lang.get(f"block.minecraft.{block_id}", block_id),
+            "name": f"{name} (Lit)" if "lit=true" in prefer else name,
             "faces": {
                 "top": {
                     "texture": save_texture(block_id, "top", rendered["up"]),
@@ -495,6 +563,9 @@ def extract(assets, lang):
             ),
         }
 
+        if state_id != block_id:
+            record["variant_of"] = state_id
+
         # Waxed copper, infested stone, etc. render identically to another block
         face_key = tuple(hashlib.sha1(to_png_bytes(rendered[d])).digest() for d in DIRECTIONS)
         if face_key in canonical_by_faces:
@@ -505,6 +576,7 @@ def extract(assets, lang):
         blocks.append(record)
 
     blocks.sort(key=lambda b: b["id"])
+    metadata.annotate(assets, blocks)
     return blocks, textures
 
 

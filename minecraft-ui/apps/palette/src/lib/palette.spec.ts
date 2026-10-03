@@ -25,6 +25,8 @@ function block(id: string, oklab: Lab, extra: Partial<Block> & { noise?: number 
 		tinted: false,
 		animated: false,
 		translucent: false,
+		family: id,
+		material: 'stone',
 		...rest
 	};
 }
