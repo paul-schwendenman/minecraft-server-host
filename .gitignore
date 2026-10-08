@@ -18,3 +18,5 @@ dist/*.zip
 
 .cursor/
 .vscode/
+# Generated block palette data
+dist/block-palette/
