@@ -9,8 +9,9 @@ Read-only. Works on 1.16-1.20.4 saves (pre-1.20.5 item format; chunk formats fro
   scan.py builds    <world>...   player-built areas scored by block entities, with sign/banner/book/head labels
   scan.py entities  <world>...   named mobs, pets by owner, map walls, item frames, armor stands, master villagers
   scan.py blocks    <world>...   chunks holding redstone, decorative, treasure blocks; nether ice roads
+  scan.py roof      <world>...   nether roof builds (above the bedrock ceiling), roof portals and entities
   scan.py maps      <world>...   map items: explored areas, locked copies, where maps hang
-  scan.py mapconfig <world>...   suggested map-config.yml ranges around builds, halls, hotspots, portal hubs
+  scan.py mapconfig <world>...   suggested map-config.yml ranges around builds, halls, hotspots, portal hubs, nether roof
   scan.py players   <world>...   play time, distance, blocks mined, deaths, last death location
   scan.py inventory <world>... --player NAME|UUID   inventory, armor, ender chest, shulker contents
 
@@ -257,6 +258,10 @@ WEIGHT = {'beacon': 10, 'conduit': 8, 'ender_chest': 6, 'shulker_box': 4, 'brewi
           'barrel': 1, 'chest': 1, 'spawner': 0, 'plain_banner': 0, 'loot_chest': 0}
 # worldgen makes spawners, plain banners (villages) and loot chests, so they don't count toward "built"
 PLAYERISH = set(WEIGHT) - {'barrel', 'chest', 'spawner', 'plain_banner', 'loot_chest'}
+# kinds worldgen never places. A cluster with unopened loot and none of these is a structure
+# (ancient city: comparators + skulls; village: smokers/blast furnaces), not a build.
+STRONG = {'beacon', 'conduit', 'ender_chest', 'shulker_box', 'sign', 'hopper', 'jukebox', 'lectern_book',
+          'enchanting_table', 'brewing_stand'}
 # substring of the block entity id -> kind; order matters (ender_chest before chest, blast_furnace before furnace)
 KINDS = [('ender_chest', 'ender_chest'), ('blast_furnace', 'blast_furnace'), ('shulker_box', 'shulker_box'),
          ('brewing_stand', 'brewing_stand'), ('enchanting_table', 'enchanting_table'), ('daylight_detector', 'daylight_detector'),
@@ -283,6 +288,8 @@ def be_detail(k, b):
     if k == 'sign':
         return k, sign_text(b)
     if k == 'banner':
+        if 'ominous_banner' in (b.get('CustomName') or ''):
+            return 'plain_banner', None  # pillager outposts place patterned ominous banners
         name = text_of(b.get('CustomName'))
         return ('banner', name) if name or b.get('Patterns') else ('plain_banner', None)
     if k in ('chest', 'barrel') and 'LootTable' in b:
@@ -334,6 +341,9 @@ def built_areas(w, json_dir=None):
     for m in cluster(ents, 32, pos=lambda e: (e[1], e[2], e[3])):
         cnt = collections.Counter(e[0] for e in m)
         if sum(cnt[k] for k in PLAYERISH) < 5:
+            continue
+        # comparators with no hoppers/signs/etc. = a looted ancient city
+        if (cnt['loot_chest'] or cnt['comparator']) and not any(cnt[k] for k in STRONG):
             continue
         ranked.append((sum(WEIGHT[k] * v for k, v in cnt.items()), m, cnt))
     ranked.sort(key=lambda r: -r[0])
@@ -531,6 +541,79 @@ def cmd_blocks(a, names):
     print('\nLong thin ice_road clusters in the nether are highways (x/z extents show the length).')
 
 
+# ---------- roof (nether above the bedrock ceiling)
+
+ROOF_Y = 128  # bedrock ceiling tops out at y 127; vanilla generates nothing above it
+# vanilla scatters mushrooms on top of the bedrock ceiling, so they don't mean a player was there
+AIR = {'air', 'cave_air', 'void_air', 'red_mushroom', 'brown_mushroom'}
+
+
+def scan_roof(path):
+    """Nether chunks with any non-air block in a section at or above ROOF_Y (palette names only)."""
+    out = []
+    for cx, cz, raw in chunk_blobs(path):
+        try:
+            c = parse(raw)
+        except Exception:
+            continue
+        for s in c.get('sections') or c.get('Level', {}).get('Sections', []):
+            if s.get('Y', 0) * 16 < ROOF_Y:
+                continue
+            pal = s.get('Palette') or s.get('block_states', {}).get('palette', [])
+            names = {p['Name'].split(':')[-1] for p in pal} - AIR
+            if names:
+                out.append((cx * 16 + 8, s['Y'] * 16, cz * 16 + 8, sorted(names)))
+    return out
+
+
+def roof_areas(w):
+    hits = over_regions(os.path.join(w, 'DIM-1', 'region'), scan_roof)
+    per_chunk = {}
+    for x, y, z, ns in hits:  # one entry per chunk, highest section wins for y
+        e = per_chunk.setdefault((x, z), [x, y, z, set()])
+        e[1] = max(e[1], y)
+        e[3].update(ns)
+    return cluster(list(per_chunk.values()), 16, pos=lambda e: e)
+
+
+def cmd_roof(a, names):
+    for w in a.worlds:
+        areas = roof_areas(w)
+        print(f'== {w}: {sum(len(m) for m in areas)} nether chunks with blocks above y {ROOF_Y - 1}')
+        for m in areas[:a.top]:
+            if len(m) < a.min_chunks:
+                break
+            xs, zs = [e[0] for e in m], [e[2] for e in m]
+            blocks = collections.Counter(b for e in m for b in e[3]).most_common(8)
+            print(f'  {len(m):4d} chunks @ %d, %d  x {min(xs)}..{max(xs)} z {min(zs)}..{max(zs)}  up to y {max(e[1] for e in m) + 15}'
+                  % (centre(m)[0], centre(m)[2]))
+            print('       ' + ', '.join(f'{b}:{n}' for b, n in blocks))
+        portals = [p for p, _ in pois(os.path.join(w, 'DIM-1'), lambda t: t.endswith('nether_portal')) if p[1] >= ROOF_Y]
+        if portals:
+            print('  roof portals: ' + '  '.join(f'{len(m)} blocks @%d,%d,%d' % centre(m)
+                                                  for m in cluster(portals, 8, pos=lambda p: p)))
+        ents = [e for e in over_regions(entity_dirs(w, 'DIM-1'), scan_entities) if e[3] >= ROOF_Y]
+        if ents:
+            print('  roof entities: ' + ', '.join(f'{k}:{n}' for k, n in collections.Counter(
+                e[0] if e[0] != 'named' else f'named {e[5]!r}' for e in ents).most_common(10)))
+    print(f'\nCount = chunks, not blocks. Long thin clusters are roof highways. A dense cluster of '
+          f'portal blocks on the roof is usually a gold/zombified-piglin farm.')
+
+
+def roof_map(w, a):
+    """A nether_roof map block for map-config.yml, or None if nothing is up there."""
+    rs = []
+    for m in roof_areas(w)[:a.top]:
+        if len(m) < a.min_roof_chunks:
+            break
+        x, _, z = centre(m)
+        r = to_range(f'roof_{x}_{z}', m, a.min_radius // 2, a.pad)
+        r['why'] = f'{len(m)} chunks: ' + ', '.join(b for b, _ in collections.Counter(
+            b for e in m for b in e[3]).most_common(4))
+        rs.append(r)
+    return merge_ranges(rs, a.min_radius // 2, a.pad)
+
+
 # ---------- maps (map items)
 
 def cmd_maps(a, names):
@@ -679,6 +762,12 @@ def cmd_mapconfig(a, names):
         if nether:
             print('  - name: nether\n    dimension: nether')
             emit('nether', nether, a.zoomin)
+        roof = roof_map(w, a)
+        if roof:
+            # bottomY 127 keeps the top bedrock layer as a backdrop; above it is all player-made
+            print('  - name: nether_roof\n    dimension: nether\n    output_subdir: nether_roof\n'
+                  f'    options:\n      bottomY: {ROOF_Y - 1}\n      topY: 255\n      shadows: 2d\n      night: false')
+            emit('nether_roof', roof, a.zoomin)
         print()
 
 
@@ -757,7 +846,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--usercache', help='usercache.json for UUID -> name')
     sub = ap.add_subparsers(dest='cmd', required=True)
-    for name in ('hotspots', 'halls', 'portals', 'builds', 'entities', 'blocks', 'maps', 'mapconfig', 'players',
+    for name in ('hotspots', 'halls', 'portals', 'builds', 'entities', 'blocks', 'roof', 'maps', 'mapconfig', 'players',
                  'inventory'):
         p = sub.add_parser(name)
         p.add_argument('worlds', nargs='+')
@@ -769,11 +858,12 @@ def main():
             p.add_argument('--min-radius', type=int, default=256)
             p.add_argument('--pad', type=int, default=64, help='blocks added around each detected area')
             p.add_argument('--min-hours', type=float, default=24, help='hotspots below this are not ranges')
+            p.add_argument('--min-roof-chunks', type=int, default=4, help='roof clusters below this are not ranges')
         if name == 'portals':
             p.add_argument('--min-beds', type=int, default=5)
         if name == 'builds':
             p.add_argument('--json', metavar='DIR', help='also dump every block entity as [kind,x,y,z,label]')
-        if name == 'blocks':
+        if name in ('blocks', 'roof'):
             p.add_argument('--min-chunks', type=int, default=2)
         if name == 'inventory':
             p.add_argument('--player', required=True)

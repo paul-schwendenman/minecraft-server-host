@@ -15,6 +15,7 @@ python3 $S hotspots  <save>...                 # where players spent time (fast,
 python3 $S builds    <save>... [--json DIR]    # player-built areas + signs/banners/heads/discs/books
 python3 $S entities  <save>...                 # named mobs, pets by owner, map walls, armor stands, master villagers
 python3 $S blocks    <save>...                 # redstone / decor / treasure blocks; nether ice roads
+python3 $S roof      <save>...                 # nether roof builds, roof portals and entities
 python3 $S halls     <save>...                 # villager job-site clusters
 python3 $S portals   <save>...                 # portals (both dims), lodestones, bed clusters, player beds/last pos
 python3 $S maps      <save>...                 # map items: explored areas, locked copies, where maps hang
@@ -54,6 +55,11 @@ workers from stdin, and the pool hangs.
   count. Chunks within 128 blocks of ancient cities and trail ruins are dropped, because both
   generate lamps, pistons, comparators and glazed terracotta. In the nether, long thin
   `ice_road` clusters are highways: the x/z extents give their length.
+- **roof**: nether chunks with blocks above the bedrock ceiling (y >= 128), where vanilla
+  generates only mushrooms (ignored). Also lists roof portals and roof entities. Magma-block
+  platforms or hundreds of portal blocks = gold farm. Check what height a nether build is at:
+  the usual `nether` map renders with `topY: 68` and can't show anything on the roof.
+  `mapconfig` emits a separate `nether_roof` map (`bottomY: 127`, `topY: 255`) when the roof has builds.
 - **maps**: `locked` maps are cartography-table copies (map walls, map art). Clusters of map
   centers show where people explored at each scale. "Hung in item frames" are map walls.
 - **halls**: job-site POIs by profession. `librarian` = lectern, `farmer` = composter,
