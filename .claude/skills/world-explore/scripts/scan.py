@@ -9,6 +9,7 @@ Read-only. Works on 1.16-1.20.4 saves (pre-1.20.5 item format; chunk formats fro
   scan.py mapconfig <world>...   suggested map-config.yml ranges around builds, halls and nether portal hubs
   scan.py players   <world>...   play time, distance, blocks mined, deaths per player
   scan.py inventory <world>... --player NAME|UUID   inventory, armor, ender chest, shulker contents
+  scan.py villagers <world>... [--near X,Z]        villager food/inventory, breeding readiness, free beds
 
 <world> is a save directory (the one holding level.dat). Player names come from a
 usercache.json next to the save (server layout), the local client's, or --usercache.
@@ -405,11 +406,100 @@ def cmd_inventory(a, names):
             show_items(d.get('EnderItems', []), 'ender chest')
 
 
+# ---------- villagers
+
+# Villager.canBreed(): food level + inventory food points >= 12, adult (Age 0), plus a free bed nearby.
+FOOD_POINTS = {'bread': 4, 'carrot': 1, 'potato': 1, 'beetroot': 1}
+DIMS = {'overworld': '', 'nether': 'DIM-1', 'end': 'DIM1'}
+
+
+def chunk_nbt(path, needle):
+    """Parse only the chunks in a region file whose raw bytes contain needle."""
+    data = open(path, 'rb').read()
+    if len(data) < 8192:
+        return
+    for k in range(1024):
+        off = int.from_bytes(data[k * 4:k * 4 + 3], 'big')
+        if not off:
+            continue
+        p = off * 4096
+        ln = struct.unpack_from('>i', data, p)[0]
+        try:
+            raw = zlib.decompress(data[p + 5:p + 4 + ln])
+            if needle in raw:
+                yield parse(raw)
+        except Exception:
+            continue
+
+
+def villagers(w, dim):
+    d = os.path.join(w, DIMS[dim])
+    # 1.17+ keeps entities in entities/; 1.16 keeps them in the terrain chunk
+    for f in glob.glob(os.path.join(d, 'entities', '*.mca')):
+        for c in chunk_nbt(f, b'minecraft:villager'):
+            yield from (e for e in c.get('Entities', []) if e.get('id') == 'minecraft:villager')
+    if not glob.glob(os.path.join(d, 'entities', '*.mca')):
+        for f in glob.glob(os.path.join(d, 'region', '*.mca')):
+            for c in chunk_nbt(f, b'minecraft:villager'):
+                yield from (e for e in c.get('Level', {}).get('Entities', []) if e.get('id') == 'minecraft:villager')
+
+
+def beds(w, dim):
+    out = []
+    for f in glob.glob(os.path.join(w, DIMS[dim], 'poi', '*.mca')):
+        for c in chunk_nbt(f, b'minecraft:home'):
+            for sec in c.get('Sections', {}).values():
+                out += [(r['pos'], r.get('free_tickets', 0)) for r in sec.get('Records', []) if r['type'] == 'minecraft:home']
+    return out
+
+
+def cmd_villagers(a, names):
+    cx, cz = (int(v) for v in a.near.split(',')) if a.near else (None, None)
+    near = lambda x, z: cx is None or (x - cx) ** 2 + (z - cz) ** 2 <= a.radius ** 2
+    for w in a.worlds:
+        vs = [v for v in villagers(w, a.dim) if near(v['Pos'][0], v['Pos'][2])]
+        print(f'== {w} ({a.dim}): {len(vs)} villagers' + (f' within {a.radius} of {cx},{cz}' if a.near else ''))
+        willing = 0
+        for v in sorted(vs, key=lambda v: (v['Pos'][0], v['Pos'][2])):
+            x, y, z = (int(p) for p in v['Pos'])
+            vd = v.get('VillagerData', {})
+            prof = vd.get('profession', '?').split(':')[-1]
+            age = v.get('Age', 0)
+            food = v.get('FoodLevel', 0)
+            inv = v.get('Inventory', [])
+            pts = food + sum(FOOD_POINTS.get(i['id'].split(':')[-1], 0) * i.get('Count', 1) for i in inv)
+            if age < 0:
+                state = f'baby ({-age // 20}s to grow)'
+            elif age > 0:
+                state = f'cooldown {age // 20}s'
+            elif pts >= 12:
+                state, willing = 'WILLING', willing + 1
+            else:
+                state = f'hungry, needs {12 - pts} more food points'
+            home = v.get('Brain', {}).get('memories', {}).get('minecraft:home')
+            name = v.get('CustomName', '')
+            if name:
+                try:
+                    name = json.loads(name).get('text', name)
+                except Exception:
+                    pass
+            print(f'  {x:6d} {y:4d} {z:6d}  {prof:13} L{vd.get("level", 1)}  food {food:2d}+inv = {pts:3d}  '
+                  f'{"bed" if home else "NO BED"}  {state}' + (f'  "{name}"' if name else ''))
+            if inv:
+                print('          ' + ', '.join(f'{i.get("Count", 1)}x {item_name(i)}' for i in inv))
+        print(f'  {willing} willing')
+        if a.near:
+            bs = [(p, t) for p, t in beds(w, a.dim) if near(p[0], p[2])]
+            print(f'  beds within {a.radius}: {len(bs)}, unclaimed: {sum(1 for _, t in bs if t > 0)}')
+    print('\nWilling = adult, off cooldown, food + inventory >= 12 (bread 4; carrot/potato/beetroot 1). '
+          'Two willing villagers also need an unclaimed bed nearby to make a baby.')
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--usercache', help='usercache.json for UUID -> name')
     sub = ap.add_subparsers(dest='cmd', required=True)
-    for name in ('halls', 'portals', 'builds', 'mapconfig', 'players', 'inventory'):
+    for name in ('halls', 'portals', 'builds', 'mapconfig', 'players', 'inventory', 'villagers'):
         p = sub.add_parser(name)
         p.add_argument('worlds', nargs='+')
         p.add_argument('--top', type=int, default=8 if name == 'mapconfig' else 15)
@@ -423,6 +513,10 @@ def main():
             p.add_argument('--json', metavar='DIR', help='also dump every block entity as [kind,x,y,z,sign_text]')
         if name == 'inventory':
             p.add_argument('--player', required=True)
+        if name == 'villagers':
+            p.add_argument('--near', metavar='X,Z', help='only villagers around this block x,z')
+            p.add_argument('--radius', type=int, default=32)
+            p.add_argument('--dim', choices=DIMS, default='overworld')
     a = ap.parse_args()
     for w in a.worlds:
         if not os.path.exists(os.path.join(w, 'level.dat')):
