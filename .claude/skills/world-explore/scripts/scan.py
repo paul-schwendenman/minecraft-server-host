@@ -9,7 +9,7 @@ Read-only. Works on 1.16-1.20.4 saves (pre-1.20.5 item format; chunk formats fro
   scan.py mapconfig <world>...   suggested map-config.yml ranges around builds, halls and nether portal hubs
   scan.py players   <world>...   play time, distance, blocks mined, deaths per player
   scan.py inventory <world>... --player NAME|UUID   inventory, armor, ender chest, shulker contents
-  scan.py villagers <world>... [--near X,Z]        villager food/inventory, breeding readiness, free beds
+  scan.py villagers <world>... [--near=X,Z]        villager food/inventory, breeding readiness, free beds
 
 <world> is a save directory (the one holding level.dat). Player names come from a
 usercache.json next to the save (server layout), the local client's, or --usercache.
@@ -514,7 +514,7 @@ def main():
         if name == 'inventory':
             p.add_argument('--player', required=True)
         if name == 'villagers':
-            p.add_argument('--near', metavar='X,Z', help='only villagers around this block x,z')
+            p.add_argument('--near', metavar='X,Z', help='only villagers around this block x,z (write --near=X,Z when X is negative)')
             p.add_argument('--radius', type=int, default=32)
             p.add_argument('--dim', choices=DIMS, default='overworld')
     a = ap.parse_args()
