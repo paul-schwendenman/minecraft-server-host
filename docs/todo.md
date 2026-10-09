@@ -14,6 +14,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Uid drift fixes declined 2026-09-23**: fix ownership on the volume at boot, pin caddy's uid, shut down when `minecraft.env` can't be read. Revisit if an instance stays up again.
 
 - [ ] **Job-aware autoshutdown** ([plan](plans/shutdown-after-jobs-plan.md)): skip shutdown while map builds and backups run, so "start the job and disconnect" works without a hand-written waiter. Then `map build now --upload` and build progress in `map build status`.
+- [ ] **Slow starts from boot-time backups** ([writeup](plans/boot-backup-contention.md)): `Persistent=true` backup timers catch up at boot and run alongside Java, so prod takes 60–79s to be ready instead of ~36s (measured 2026-10-09). Options in the writeup; leaning towards `RandomizedDelaySec` plus lower backup priority.
 - [ ] **Scheduled `backup create all`**: per-world backups only cover `<world>/world/`, so configs (`server.properties`, `ops.json`, `map-config.yml`) are only saved by manual `all` runs. (`all` now excludes `caddy/`, which made it exit 3.)
 
 - [x] **Snapshot the archive worlds on prod** (2026-09-25, `minecraft-prod-backups`): `old` `2c4d15e2`, `world.bak` `2569de9a`, `world.bak2` `092b5292`, `world.bak-1.19.2` `d3e627a5`, `all` `494c2982`.
