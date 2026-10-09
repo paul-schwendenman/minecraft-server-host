@@ -14,6 +14,7 @@ access token on the java command line.
 """
 import argparse, gzip, os, shutil, subprocess, sys
 
+sys.dont_write_bytecode = True  # no __pycache__ in the skill dir
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'world-explore', 'scripts'))
 from mcnbt import parse  # noqa: E402
 
