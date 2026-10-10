@@ -9,6 +9,14 @@ setup() {
     # Create mock commands
     create_mock "logger" 0 ""
     create_mock "sudo" 0 ""
+    # macOS has no timeout(1): log the call, then run the wrapped command
+    cat > "${MOCK_BIN}/timeout" << 'EOF'
+#!/usr/bin/env bash
+echo "$0 $@" >> "${TEST_TEMP_DIR}/mock_calls.log"
+shift
+exec "$@"
+EOF
+    chmod +x "${MOCK_BIN}/timeout"
 
     # Create wrapped script
     SCRIPT=$(wrap_script "${SCRIPTS_DIR}/minecraft/autoshutdown/autoshutdown.sh")
@@ -269,5 +277,51 @@ MOCK
 
     [ "$status" -eq 0 ]
     ! assert_mock_called_with "flock"
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: bounds the RCON call with timeout" {
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 3 of a max of 20 players online"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "timeout 30 minecraftctl rcon send list"
+    assert_mock_called_with "RCON reports 3 players online"
+}
+
+@test "autoshutdown: logs RCON auth failure and counts it as 0 players" {
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    # minecraftctl logs its error to stderr (zerolog console) and exits 1
+    cat > "${MOCK_BIN}/minecraftctl" << 'EOF'
+#!/usr/bin/env bash
+echo "$0 $@" >> "${TEST_TEMP_DIR}/mock_calls.log"
+echo 'ERR command failed error="failed to create RCON client: failed to connect to RCON at localhost:25575: rcon: authentication failed"' >&2
+exit 1
+EOF
+    chmod +x "${MOCK_BIN}/minecraftctl"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "RCON auth failed"
+    assert_mock_called_with "RCON reports 0 players online"
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: logs RCON timeout and counts it as 0 players" {
+    create_mock "who" 0 ""
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 5 of a max of 20 players online"
+    create_mock "timeout" 124 ""
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "RCON timed out"
+    ! assert_mock_called_with "rcon send list"
     [ -f "${STATE_DIR}/no_one_playing" ]
 }

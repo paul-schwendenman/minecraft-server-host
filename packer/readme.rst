@@ -115,8 +115,9 @@ System Components
 Systemd Units
 ~~~~~~~~~~~~~
 - **minecraft@.service**: template unit for running a Minecraft world
-  (one world = one unit). Its drop-ins back up the world and its maps when it
-  stops.
+  (one world = one unit). Its drop-in backs up the world when it stops,
+  except after a failed start that ran under 5 minutes (see
+  ``minecraft-stop-gate``).
 - **minecraft-active.service**: starts the world named by the ``ActiveWorld``
   tag at boot (see above).
 - **minecraft-world-watch.timer** / **.service**: every minute, switches
@@ -162,6 +163,10 @@ Helper Scripts
   unit runs it.
 - **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
   ``minecraftctl map build`` used by the map-build units.
+- **minecraft-stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``:
+  wraps ``minecraft@`` ``ExecStopPost`` commands. Runs CMD after a clean stop,
+  or after a failure if the main process ran at least SECS; otherwise logs
+  and skips it, so a crash loop doesn't back up on every iteration.
 - **backup-maps.sh**: uploads a world's maps to the S3 map bucket.
 - **autoshutdown.sh**: the idle check behind ``autoshutdown.timer``.
 - **mount-ebs.sh**, **setup-env.sh**, **setup-maps.sh**,

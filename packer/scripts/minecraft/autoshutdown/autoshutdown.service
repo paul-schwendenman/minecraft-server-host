@@ -3,6 +3,8 @@ Description=Check for idle Minecraft server
 
 [Service]
 Type=oneshot
+# A hung check would block every later timer run (OnUnitActiveSec never re-arms)
+TimeoutStartSec=2min
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
 ExecStart=/usr/local/bin/autoshutdown.sh
