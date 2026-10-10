@@ -32,7 +32,7 @@ source "amazon-ebs" "ubuntu_base" {
   instance_type = "t3.micro"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"
+      name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
@@ -56,16 +56,18 @@ build {
     destination = "/tmp/scripts/"
   }
 
+  # Runs before install_base_deps.sh so the pinned minecraft uid/gid (996) is
+  # claimed before packages like caddy allocate system users from the same range.
+  provisioner "shell" {
+    script = "scripts/base/create-minecraft-user.sh"
+  }
+
   provisioner "shell" {
     environment_vars = [
       "UNMINED_URL=${var.unmined_cli_url}",
       "UNMINED_SHA256=${var.unmined_cli.sha256}",
     ]
     script = "scripts/base/install_base_deps.sh"
-  }
-
-  provisioner "shell" {
-    script = "scripts/base/create-minecraft-user.sh"
   }
 
   # Install Minecraft JARs if provided

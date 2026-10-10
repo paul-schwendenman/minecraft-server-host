@@ -11,11 +11,8 @@ sudo apt-get update -qq
 sudo apt-get install -y -qq \
   openjdk-25-jre-headless \
   screen unzip wget curl ca-certificates \
-  python3-pip git build-essential jq xfsprogs \
-  libicu70
-
-# --- Python tools (optional) ---
-pip3 install --user --upgrade mcstatus nbtlib
+  git build-essential jq xfsprogs \
+  libicu74
 
 # --- AWS CLI v2 ---
 if ! command -v aws >/dev/null 2>&1; then

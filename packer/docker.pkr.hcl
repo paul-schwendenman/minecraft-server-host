@@ -25,7 +25,7 @@ variable "unmined_cli_url" {
 }
 
 source "docker" "ubuntu_local" {
-  image  = "ubuntu:22.04"
+  image  = "ubuntu:24.04"
   commit = true
 }
 
