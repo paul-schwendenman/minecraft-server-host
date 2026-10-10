@@ -2,6 +2,12 @@
 Description=Minecraft Server %i
 After=network-online.target
 Wants=network-online.target
+# End crash loops: after 5 starts in 10 min the unit goes `failed`, so
+# autoshutdown sees no running world and powers off. Counts every start
+# (manual, world switch), and a world crashing 2+ min after each start
+# never hits it.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
 
 [Service]
 WorkingDirectory=/srv/minecraft-server/%i
@@ -22,9 +28,11 @@ SuccessExitStatus=143
 ExecStartPre=-/usr/local/bin/minecraftctl config sync %i --dry-run=false
 ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
 ExecReload=/usr/local/bin/minecraftctl rcon send "reload"
-ExecStop=/usr/local/bin/minecraftctl rcon send "say SERVER SHUTTING DOWN. Saving map..."
-ExecStop=/usr/local/bin/minecraftctl rcon send "save-all"
-ExecStop=/usr/local/bin/minecraftctl rcon send "stop"
+# "-": a broken RCON mustn't fail the stop. systemd then sends SIGTERM and the
+# JVM shutdown hook saves the world (exit 143, covered by SuccessExitStatus).
+ExecStop=-/usr/local/bin/minecraftctl rcon send "say SERVER SHUTTING DOWN. Saving map..."
+ExecStop=-/usr/local/bin/minecraftctl rcon send "save-all"
+ExecStop=-/usr/local/bin/minecraftctl rcon send "stop"
 
 Restart=on-failure
 RestartSec=20
