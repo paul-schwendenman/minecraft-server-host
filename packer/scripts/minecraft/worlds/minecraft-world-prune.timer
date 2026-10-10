@@ -4,6 +4,8 @@ Description=Weekly prune of world backups
 [Timer]
 OnCalendar=Sun *-*-* 04:00:00
 Persistent=true
+# Later than the backups' 10min so a boot catch-up usually prunes after them
+RandomizedDelaySec=20min
 
 [Install]
 WantedBy=timers.target

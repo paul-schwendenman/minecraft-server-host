@@ -4,6 +4,7 @@ Description=Weekly full backup of all Minecraft worlds
 [Timer]
 OnCalendar=Sun *-*-* 03:30:00
 Persistent=true
+RandomizedDelaySec=10min
 Unit=minecraft-world-backup.service
 
 [Install]

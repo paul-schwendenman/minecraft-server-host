@@ -4,6 +4,7 @@ Description=Daily map build for %i (fallback when server not running)
 [Timer]
 OnCalendar=daily
 Persistent=true
+RandomizedDelaySec=10min
 Unit=minecraft-map-build@%i.service
 
 [Install]
