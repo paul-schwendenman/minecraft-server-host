@@ -154,8 +154,12 @@ Systemd Units
 The backup and prune timers are ``Persistent=true``, and the instance is
 usually off at their scheduled times, so missed runs catch up at boot.
 ``RandomizedDelaySec`` spreads those catch-up runs out over the first few
-minutes; prune gets a longer delay and is ordered after the backups, since it
-takes restic's exclusive lock. The backup, prune and map services run at low
+minutes. Prune takes restic's exclusive lock, so it gets a longer delay, and
+the backup services are ``Before=`` it, which orders a prune queued at the
+same time after them. A backup that fires while prune is already running
+waits for the lock instead of failing: ``minecraftctl`` passes restic
+``--retry-lock`` (``MC_RESTIC_RETRY_LOCK``, default ``30m``, ``0`` turns it
+off). The backup, prune and map services run at low
 priority (``Nice``, ``CPUWeight``, ``IOWeight``) so the world's start wins
 when they overlap.
 

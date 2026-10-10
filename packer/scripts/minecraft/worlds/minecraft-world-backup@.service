@@ -1,8 +1,10 @@
 [Unit]
 Description=Backup Minecraft world %i
 After=network-online.target
-# Prune takes restic's exclusive lock and minecraftctl doesn't retry, so order
-# backups ahead of a prune queued at the same time.
+# Prune takes restic's exclusive lock. Before= orders a prune queued at the
+# same time after the backups; a backup that fires while prune is already
+# running waits for the lock (minecraftctl passes restic --retry-lock,
+# MC_RESTIC_RETRY_LOCK, default 30m).
 Before=minecraft-world-prune.service
 
 [Service]
