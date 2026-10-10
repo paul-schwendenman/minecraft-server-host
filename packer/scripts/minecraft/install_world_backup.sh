@@ -23,4 +23,9 @@ sudo install -Dm644 "${SRC_DIR}/minecraft-override-world-backup.conf" /etc/syste
 
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-# leave timers disabled by default
+
+# Weekly backup of the whole worlds dir (configs and other files no per-world
+# backup covers; caddy/ excluded) and weekly restic prune, without which the
+# repo grows forever. Enabled here because /etc comes from the AMI; per-world
+# timers are enabled by `minecraftctl world create/register`.
+sudo systemctl enable minecraft-world-backup.timer minecraft-world-prune.timer
