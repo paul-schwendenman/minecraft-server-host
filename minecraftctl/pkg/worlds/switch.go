@@ -356,22 +356,32 @@ func parsePlayerCount(out string) (int, error) {
 }
 
 // waitForRcon waits for a world to answer RCON, which Minecraft only starts
-// once the world has loaded. It gives up early if the unit stops or fails.
+// once the world has loaded. It gives up early if the unit stops or fails, or
+// if RCON rejects the password.
 func waitForRcon(world string, timeout time.Duration) error {
+	return pollRcon(world, timeout, rconSend, systemd.GetActiveState, time.Sleep)
+}
+
+// pollRcon is waitForRcon with its dependencies injected, for tests.
+func pollRcon(world string, timeout time.Duration, send func(string) (string, error), activeState func(unit string) string, sleep func(time.Duration)) error {
 	unit := systemd.FormatUnitName("minecraft", world, systemd.UnitService)
 	deadline := time.Now().Add(timeout)
 	for {
-		if _, err := rconSend("list"); err == nil {
+		_, err := send("list")
+		if err == nil {
 			log.Info().Str("world", world).Msg("world is up")
 			return nil
 		}
-		switch state := systemd.GetActiveState(unit); state {
+		if rcon.IsAuthError(err) {
+			return fmt.Errorf("%s: RCON rejected the password; run 'minecraftctl config sync %s'", world, world)
+		}
+		switch state := activeState(unit); state {
 		case "inactive", "failed":
 			return fmt.Errorf("%s is %s", unit, state)
 		}
 		if time.Now().After(deadline) {
 			return fmt.Errorf("%s didn't answer RCON within %s", world, timeout)
 		}
-		time.Sleep(5 * time.Second)
+		sleep(5 * time.Second)
 	}
 }

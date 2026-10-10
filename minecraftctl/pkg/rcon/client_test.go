@@ -1,8 +1,69 @@
 package rcon
 
 import (
+	"net"
+	"strconv"
+	"strings"
 	"testing"
+
+	"github.com/gorcon/rcon/rcontest"
 )
+
+// newTestServer starts a fake RCON server that accepts the password "right".
+func newTestServer(t *testing.T) (string, int) {
+	t.Helper()
+	srv := rcontest.NewServer(rcontest.SetSettings(rcontest.Settings{Password: "right"}))
+	t.Cleanup(srv.Close)
+	host, portStr, err := net.SplitHostPort(srv.Addr())
+	if err != nil {
+		t.Fatal(err)
+	}
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return host, port
+}
+
+func TestNewClientWithConfigWrongPassword(t *testing.T) {
+	host, port := newTestServer(t)
+	_, err := NewClientWithConfig(host, port, "wrong")
+	if err == nil {
+		t.Fatal("Expected error for wrong password")
+	}
+	if !IsAuthError(err) {
+		t.Errorf("IsAuthError(%v) = false, want true", err)
+	}
+	// autoshutdown.sh greps for this text.
+	if !strings.Contains(err.Error(), "authentication failed") {
+		t.Errorf("error %q doesn't mention \"authentication failed\"", err)
+	}
+}
+
+func TestNewClientWithConfigRightPassword(t *testing.T) {
+	host, port := newTestServer(t)
+	client, err := NewClientWithConfig(host, port, "right")
+	if err != nil {
+		t.Fatalf("Failed to connect: %v", err)
+	}
+	if err := client.Close(); err != nil {
+		t.Errorf("Close: %v", err)
+	}
+}
+
+func TestIsAuthErrorOtherErrors(t *testing.T) {
+	if IsAuthError(nil) {
+		t.Error("IsAuthError(nil) = true")
+	}
+	_, err := NewClientWithConfig("127.0.0.1", 59999, "password")
+	if err == nil || IsAuthError(err) {
+		t.Errorf("connection refused: IsAuthError(%v) = true", err)
+	}
+	_, err = NewClientWithConfig("localhost", 25575, "")
+	if err == nil || IsAuthError(err) {
+		t.Errorf("empty password: IsAuthError(%v) = true", err)
+	}
+}
 
 func TestNewClientWithConfigEmptyPassword(t *testing.T) {
 	// Should fail with empty password

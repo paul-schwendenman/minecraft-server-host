@@ -2,12 +2,15 @@ package worlds
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/paul/minecraftctl/pkg/rcon"
 )
 
 // makeWorld creates a world as `world create` leaves it: eula.txt,
@@ -343,4 +346,70 @@ func TestSwitchRollbackFails(t *testing.T) {
 	}
 	assertCalls(t, f, "lock", "players", "stop default", "start old", "wait old",
 		"stop old", "start default", "wait default", "stop default", "unlock")
+}
+
+// fakeRcon records what pollRcon does. Each send returns the next of errs,
+// then nil once they run out.
+type fakeRcon struct {
+	errs   []error
+	state  string
+	sends  int
+	sleeps []time.Duration
+}
+
+func (f *fakeRcon) poll(world string, timeout time.Duration) error {
+	return pollRcon(world, timeout,
+		func(string) (string, error) {
+			f.sends++
+			if len(f.errs) == 0 {
+				return "There are 0 of a max of 20 players online: ", nil
+			}
+			err := f.errs[0]
+			f.errs = f.errs[1:]
+			return "", err
+		},
+		func(string) string { return f.state },
+		func(d time.Duration) { f.sleeps = append(f.sleeps, d) },
+	)
+}
+
+func TestPollRconFailsFastOnAuthError(t *testing.T) {
+	f := &fakeRcon{errs: []error{fmt.Errorf("x: %w", rcon.ErrAuthFailed)}, state: "active"}
+
+	err := f.poll("old", time.Hour)
+	if err == nil {
+		t.Fatal("err = nil, want an auth error")
+	}
+	for _, want := range []string{"RCON rejected the password", "config sync old"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("err = %q, want it to mention %q", err, want)
+		}
+	}
+	if f.sends != 1 || len(f.sleeps) != 0 {
+		t.Errorf("sends = %d, sleeps = %v; want 1 send and no sleeps", f.sends, f.sleeps)
+	}
+}
+
+func TestPollRconRetriesUntilUp(t *testing.T) {
+	refused := errors.New("dial tcp 127.0.0.1:25575: connect: connection refused")
+	f := &fakeRcon{errs: []error{refused, refused}, state: "activating"}
+
+	if err := f.poll("old", time.Hour); err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+	if want := []time.Duration{5 * time.Second, 5 * time.Second}; !reflect.DeepEqual(f.sleeps, want) {
+		t.Errorf("sleeps = %v, want %v", f.sleeps, want)
+	}
+}
+
+func TestPollRconStopsWhenUnitFails(t *testing.T) {
+	f := &fakeRcon{errs: []error{errors.New("connection refused")}, state: "failed"}
+
+	err := f.poll("old", time.Hour)
+	if err == nil || !strings.Contains(err.Error(), "failed") {
+		t.Fatalf("err = %v, want unit failed", err)
+	}
+	if len(f.sleeps) != 0 {
+		t.Errorf("sleeps = %v, want none", f.sleeps)
+	}
 }
