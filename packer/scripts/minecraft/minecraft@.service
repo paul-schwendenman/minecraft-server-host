@@ -16,6 +16,10 @@ ProtectHome=true
 NoNewPrivileges=true
 SuccessExitStatus=143
 
+# Make server.properties' RCON settings match minecraft.env before every start.
+# /etc/minecraft.env is root-only, so the sync reads RCON_* from the environment
+# EnvironmentFile= exported above. "-": a failed sync must not block the world starting.
+ExecStartPre=-/usr/local/bin/minecraftctl config sync %i --dry-run=false
 ExecStart=/usr/bin/java -Xms1536M -Xmx1536M -jar server.jar nogui
 ExecReload=/usr/local/bin/minecraftctl rcon send "reload"
 ExecStop=/usr/local/bin/minecraftctl rcon send "say SERVER SHUTTING DOWN. Saving map..."
