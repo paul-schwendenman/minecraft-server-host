@@ -115,9 +115,11 @@ System Components
 Systemd Units
 ~~~~~~~~~~~~~
 - **minecraft@.service**: template unit for running a Minecraft world
-  (one world = one unit). Its drop-in backs up the world when it stops,
-  except after a failed start that ran under 5 minutes (see
-  ``minecraft-stop-gate``).
+  (one world = one unit). A drop-in
+  (``minecraft@.service.d/minecraft-world-backup.conf``) takes a restic
+  snapshot of the world when it stops, except after a failed start that ran
+  under 5 minutes (see ``minecraft-stop-gate``). Maps aren't uploaded on stop;
+  see ``minecraft-map-build@`` below.
 - **minecraft-active.service**: starts the world named by the ``ActiveWorld``
   tag at boot (see above).
 - **minecraft-world-watch.timer** / **.service**: every minute, switches
@@ -126,9 +128,9 @@ Systemd Units
   the instance off when no world is running, or after two checks with no
   players. An interactive SSH session, or a ``minecraftctl world switch`` in
   progress (it holds ``/run/minecraft-switch.lock``), skips shutdown.
-- **minecraft-map-build@.timer** / **.service**: renders a world's maps every
-  15 minutes while that world runs. The timer requires the world's
-  ``minecraft@`` unit, so it's enabled per world but never started on its own.
+- **minecraft-map-build@.timer** / **.service**: renders a world's maps 5
+  minutes after the world starts, then every 15 minutes while it runs. The
+  timer requires the world's ``minecraft@`` unit, so it's enabled per world but never started on its own.
   Each successful build starts ``minecraft-map-backup@`` to upload the maps.
 - **minecraft-map-backup@.timer** / **.service**: uploads a world's rendered
   maps to S3, after each build and twice a day.
@@ -137,13 +139,25 @@ Systemd Units
   world stops. Snapshots are recorded under host ``minecraft`` rather than the
   instance's hostname, and the backup units share a restic cache in
   ``/var/cache/restic``.
-- **minecraft-world-backup.timer**, **minecraft-world-prune.timer**,
-  **minecraft-map-backup.timer**, **minecraft-map-build-daily@.timer**:
-  weekly full backups, prune and a daily map-build fallback. Installed but not
-  enabled.
+- **minecraft-world-backup.timer** / **.service**: weekly (Sunday 03:30)
+  ``minecraftctl backup create`` of every world, which also covers the
+  configs a per-world backup misses. Enabled in the AMI.
+- **minecraft-world-prune.timer** / **.service**: weekly (Sunday 04:00)
+  ``minecraftctl backup prune``. Enabled in the AMI.
+- **minecraft-map-backup.timer**, **minecraft-map-build-daily@.timer**: a
+  weekly upload of every world's maps and a daily map-build fallback.
+  Installed but not enabled.
 - **dyndns.service**: updates the Route53 A, AAAA and SSHFP records at boot.
 - **minecraft-health.service**: one-off health check
   (``mc-healthcheck.sh``); run it by hand.
+
+The backup and prune timers are ``Persistent=true``, and the instance is
+usually off at their scheduled times, so missed runs catch up at boot.
+``RandomizedDelaySec`` spreads those catch-up runs out over the first few
+minutes; prune gets a longer delay and is ordered after the backups, since it
+takes restic's exclusive lock. The backup, prune and map services run at low
+priority (``Nice``, ``CPUWeight``, ``IOWeight``) so the world's start wins
+when they overlap.
 
 ``minecraftctl world register <world>`` enables a world's three timers;
 ``world create`` does the same for a new world. Neither enables or starts
@@ -157,10 +171,9 @@ Helper Scripts
   registers every other world on the volume, so all of them keep their backup
   timers. It doesn't start anything.
 - **minecraft-active.sh**, **minecraft-world-watch.sh**: the boot unit's and
-  the tag watcher's scripts, in ``/usr/local/libexec`` (see "Which world
-  runs").
-  Installed in ``/usr/local/libexec``, not on the ``PATH``, since only the
-  unit runs it.
+  the tag watcher's scripts (see "Which world runs"). Installed in
+  ``/usr/local/libexec``, not on the ``PATH``, since only their units run
+  them.
 - **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
   ``minecraftctl map build`` used by the map-build units.
 - **minecraft-stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``:
@@ -212,17 +225,21 @@ Usage
 
 
 Null Builder
--------------
+------------
 
-Run provisioners via SSH:
+Run provisioners on an existing instance over SSH::
 
     packer build \
       -var "test_host=testmc.minecraft.example.com" \
       -var "test_private_key=~/.ssh/minecraft-packer.pem" \
       ssh.pkr.hcl
 
+Every install provisioner in ``ssh.pkr.hcl`` is commented out, so as checked
+in it only copies ``scripts/`` to ``/tmp/scripts`` and reloads systemd.
+Uncomment the ones you want to rerun.
+
 docker Builder
----------------
+--------------
 
 Shares ``scripts/base/install_base_deps.sh`` with the base AMI, so it needs
 the same presigned unmined-cli URL (see Usage above)::
