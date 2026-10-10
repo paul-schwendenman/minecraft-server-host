@@ -46,7 +46,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] `map` JSON output: `TODO` at `minecraftctl/cmd/minecraftctl/map.go:343`.
 - [ ] Remove the `rebuild-map.sh` / `build-map-manifests.sh` wrappers: point `minecraft-map-build@.service` and `minecraft-override-rebuild.conf` at `minecraftctl` directly (minecraftctl already supports globs, `--non-blocking` and `--update-index`, so the wrappers add nothing), then drop their bats and shellcheck tests. This is the last item in the [migration plan](plans/minecraftctl-migration-plan.md).
 - [ ] `minecraftctl doctor`, and `--dry-run` on more than `config sync` ([minecraftctl-plan.md](plans/minecraftctl-plan.md), Phase 7).
-- [ ] `minecraftctl map clean` (Phase 10).
+- [ ] `minecraftctl map clean` (Phase 10). Include tiles in a format the map no longer uses. Switching `imageformat` re-renders the whole map (`pkg/maps/build.go`) but leaves the old-format tiles behind, and `backup-maps.sh` only adds to S3, so they pile up in both places. On 2026-10-10 the jpeg -> webp switch for world.bak and world.bak-1.19.2 left 19,092 jpeg tiles (~200 MB), which were deleted by hand on the server and in `s3://minecraft-prod-maps/maps/<world>/`. Better: delete them in the format-change path of `buildMap`, and have the map upload drop them from S3 (`--delete` scoped to the map's `tiles/`, or an explicit `aws s3 rm` of the old extension).
 
 ## Big ideas
 
