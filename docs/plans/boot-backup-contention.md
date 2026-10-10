@@ -68,6 +68,7 @@ On branch `paul-schwendenman/boot-backups`, 2026-10-10:
 - **Weekly timers enabled**: the AMI now enables `minecraft-world-backup.timer` (Sunday 03:30, `backup create` of every world) and `minecraft-world-prune.timer` (Sunday 04:00). Neither was enabled before.
 - Confirmed for the AMI's Ubuntu 22.04 (systemd 249): `RandomizedDelaySec` applies to `Persistent=` catch-up runs too (man page and `timer.c`), so option 1 works there.
 - **Map-build timer**: `minecraft-map-build@.timer` used `OnBootSec=1min` + `Persistent=true` + `OnUnitActiveSec=15min`. With no stamp (first start after an AMI rebuild) it fired at once; with a stamp (later switches) `OnBootSec` had passed and `OnUnitActiveSec` had no base, so it never fired. That likely explains the map builds running alongside the server during the 2026-09-30 switch, not `minecraft-override-rebuild.conf` (no install script installs it). Now `OnActiveSec=5min`, with `Persistent` removed, so it counts from when the world starts, at boot or on a switch.
+- **Stop-time backup** (branch `paul-schwendenman/stop-backup-timeout`): the `minecraft@` `ExecStopPost` backup uses `MC_RESTIC_RETRY_LOCK=1m` and `TimeoutStopSec=5min`, so a running prune can't hold up a stop for 30m. If that backup gives up, the daily timer backup catches up.
 
 ## Outcome
 

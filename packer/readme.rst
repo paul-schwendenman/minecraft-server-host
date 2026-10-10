@@ -118,8 +118,13 @@ Systemd Units
   (one world = one unit). A drop-in
   (``minecraft@.service.d/minecraft-world-backup.conf``) takes a restic
   snapshot of the world when it stops, except after a failed start that ran
-  under 5 minutes (see ``minecraft-stop-gate``). Maps aren't uploaded on stop;
-  see ``minecraft-map-build@`` below.
+  under 5 minutes (see ``minecraft-stop-gate``). That backup is best-effort:
+  it waits only ``1m`` for the restic lock (``MC_RESTIC_RETRY_LOCK``), so a
+  running prune can't hold up a world switch or poweroff. If it gives up, the
+  world's daily timer backup catches up. The drop-in also sets
+  ``TimeoutStopSec=5min``, which systemd applies to each stop command
+  separately. Maps aren't uploaded on stop; see ``minecraft-map-build@``
+  below.
 - **minecraft-active.service**: starts the world named by the ``ActiveWorld``
   tag at boot (see above).
 - **minecraft-world-watch.timer** / **.service**: every minute, switches
