@@ -8,7 +8,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 - [ ] **Autoshutdown hard backstop**, layers 1–3 ([autoshutdown-review.md](plans/autoshutdown-review.md#deferred-hard-backstop-not-implemented)):
   - [ ] `max-uptime.timer`: powers off after N hours no matter what (suggested 12h)
   - [ ] Boot watchdog: power off if RCON isn't answering 30–45 min after boot
-  - [ ] Harden: `TimeoutStartSec=` on `autoshutdown.service`, `timeout` around the RCON call, `StartLimitBurst` on `minecraft@.service`, skip `ExecStopPost` backups when a start fails
+  - [x] Harden (2026-10-10, not yet on an AMI): `TimeoutStartSec=2min` on `autoshutdown.service`, `timeout 30` around the RCON call, `StartLimitBurst=5` per 10 min on `minecraft@.service`, and `minecraft-stop-gate` skips the `ExecStopPost` backup unless the stop was clean or the server ran 5+ min. Gaps: the limit counts manual and `world switch` starts too (a 6th start inside 10 min needs `systemctl reset-failed`), and a world that crashes 2+ min after each start still loops.
   - Open decisions: the cap value, and whether the watchdog skips shutdown while someone is SSH'd in
 - [x] **Check the uid 996 pin**: pinned in `create-minecraft-user.sh` (`df01b65`), and every `packer-build` run since (Sep 21–22, latest `d71e2db`) succeeded with it. Test and prod both run `ami-06396b7e9fb13ffb6` from that latest build (checked 2026-09-23).
 - [ ] **Uid drift fixes declined 2026-09-23**: fix ownership on the volume at boot, pin caddy's uid, shut down when `minecraft.env` can't be read. Revisit if an instance stays up again.
@@ -20,10 +20,16 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 
 - [x] **Snapshot the archive worlds on prod** (2026-09-25, `minecraft-prod-backups`): `old` `2c4d15e2`, `world.bak` `2569de9a`, `world.bak2` `092b5292`, `world.bak-1.19.2` `d3e627a5`, `all` `494c2982`.
 - [ ] **World switching** ([plan](plans/world-switching-plan.md)): phase 1 adds a **Play** button in the maps app. It calls `/start?world=`, the control lambda sets an `ActiveWorld` EC2 tag and starts the instance, and a `minecraft-active.service` boot unit starts that world. Phase 2 adds `minecraftctl world switch` for switching over SSH. Phase 3 switches from the UI while the server is running: a watcher on the instance calls `world switch`. The controls app stays unchanged. Every world's jar and map are already on prod (checked 2026-09-24).
-- [ ] **World switch vs. RCON password mismatches**: on prod 2026-09-30, `old` had its own `rcon.password`. Java came up, but every RCON login failed, so the watcher waited the full 5 min, rolled back to `default`, and `minecraft@old` ended up `failed`. Fixed by hand with `config sync old`; these would stop it happening again:
-  - [ ] Run `config sync <world>` before starting a world, so imported worlds pick up the RCON settings from `minecraft.env`.
-  - [ ] Fail fast on `rcon: authentication failed` rather than retrying until the timeout. A wrong password won't fix itself.
-  - [ ] Every `ExecStop=` in `minecraft@.service` goes through RCON, so a broken RCON fails the stop and marks the unit `failed`. Prefix them with `-` (systemd's SIGTERM still makes Java save), or drop them for SIGTERM.
+- [x] **World switch vs. RCON password mismatches**: on prod 2026-09-30, `old` had its own `rcon.password`. Java came up, but every RCON login failed, so the watcher waited the full 5 min, rolled back to `default`, and `minecraft@old` ended up `failed`. Fixed by hand with `config sync old`. Fixed in code 2026-10-10, not yet on an AMI:
+  - [x] `minecraft@.service` runs `config sync %i` as `ExecStartPre`. `/etc/minecraft.env` is root-only, so the sync falls back to the `RCON_*` values `EnvironmentFile=` exports.
+  - [x] `waitForRcon` gives up at once on `authentication failed`. The rollback world usually fails the same way, so the switch now ends in `ErrRollbackFailed` within seconds.
+  - [x] The `ExecStop=` RCON lines are prefixed with `-`.
+- [ ] **Check the RCON hardening on test** after the next AMI build:
+  - `systemd-analyze verify` on `minecraft@.service` and its drop-ins.
+  - Break a world's `rcon.password`, start it, and confirm `ExecStartPre` fixes it (the journal shows `RCON settings from: environment (...)`).
+  - Point a world at a missing `server.jar`: it should go `failed` after 5 tries, and autoshutdown should then power off.
+  - Stop a world with RCON broken: the unit should end `inactive`, not `failed`, with a fresh `level.dat`.
+  - During a stop, confirm `ExecMainExitTimestampMonotonic` is set by the time `minecraft-stop-gate` runs. If it's 0, the gate logs "uptime unknown" and backs up every crash-loop iteration.
 
 - [ ] **Review world log retention**: restic excludes `logs/` and `crash-reports/` for every world, so server logs only live on the data volume. (`old`'s history is already in the pre-rewrite sync at `s3://minecraft-backup-001/logs/`; nothing more to save there.) Decide how to keep logs going forward: include them in `backup create all`, or archive them separately.
 
