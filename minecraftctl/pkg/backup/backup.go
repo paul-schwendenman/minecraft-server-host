@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/paul/minecraftctl/pkg/envfile"
 	"github.com/rs/zerolog/log"
@@ -34,6 +35,16 @@ const (
 	// every run shares CacheDir, and restored files belong to the user that
 	// runs the worlds instead of the numeric owner recorded in the snapshot.
 	RunAsUser = "minecraft"
+
+	// DefaultRetryLock is how long restic waits for a lock another restic
+	// process holds (the weekly prune's exclusive lock, or a backup's
+	// shared one while prune starts) before giving up. systemd only orders
+	// a prune after backups that are queued with it, so a backup timer that
+	// fires mid-prune would otherwise fail straight away.
+	DefaultRetryLock = "30m"
+
+	// RetryLockEnv overrides DefaultRetryLock; "0" turns retrying off
+	RetryLockEnv = "MC_RESTIC_RETRY_LOCK"
 )
 
 // Config holds the backup configuration
@@ -43,6 +54,8 @@ type Config struct {
 	WorldsDir  string
 	// RunAs is who restic runs as, or nil for the current user
 	RunAs *Credential
+	// RetryLock is passed to restic's --retry-lock, or "" to leave it off
+	RetryLock string
 }
 
 // LoadConfig loads backup configuration from environment
@@ -74,10 +87,16 @@ func LoadConfig() (*Config, error) {
 		worldsDir = defaultWorldsDir
 	}
 
+	retryLock, err := retryLockFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		Repository: fmt.Sprintf("s3:s3.%s.amazonaws.com/%s", region, bucket),
 		Password:   password,
 		WorldsDir:  worldsDir,
+		RetryLock:  retryLock,
 	}
 	if os.Geteuid() == 0 {
 		cred, err := LookupCredential(RunAsUser)
@@ -90,8 +109,30 @@ func LoadConfig() (*Config, error) {
 	return cfg, nil
 }
 
+// retryLockFromEnv returns the --retry-lock value from RetryLockEnv
+// (default DefaultRetryLock), or "" when it's a zero duration
+func retryLockFromEnv() (string, error) {
+	value := strings.TrimSpace(os.Getenv(RetryLockEnv))
+	if value == "" {
+		return DefaultRetryLock, nil
+	}
+	d, err := time.ParseDuration(value)
+	if err != nil || d < 0 {
+		return "", fmt.Errorf("%s=%q is not a duration like 30m or 0", RetryLockEnv, value)
+	}
+	if d == 0 {
+		return "", nil
+	}
+	return value, nil
+}
+
 // command builds a restic command, run as runAs (nil: the current user)
 func (c *Config) command(runAs *Credential, args ...string) *exec.Cmd {
+	if c.RetryLock != "" {
+		// A global flag, so it goes before the subcommand and applies to
+		// every one (backup, forget --prune, check, restore, snapshots...)
+		args = append([]string{"--retry-lock", c.RetryLock}, args...)
+	}
 	cmd := exec.Command("restic", args...)
 	env := append(os.Environ(),
 		"RESTIC_REPOSITORY="+c.Repository,

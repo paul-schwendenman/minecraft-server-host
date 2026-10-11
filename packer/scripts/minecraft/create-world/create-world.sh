@@ -13,6 +13,14 @@ SEED="${3:-}"
 
 WORLDS_DIR="/srv/minecraft-server"
 
+# Give the world to minecraft:minecraft, touching only files that have the wrong
+# owner or group. A plain `chown -R` bumps every file's ctime, which makes the
+# next restic backup reread the whole world.
+fix_owner() {
+  sudo find "$1" \( ! -user minecraft -o ! -group minecraft \) \
+    -exec chown -h minecraft:minecraft {} +
+}
+
 # Enable the timers of every other world on the volume, so a new instance keeps
 # backing up all worlds, not just the one Terraform names. A world that can't be
 # registered (e.g. never started, so no level.dat) is skipped with a warning.
@@ -31,7 +39,7 @@ register_other_worlds() {
 if [ -d "${WORLDS_DIR}/$WORLD" ]; then
   echo "[userdata] World '$WORLD' already exists on EBS. Registering it."
   minecraftctl world register "$WORLD"
-  sudo chown -R minecraft:minecraft "${WORLDS_DIR}/$WORLD"
+  fix_owner "${WORLDS_DIR}/$WORLD"
   register_other_worlds
   exit 0
 fi
@@ -55,5 +63,5 @@ fi
 # Execute minecraftctl
 "${CMD[@]}"
 
-sudo chown -R minecraft:minecraft "${WORLDS_DIR}/$WORLD"
+fix_owner "${WORLDS_DIR}/$WORLD"
 register_other_worlds

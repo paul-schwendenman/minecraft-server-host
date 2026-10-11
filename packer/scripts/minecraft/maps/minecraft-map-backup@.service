@@ -6,4 +6,9 @@ After=network-online.target
 Type=oneshot
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
+# Yield to the Minecraft server when they overlap (boot catch-up, play).
+# IOWeight only bites with BFQ or iocost; EBS nvme defaults to "none".
+Nice=10
+CPUWeight=20
+IOWeight=20
 ExecStart=/usr/local/bin/backup-maps.sh %i

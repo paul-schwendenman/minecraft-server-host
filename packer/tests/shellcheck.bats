@@ -86,6 +86,12 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "shellcheck: minecraft/minecraft-stop-gate.sh" {
+    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/minecraft-stop-gate.sh"
+    echo "$output"
+    [ "$status" -eq 0 ]
+}
+
 # Installation scripts
 @test "shellcheck: minecraft/install_minecraft_service.sh" {
     run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/install_minecraft_service.sh"

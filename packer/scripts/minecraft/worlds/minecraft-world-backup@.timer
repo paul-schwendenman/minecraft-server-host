@@ -4,6 +4,8 @@ Description=Periodic backup for world %i
 [Timer]
 OnCalendar=daily
 Persistent=true
+# Spread out catch-up runs at boot so they don't compete with the server starting
+RandomizedDelaySec=10min
 Unit=minecraft-world-backup@%i.service
 
 [Install]

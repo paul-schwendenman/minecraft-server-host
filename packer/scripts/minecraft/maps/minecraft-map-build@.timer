@@ -4,10 +4,12 @@ PartOf=minecraft@%i.service
 Requires=minecraft@%i.service
 
 [Timer]
-OnBootSec=1min
+# Counted from when the timer starts, i.e. when the world starts (boot or
+# switch). OnBootSec fired at once on the first start after a rebuild (no
+# stamp) and never on later switches (stamp present, OnUnitActiveSec had no base).
+OnActiveSec=5min
 OnUnitActiveSec=15min
 Unit=minecraft-map-build@%i.service
-Persistent=true
 
 [Install]
 WantedBy=minecraft@%i.service

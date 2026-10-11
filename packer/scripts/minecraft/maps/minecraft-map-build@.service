@@ -10,6 +10,12 @@ Type=oneshot
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
 
+# Yield to the Minecraft server when they overlap (boot catch-up, play).
+# IOWeight only bites with BFQ or iocost; EBS nvme defaults to "none".
+Nice=10
+CPUWeight=20
+IOWeight=20
+
 # Save world first if Minecraft is running (fails silently if not)
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "say Saving world before map build..."
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "save-all"

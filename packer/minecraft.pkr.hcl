@@ -100,13 +100,25 @@ build {
 
   # --------------------------------------------------------------------------
   # 6. Final system prep
+  #    Must stay the last provisioner: it removes the builder's identity so
+  #    each instance gets its own machine-id, journal and cloud-init state.
   # --------------------------------------------------------------------------
   provisioner "shell" {
     inline = [
       "sudo systemctl daemon-reexec",
       "sudo systemctl daemon-reload",
       "sudo apt-get clean",
-      "sudo rm -rf /tmp/* /var/tmp/*"
+      "sudo rm -rf /tmp/* /var/tmp/*",
+      "sudo cloud-init clean --logs",
+      # Drop the builder's boot journal so it doesn't ship in the AMI
+      "sudo journalctl --rotate",
+      "sudo journalctl --vacuum-time=1s",
+      "sudo rm -rf /var/log/journal/*",
+      # Truncate rather than delete: an empty machine-id is regenerated on
+      # first boot without triggering systemd's first-boot preset-all
+      "sudo truncate -s 0 /etc/machine-id",
+      # Only remove the dbus machine-id if it's a copy, not a symlink
+      "[ -L /var/lib/dbus/machine-id ] || sudo rm -f /var/lib/dbus/machine-id"
     ]
   }
 }

@@ -5,6 +5,7 @@ Description=Periodic map backup for world %i
 # Example: every 12 hours
 OnCalendar=*-*-* 00,12:00:00
 Persistent=true
+RandomizedDelaySec=10min
 Unit=minecraft-map-backup@%i.service
 
 [Install]

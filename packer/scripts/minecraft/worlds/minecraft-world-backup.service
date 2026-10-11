@@ -1,9 +1,19 @@
 [Unit]
 Description=Backup all Minecraft worlds
 After=network-online.target
+# Prune takes restic's exclusive lock. Before= orders a prune queued at the
+# same time after the backups; a backup that fires while prune is already
+# running waits for the lock (minecraftctl passes restic --retry-lock,
+# MC_RESTIC_RETRY_LOCK, default 30m).
+Before=minecraft-world-prune.service
 
 [Service]
 Type=oneshot
 User=minecraft
 EnvironmentFile=-/etc/minecraft.env
+# Yield to the Minecraft server when they overlap (boot catch-up, play).
+# IOWeight only bites with BFQ or iocost; EBS nvme defaults to "none".
+Nice=10
+CPUWeight=20
+IOWeight=20
 ExecStart=/usr/local/bin/minecraftctl backup create

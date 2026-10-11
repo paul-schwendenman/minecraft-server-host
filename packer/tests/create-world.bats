@@ -82,8 +82,31 @@ teardown() {
     run bash "$SCRIPT" "newworld" "1.20.4"
 
     [ "$status" -eq 0 ]
-    # Check sudo chown was called
-    assert_mock_called_with "chown -R minecraft:minecraft"
+    # Only files with the wrong owner/group are chowned, so restic doesn't
+    # reread the whole world after a ctime bump
+    grep -qF "sudo find ${MINECRAFT_HOME}/newworld ( ! -user minecraft -o ! -group minecraft ) -exec chown -h minecraft:minecraft {} +" \
+        "${TEST_TEMP_DIR}/mock_calls.log"
+    [ "$(grep -cF 'chown -R' "${TEST_TEMP_DIR}/mock_calls.log")" -eq 0 ]
+}
+
+@test "create-world: existing world only chowns files with the wrong owner" {
+    mkdir -p "${MINECRAFT_HOME}/existing_world"
+
+    run bash "$SCRIPT" "existing_world" "1.21.1"
+
+    [ "$status" -eq 0 ]
+    grep -qF "sudo find ${MINECRAFT_HOME}/existing_world ( ! -user minecraft -o ! -group minecraft ) -exec chown -h minecraft:minecraft {} +" \
+        "${TEST_TEMP_DIR}/mock_calls.log"
+    [ "$(grep -cF 'chown -R' "${TEST_TEMP_DIR}/mock_calls.log")" -eq 0 ]
+}
+
+@test "create-world: fails when ownership fix fails" {
+    touch "${TEST_TEMP_DIR}/opt/minecraft/jars/minecraft_server_1.21.1.jar"
+    create_mock "sudo" 1 ""
+
+    run bash "$SCRIPT" "newworld" "1.21.1"
+
+    [ "$status" -ne 0 ]
 }
 
 @test "create-world: handles version with multiple dots" {

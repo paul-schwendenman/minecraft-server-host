@@ -65,10 +65,20 @@ command -v minecraftctl >/dev/null 2>&1 || {
   exit 1
 }
 
-OUTPUT=$(minecraftctl rcon send "list" || true)
+# Capture stderr too: minecraftctl logs why RCON failed there. Bound the call so
+# a wedged server can't hang the check (the unit also has TimeoutStartSec=).
+# Any failure counts as 0 players, so a broken RCON still lets the box shut down.
+RCON_STATUS=0
+OUTPUT=$(timeout 30 minecraftctl rcon send "list" 2>&1) || RCON_STATUS=$?
 COUNT=$(echo "$OUTPUT" | sed -n 's/.*There are \([0-9]*\).*/\1/p' | head -1)
 if [[ -z "${COUNT}" ]]; then
-  logger -t autoshutdown "Failed to parse player count from RCON output: ${OUTPUT}"
+  if [[ "${RCON_STATUS}" -eq 124 ]]; then
+    logger -p user.warning -t autoshutdown "RCON timed out after 30s, treating as 0 players"
+  elif [[ "${OUTPUT}" == *"authentication failed"* ]]; then
+    logger -p user.warning -t autoshutdown "RCON auth failed (password mismatch; try 'minecraftctl config sync <world>'), treating as 0 players"
+  else
+    logger -t autoshutdown "Failed to parse player count from RCON output (exit ${RCON_STATUS}): ${OUTPUT}"
+  fi
   COUNT=0
 fi
 logger -t autoshutdown "RCON reports $COUNT players online"

@@ -101,67 +101,53 @@ var configCheckCmd = &cobra.Command{
 var configSyncCmd = &cobra.Command{
 	Use:   "sync <world>",
 	Short: "Sync RCON settings from minecraft.env to server.properties",
-	Args:  cobra.ExactArgs(1),
+	Long: `Sync RCON settings from minecraft.env to server.properties.
+
+Reads RCON_PORT and RCON_PASSWORD from the env file. If the env file is
+unreadable (it is root-only on the server) but RCON_PASSWORD is set in the
+process environment, as it is under minecraft@.service's EnvironmentFile=,
+the process environment is used instead.
+
+This also runs automatically as ExecStartPre of minecraft@.service.`,
+	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		cfg := config.Get()
 		propsPath := filepath.Join(cfg.WorldsDir, worldName, "server.properties")
 
-		// Load server.properties
-		props, err := properties.Load(propsPath)
-		if err != nil {
-			return fmt.Errorf("failed to load server.properties: %w", err)
-		}
-
-		// Load minecraft.env
 		envPath, _ := cmd.Flags().GetString("env-file")
 		if envPath == "" {
 			envPath = envfile.DefaultMinecraftEnvPath
 		}
 
-		ef, err := envfile.Load(envPath)
+		env, source, err := config.RconEnv(envPath)
 		if err != nil {
-			return fmt.Errorf("failed to load minecraft.env: %w", err)
+			return err
 		}
 
-		fmt.Printf("Syncing RCON configuration for '%s'...\n\n", worldName)
+		fmt.Printf("Syncing RCON configuration for '%s'...\n", worldName)
+		fmt.Printf("RCON settings from: %s\n\n", source)
 		if dryRun {
 			fmt.Println("(dry-run mode - no changes will be made)")
 			fmt.Println()
 		}
 
-		changes := false
-
-		// Sync enable-rcon
-		enableRcon, _ := props.Get("enable-rcon")
-		if enableRcon != "true" {
-			fmt.Printf("  enable-rcon:   %s -> true\n", enableRcon)
-			props.Set("enable-rcon", "true")
-			changes = true
-		}
-
-		// Sync rcon.port
-		if envPort, err := ef.GetInt("RCON_PORT"); err == nil {
-			propsPort, _ := props.GetInt("rcon.port")
-			if propsPort != envPort {
-				fmt.Printf("  rcon.port:     %d -> %d\n", propsPort, envPort)
-				props.SetInt("rcon.port", envPort)
-				changes = true
+		changes, err := config.SyncRcon(propsPath, env, dryRun)
+		for _, c := range changes {
+			oldVal, newVal := c.Old, c.New
+			if strings.Contains(strings.ToLower(c.Key), "password") {
+				oldVal, newVal = "<old>", "<new>"
+			} else if oldVal == "" {
+				oldVal = "(unset)"
 			}
+			fmt.Printf("  %-14s %s -> %s\n", c.Key+":", oldVal, newVal)
+		}
+		if err != nil {
+			return err
 		}
 
-		// Sync rcon.password
-		if envPassword, ok := ef.Get("RCON_PASSWORD"); ok {
-			propsPassword, _ := props.Get("rcon.password")
-			if propsPassword != envPassword {
-				fmt.Printf("  rcon.password: <old> -> <new>\n")
-				props.Set("rcon.password", envPassword)
-				changes = true
-			}
-		}
-
-		if !changes {
+		if len(changes) == 0 {
 			fmt.Println("\nNo changes needed - RCON settings already in sync.")
 			return nil
 		}
@@ -171,12 +157,7 @@ var configSyncCmd = &cobra.Command{
 			return nil
 		}
 
-		if err := props.Save(); err != nil {
-			return fmt.Errorf("failed to save server.properties: %w", err)
-		}
-
-		fmt.Println("\nChanges saved. Restart the server for changes to take effect:")
-		fmt.Printf("  minecraftctl world restart %s\n", worldName)
+		fmt.Println("\nChanges saved (takes effect on next start).")
 		return nil
 	},
 }
