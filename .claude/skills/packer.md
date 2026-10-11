@@ -28,7 +28,7 @@ packer/
 ## AMI Layering
 
 ```
-Ubuntu 24.04 LTS (Canonical)
+Ubuntu 26.04 LTS (Canonical)
     └── base AMI (minecraft-base-*)
         - OpenJDK 25, AWS CLI v2, restic, Caddy, uNmINeD
         └── minecraft AMI (minecraft-ubuntu-*)

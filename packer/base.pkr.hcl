@@ -32,7 +32,7 @@ source "amazon-ebs" "ubuntu_base" {
   instance_type = "t3.micro"
   source_ami_filter {
     filters = {
-      name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-noble-24.04-amd64-server-*"
+      name                = "ubuntu/images/hvm-ssd-gp3/ubuntu-resolute-26.04-amd64-server-*"
       root-device-type    = "ebs"
       virtualization-type = "hvm"
     }
