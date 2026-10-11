@@ -225,3 +225,17 @@ func TestRemapOwners(t *testing.T) {
 		t.Errorf("re-owned %v with no legacy owners, want none", calls)
 	}
 }
+
+func TestRestoredWorldsDir(t *testing.T) {
+	c := &Config{WorldsDir: "/srv/minecraft-server"}
+	for target, want := range map[string]string{
+		"/":                "/srv/minecraft-server",
+		"/tmp/restore":     "/tmp/restore/srv/minecraft-server",
+		"/tmp/restore/":    "/tmp/restore/srv/minecraft-server",
+		"relative/restore": "relative/restore/srv/minecraft-server",
+	} {
+		if got := c.restoredWorldsDir(target); got != want {
+			t.Errorf("restoredWorldsDir(%q) = %q, want %q", target, got, want)
+		}
+	}
+}

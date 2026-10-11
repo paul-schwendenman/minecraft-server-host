@@ -296,14 +296,21 @@ func (c *Config) Restore(snapshot string, target string) error {
 		log.Warn().Err(err).Msgf("can't re-own files from old %s ids", RunAsUser)
 		return nil
 	}
-	root := target
-	if target == "/" {
-		root = c.WorldsDir
+	root := c.restoredWorldsDir(target)
+	if _, err := os.Lstat(root); os.IsNotExist(err) {
+		return nil
 	}
 	// caddy/ isn't backed up, and its files belong to caddy, which an older
 	// AMI gave one of the legacy ids
 	skip := filepath.Join(root, "caddy")
 	return RemapOwners(root, skip, LegacyIDs, owner.Uid, owner.Gid)
+}
+
+// restoredWorldsDir is where WorldsDir ends up when restoring to target:
+// restic recreates each snapshot path's full absolute path beneath target,
+// so only that subtree holds restored files, not the rest of target
+func (c *Config) restoredWorldsDir(target string) string {
+	return filepath.Join(target, c.WorldsDir)
 }
 
 // lchown is os.Lchown, swapped out by tests
