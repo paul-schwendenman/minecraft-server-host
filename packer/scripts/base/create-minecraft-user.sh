@@ -12,8 +12,13 @@ MINECRAFT_GROUP="minecraft"
 # unpinned `useradd -r` the IDs depend on what else was installed first, so an AMI
 # rebuild can silently hand the volume to a different account (it once became caddy).
 # If the ID is already taken the build fails loudly instead of drifting.
-MINECRAFT_UID="${MINECRAFT_UID:-996}"
-MINECRAFT_GID="${MINECRAFT_GID:-996}"
+#
+# 25565 (the Minecraft port) is far outside the ranges Ubuntu allocates from: system
+# accounts count down from 999 (996 became dhcpcd on 26.04) and regular users count
+# up from 1000. Files from the old IDs (996, and 997 before that) are re-owned by
+# mount-ebs.sh on first boot and by `minecraftctl backup restore`.
+MINECRAFT_UID="${MINECRAFT_UID:-25565}"
+MINECRAFT_GID="${MINECRAFT_GID:-25565}"
 
 if ! getent group "${MINECRAFT_GROUP}" >/dev/null 2>&1; then
   sudo groupadd -r -g "${MINECRAFT_GID}" "${MINECRAFT_GROUP}"

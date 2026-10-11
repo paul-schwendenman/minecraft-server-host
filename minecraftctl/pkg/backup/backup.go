@@ -47,6 +47,16 @@ const (
 	RetryLockEnv = "MC_RESTIC_RETRY_LOCK"
 )
 
+// LegacyIDs are the uids/gids RunAsUser had on older AMIs. Snapshots taken
+// then record them, and they now belong to other accounts (dhcpcd, crontab),
+// so Restore hands files carrying them back to RunAsUser.
+//
+// TODO: remove (with RemapOwners) once no snapshot in either repo has files
+// owned by these ids. Prune doesn't guarantee that: it keeps a world's last
+// snapshots however old they are, so check every snapshot with
+// `restic ls --json <id>` for uid/gid 996 or 997 first.
+var LegacyIDs = []uint32{996, 997}
+
 // Config holds the backup configuration
 type Config struct {
 	Repository string
@@ -272,8 +282,78 @@ func (c *Config) Restore(snapshot string, target string) error {
 
 	// Run as the caller, not c.RunAs: restic also restores the metadata of
 	// every directory above the world (/, /srv), which fails for anyone but
-	// root. Restored files keep the owners recorded in the snapshot.
-	return run(c.command(nil, args...))
+	// root. Restored files keep the owners recorded in the snapshot, apart
+	// from LegacyIDs, which are handed back to RunAsUser below.
+	if err := run(c.command(nil, args...)); err != nil {
+		return err
+	}
+
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	owner, err := LookupCredential(RunAsUser)
+	if err != nil {
+		log.Warn().Err(err).Msgf("can't re-own files from old %s ids", RunAsUser)
+		return nil
+	}
+	root := c.restoredWorldsDir(target)
+	if _, err := os.Lstat(root); os.IsNotExist(err) {
+		return nil
+	}
+	// caddy/ isn't backed up, and its files belong to caddy, which an older
+	// AMI gave one of the legacy ids
+	skip := filepath.Join(root, "caddy")
+	return RemapOwners(root, skip, LegacyIDs, owner.Uid, owner.Gid)
+}
+
+// restoredWorldsDir is where WorldsDir ends up when restoring to target:
+// restic recreates each snapshot path's full absolute path beneath target,
+// so only that subtree holds restored files, not the rest of target
+func (c *Config) restoredWorldsDir(target string) string {
+	return filepath.Join(target, c.WorldsDir)
+}
+
+// lchown is os.Lchown, swapped out by tests
+var lchown = os.Lchown
+
+// RemapOwners gives every file under root (except the skip directory) whose
+// uid or gid is one of from the uid or gid to, leaving other owners alone.
+// Symlinks are re-owned themselves, not followed.
+func RemapOwners(root, skip string, from []uint32, uid, gid uint32) error {
+	legacy := make(map[uint32]bool, len(from))
+	for _, id := range from {
+		legacy[id] = true
+	}
+	return filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() && path == skip {
+			return filepath.SkipDir
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		st, ok := info.Sys().(*syscall.Stat_t)
+		if !ok {
+			return nil
+		}
+		newUID, newGID := -1, -1
+		if legacy[st.Uid] {
+			newUID = int(uid)
+		}
+		if legacy[st.Gid] {
+			newGID = int(gid)
+		}
+		if newUID == -1 && newGID == -1 {
+			return nil
+		}
+		if err := lchown(path, newUID, newGID); err != nil {
+			return fmt.Errorf("re-own %s: %w", path, err)
+		}
+		return nil
+	})
 }
 
 // Prune removes old snapshots according to retention policy

@@ -21,7 +21,9 @@ echo "Configuring Caddy for HTTPS on ${DOMAIN}"
 
 # Create persistent storage directory on EBS volume
 sudo mkdir -p "${CADDY_DATA_DIR}"
-sudo chown caddy:caddy "${CADDY_DATA_DIR}"
+# Recursive: caddy's uid isn't pinned, so certificates written under an older AMI
+# can carry an ID caddy no longer has. The directory only holds a few small files.
+sudo chown -R caddy:caddy "${CADDY_DATA_DIR}"
 
 sudo tee /etc/caddy/Caddyfile >/dev/null <<EOF
 {
