@@ -50,6 +50,11 @@ const (
 // LegacyIDs are the uids/gids RunAsUser had on older AMIs. Snapshots taken
 // then record them, and they now belong to other accounts (dhcpcd, crontab),
 // so Restore hands files carrying them back to RunAsUser.
+//
+// TODO: remove (with RemapOwners) once no snapshot in either repo has files
+// owned by these ids. Prune doesn't guarantee that: it keeps a world's last
+// snapshots however old they are, so check every snapshot with
+// `restic ls --json <id>` for uid/gid 996 or 997 first.
 var LegacyIDs = []uint32{996, 997}
 
 // Config holds the backup configuration

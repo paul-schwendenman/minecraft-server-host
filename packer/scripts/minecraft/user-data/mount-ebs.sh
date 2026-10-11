@@ -36,6 +36,8 @@ if id minecraft >/dev/null 2>&1; then
   # minecraft used to be uid/gid 996 (and 997 before that). Those numbers now belong
   # to other accounts (dhcpcd, crontab), so hand files still carrying them back to
   # minecraft. Only matching files are touched; caddy/ is configure-caddy.sh's.
+  # TODO: remove once test and prod have each booted on an AMI with minecraft at
+  # 25565, unless a volume might be restored from an EBS snapshot taken before that.
   LEGACY_IDS="${LEGACY_MINECRAFT_IDS:-996 997}"
   for id in $LEGACY_IDS; do
     find "$MOUNT_POINT" -xdev -path "$MOUNT_POINT/caddy" -prune -o -uid "$id" -exec chown -h minecraft {} +
