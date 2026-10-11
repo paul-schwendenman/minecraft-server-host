@@ -162,3 +162,66 @@ func TestCommandWithoutRetryLock(t *testing.T) {
 		t.Errorf("command() with RetryLock off = %v, want no --retry-lock", cmd.Args)
 	}
 }
+
+func TestRemapOwners(t *testing.T) {
+	root := t.TempDir()
+	for _, dir := range []string{"world/region", "caddy/certs"} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, file := range []string{"world/level.dat", "world/region/r.0.0.mca", "caddy/certs/cert.pem"} {
+		if err := os.WriteFile(filepath.Join(root, file), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink("level.dat", filepath.Join(root, "world/link")); err != nil {
+		t.Fatal(err)
+	}
+
+	type call struct {
+		path     string
+		uid, gid int
+	}
+	var calls []call
+	orig := lchown
+	lchown = func(path string, uid, gid int) error {
+		calls = append(calls, call{path, uid, gid})
+		return nil
+	}
+	t.Cleanup(func() { lchown = orig })
+
+	// Every temp file is owned by the test's own ids, so treat those as legacy
+	ownUID, ownGID := uint32(os.Getuid()), uint32(os.Getgid())
+	from := []uint32{ownUID}
+	if ownGID != ownUID {
+		from = append(from, ownGID)
+	}
+	if err := RemapOwners(root, filepath.Join(root, "caddy"), from, 25565, 25566); err != nil {
+		t.Fatal(err)
+	}
+
+	var got []string
+	for _, c := range calls {
+		if c.uid != 25565 || c.gid != 25566 {
+			t.Errorf("lchown(%s, %d, %d), want 25565, 25566", c.path, c.uid, c.gid)
+		}
+		rel, _ := filepath.Rel(root, c.path)
+		got = append(got, rel)
+	}
+	want := []string{".", "world", "world/level.dat", "world/link", "world/region", "world/region/r.0.0.mca"}
+	if !slices.Equal(got, want) {
+		t.Errorf("re-owned %v, want %v (caddy/ skipped)", got, want)
+	}
+
+	calls = nil
+	if err := RemapOwners(root, "", []uint32{ownUID + 1}, 25565, 25566); err != nil {
+		t.Fatal(err)
+	}
+	if ownGID == ownUID+1 {
+		t.Skip("own gid is uid+1, can't test non-matching ids")
+	}
+	if len(calls) != 0 {
+		t.Errorf("re-owned %v with no legacy owners, want none", calls)
+	}
+}
