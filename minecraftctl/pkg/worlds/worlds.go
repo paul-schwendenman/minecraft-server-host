@@ -378,9 +378,9 @@ maps:
 		log.Warn().Err(err).Str("world", worldName).Msg("failed to chown world directory to minecraft user, continuing")
 	}
 
-	// Enable the world's timers if requested. The world's own minecraft@ service
-	// is left alone: only one world can run at a time, so which world starts at
-	// boot is decided outside minecraftctl.
+	// Enable the world's timers (starting the backup ones) if requested. The
+	// world's own minecraft@ service is left alone: only one world can run at a
+	// time, so which world starts at boot is decided outside minecraftctl.
 	if opts.EnableSystemd {
 		if err := systemd.DaemonReload(); err != nil {
 			return fmt.Errorf("failed to reload systemd daemon: %w", err)
@@ -422,8 +422,8 @@ func chownToMinecraftUser(path string) error {
 	})
 }
 
-// RegisterWorld enables an existing world's timers without modifying any world
-// files. This is used to "reattach" a world from an EBS volume to a new server
+// RegisterWorld enables an existing world's timers and starts its backup
+// timers, without modifying any world files. This is used to "reattach" a world from an EBS volume to a new server
 // instance. It doesn't enable or start the world's minecraft@ service.
 func RegisterWorld(worldName string) error {
 	cfg := config.Get()
@@ -454,11 +454,30 @@ func WorldTimers(worldName string) []string {
 	}
 }
 
-// enableWorldTimers enables a world's timers (but doesn't start them - they'll
-// start on their schedule).
+// Seams for tests.
+var (
+	enableUnit    = systemd.Enable
+	enableUnitNow = systemd.EnableNow
+)
+
+// enableWorldTimers enables a world's timers and starts the calendar ones.
+// `world register` runs from cloud-init after timers.target is reached, so a
+// timer that's only enabled stays inactive until the next boot.
+//
+// Starting the calendar timers doesn't run a backup straight away: on a
+// replaced instance there's no Persistent= stamp to catch up on, and
+// RandomizedDelaySec spreads out any run that is due.
+//
+// minecraft-map-build@.timer is only enabled: it has
+// Requires=minecraft@%i.service, so starting it would start the world. It's
+// WantedBy=minecraft@%i.service and starts with the world instead.
 func enableWorldTimers(worldName string) {
 	for _, timerName := range WorldTimers(worldName) {
-		if err := systemd.Enable(timerName); err != nil {
+		enable := enableUnitNow
+		if strings.HasPrefix(timerName, "minecraft-map-build@") {
+			enable = enableUnit
+		}
+		if err := enable(timerName); err != nil {
 			// Log warning but don't fail - timers might not be installed
 			log.Warn().Err(err).Str("timer", timerName).Msg("failed to enable timer, continuing")
 		}

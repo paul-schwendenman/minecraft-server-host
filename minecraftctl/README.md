@@ -116,10 +116,12 @@ minecraftctl world register <world-name>
 
 The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
 
-- Enables `minecraft-map-build@<world>.timer`
-- Enables `minecraft-world-backup@<world>.timer`
-- Enables `minecraft-map-backup@<world>.timer`
 - Reloads systemd daemon
+- Enables `minecraft-map-build@<world>.timer` (not started: it requires `minecraft@<world>.service`, so it starts with the world)
+- Enables and starts `minecraft-world-backup@<world>.timer`
+- Enables and starts `minecraft-map-backup@<world>.timer`
+
+`world register` runs from cloud-init after `timers.target`, so the backup timers are started as well as enabled; otherwise they'd stay inactive until the next boot. `world create` does the same unless `--no-systemd` is given.
 
 **Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd timers for an existing world.
 

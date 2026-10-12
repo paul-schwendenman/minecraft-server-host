@@ -192,7 +192,7 @@ var worldCreateCmd = &cobra.Command{
 			fmt.Println("Default map-config.yml created")
 		}
 		if opts.EnableSystemd {
-			fmt.Printf("Timers enabled: %s\n", strings.Join(worlds.WorldTimers(worldName), ", "))
+			fmt.Printf("Timers enabled: %s (backup timers started)\n", strings.Join(worlds.WorldTimers(worldName), ", "))
 		}
 		fmt.Printf("Start it with: minecraftctl world start %s\n", worldName)
 
@@ -203,7 +203,7 @@ var worldCreateCmd = &cobra.Command{
 var worldRegisterCmd = &cobra.Command{
 	Use:               "register <world-name>",
 	Short:             "Register an existing world's systemd timers",
-	Long:              "Register an existing world by enabling its map-build, world-backup and map-backup timers without modifying world files. This is used to \"reattach\" a world from an EBS volume to a new server instance. It doesn't enable or start the world itself.",
+	Long:              "Register an existing world by enabling its map-build, world-backup and map-backup timers and starting the two backup timers, without modifying world files. The map-build timer starts with the world. This is used to \"reattach\" a world from an EBS volume to a new server instance. It doesn't enable or start the world itself.",
 	Args:              cobra.ExactArgs(1),
 	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -214,7 +214,7 @@ var worldRegisterCmd = &cobra.Command{
 		}
 
 		fmt.Printf("World '%s' registered successfully\n", worldName)
-		fmt.Printf("Timers enabled: %s\n", strings.Join(worlds.WorldTimers(worldName), ", "))
+		fmt.Printf("Timers enabled: %s (backup timers started)\n", strings.Join(worlds.WorldTimers(worldName), ", "))
 
 		return nil
 	},
