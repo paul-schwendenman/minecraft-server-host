@@ -50,6 +50,7 @@ type BuildOptions struct {
 	WorldName   string
 	MapName     string // If empty, build all maps
 	Force       bool
+	RangesOnly  bool // Render every range and skip the base map
 	Clean       bool
 	LockFile    string        // Lock file path (empty = use config default)
 	LockTimeout time.Duration // Lock timeout (0 = block forever)
@@ -89,40 +90,25 @@ func (b *Builder) Build(opts BuildOptions) error {
 		}()
 	}
 
-	worldPath := filepath.Join(b.worldsDir, opts.WorldName)
-	mapConfig, err := config.LoadMapConfig(worldPath)
-	if err != nil {
-		return fmt.Errorf("failed to load map config: %w", err)
-	}
-
-	worldDir := filepath.Join(worldPath, "world")
-	levelDatPath := filepath.Join(worldDir, "level.dat")
-
-	// Get world mtime for up-to-date checks
-	worldStat, err := os.Stat(levelDatPath)
-	if err != nil {
-		return fmt.Errorf("failed to stat level.dat: %w", err)
-	}
-	worldMtime := worldStat.ModTime().Unix()
-
-	worldMapsDir := filepath.Join(b.mapsDir, opts.WorldName)
-	if err := os.MkdirAll(worldMapsDir, 0755); err != nil {
-		return fmt.Errorf("failed to create maps directory: %w", err)
-	}
-
 	// Default log level to warning if not specified
 	if opts.LogLevel == "" {
 		opts.LogLevel = "warning"
 	}
 
-	// Build each map
-	for _, mapDef := range mapConfig.Maps {
-		if opts.MapName != "" && mapDef.Name != opts.MapName {
-			continue
-		}
+	// Plan every map first, so --ranges-only on a format change fails before
+	// anything renders
+	plans, err := b.Plan(opts)
+	if err != nil {
+		return err
+	}
 
-		if err := b.buildMap(mapDef, mapConfig.Defaults, worldDir, worldMapsDir, worldMtime, opts); err != nil {
-			log.Error().Err(err).Str("map", mapDef.Name).Msg("failed to build map")
+	if err := os.MkdirAll(filepath.Join(b.mapsDir, opts.WorldName), 0755); err != nil {
+		return fmt.Errorf("failed to create maps directory: %w", err)
+	}
+
+	for _, p := range plans {
+		if err := b.runPlan(p, opts); err != nil {
+			log.Error().Err(err).Str("map", p.Map).Msg("failed to build map")
 			continue
 		}
 	}
@@ -130,6 +116,7 @@ func (b *Builder) Build(opts BuildOptions) error {
 	return nil
 }
 
+// buildMap plans and builds one map
 func (b *Builder) buildMap(
 	mapDef config.MapDefinition,
 	defaults config.MapDefaults,
@@ -138,34 +125,29 @@ func (b *Builder) buildMap(
 	worldMtime int64,
 	opts BuildOptions,
 ) error {
-	outputSubdir := mapDef.OutputSubdir
-	if outputSubdir == "" {
-		outputSubdir = mapDef.Name
+	p, err := planMap(mapDef, defaults, worldDir, worldMapsDir, worldMtime, opts)
+	if err != nil {
+		return err
 	}
-	mapOutput := filepath.Join(worldMapsDir, outputSubdir)
+	return b.runPlan(p, opts)
+}
 
-	// Check if rebuild is needed
-	if !opts.Force {
-		manifestPath := filepath.Join(mapOutput, "manifest.json")
+// runPlan carries out one map's plan
+func (b *Builder) runPlan(p MapPlan, opts BuildOptions) error {
+	mapDef := p.mapDef
+	defaults := p.defaults
+	worldDir := p.worldDir
+	mapOutput := p.mapOutput
 
-		if manifest, err := readManifest(manifestPath); err == nil {
-			if manifest.LastRenderedEpoch >= worldMtime {
-				log.Info().Str("map", mapDef.Name).Msg("map is up to date, skipping")
-				return nil
-			}
-		}
-	}
-
-	// uNmINeD's viewer loads every tile with the one format in its properties
-	// file, and an incremental render only redraws changed regions. So when a
-	// map is rendered in a new format, re-render all of it, or the unchanged
-	// regions show as holes.
-	formatChanged := false
-	if prev := renderedImageFormat(mapOutput); prev != "" && !strings.EqualFold(prev, defaults.ImageFormat) {
-		formatChanged = true
-		log.Info().Str("map", mapDef.Name).Str("from", prev).Str("to", defaults.ImageFormat).
-			Msg("image format changed, re-rendering the whole map")
-		opts.Force = true
+	switch p.Action {
+	case ActionSkip:
+		log.Info().Str("map", p.Map).Str("reason", p.Reason).Msg("map is up to date, skipping")
+		return nil
+	case ActionFull:
+		log.Info().Str("map", p.Map).Str("reason", p.Reason).Msg("rendering the whole map")
+	case ActionRanges:
+		log.Info().Str("map", p.Map).Str("reason", p.Reason).Strs("ranges", p.Ranges).
+			Msg("rendering ranges only, skipping the base map")
 	}
 
 	// Verify dimension exists
@@ -183,6 +165,19 @@ func (b *Builder) buildMap(
 		zoomin = *mapDef.Zoomin
 	}
 
+	// The viewer's maxZoom has to cover every configured range, not just the
+	// ones rendered this time
+	maxZoomin := zoomin
+	for _, r := range mapDef.Ranges {
+		if r.Zoomin != nil && *r.Zoomin > maxZoomin {
+			maxZoomin = *r.Zoomin
+		}
+	}
+
+	if p.Action == ActionRanges {
+		return b.renderRangesOnly(p, defaults, worldDir, zoomout, zoomin, maxZoomin, opts)
+	}
+
 	baseArgs := []string{
 		"web", "render",
 		"--world", worldDir,
@@ -197,7 +192,10 @@ func (b *Builder) buildMap(
 
 	// uNmINeD is incremental: without --force it only re-renders regions it
 	// considers changed, so tiles left by an earlier or partial render stay put.
-	if opts.Force {
+	// A format change forces a full render: the viewer loads every tile with
+	// the one format in its properties file, so unchanged regions would show
+	// as holes.
+	if p.Force {
 		baseArgs = append(baseArgs, "--force")
 	}
 
@@ -208,22 +206,27 @@ func (b *Builder) buildMap(
 	// The base map render must come last to set the correct full-world bounds
 	// in unmined.map.properties.js
 	//
-	// Track max zoomin across all ranges so we can patch the properties file
-	maxZoomin := zoomin
+	// Each range render rewrites unmined.map.properties.js (with the new image
+	// format and the range's bounds), so save it first and put it back if the
+	// base render fails. Otherwise the next build would read the new format,
+	// see no format change, and never convert the base map's tiles.
+	propsPath := filepath.Join(mapOutput, "unmined.map.properties.js")
+	savedProps, savedErr := os.ReadFile(propsPath)
+	propsMode := os.FileMode(0644)
+	if st, err := os.Stat(propsPath); err == nil {
+		propsMode = st.Mode().Perm()
+	}
+
+	hashes := map[string]string{}
 	rangeFailed := false
-	for _, r := range mapDef.Ranges {
-		rangeZoomin := zoomin
-		if r.Zoomin != nil {
-			rangeZoomin = *r.Zoomin
-		}
-		if rangeZoomin > maxZoomin {
-			maxZoomin = rangeZoomin
-		}
-		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel, opts.Force); err != nil {
+	for _, i := range p.rangeIdx {
+		r := mapDef.Ranges[i]
+		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel, p.rangeForced(i)); err != nil {
 			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
 			rangeFailed = true
 			continue
 		}
+		hashes[p.keys[i]] = p.hashes[i]
 	}
 
 	log.Info().Str("map", mapDef.Name).Str("dimension", mapDef.Dimension).
@@ -231,6 +234,11 @@ func (b *Builder) buildMap(
 
 	// Build base map LAST so it sets the correct full-world bounds
 	if err := runUnmined(b.unminedPath, baseArgs); err != nil {
+		if savedErr == nil {
+			if werr := os.WriteFile(propsPath, savedProps, propsMode); werr != nil {
+				log.Error().Err(werr).Msg("failed to restore properties file after the base render failed")
+			}
+		}
 		return fmt.Errorf("failed to render base map: %w", err)
 	}
 
@@ -242,12 +250,85 @@ func (b *Builder) buildMap(
 	}
 
 	// Update manifest
-	if err := b.updateManifest(mapOutput, opts.WorldName, mapDef.Name, mapDef.Dimension); err != nil {
+	now := time.Now()
+	m := Manifest{LastRendered: now.Format(time.RFC3339), LastRenderedEpoch: now.Unix(), RangeHashes: hashes}
+	if err := b.writeBuildManifest(mapOutput, opts.WorldName, mapDef, m); err != nil {
 		return err
 	}
 
-	if formatChanged {
+	if p.FormatChanged {
 		b.removeOldFormatTiles(mapDef.Name, mapOutput, defaults.ImageFormat, rangeFailed)
+	}
+	return nil
+}
+
+// renderRangesOnly renders the plan's ranges without the base map. Each range
+// render rewrites unmined.map.properties.js with that range's bounds, so the
+// file is saved first and put back afterwards (also when a render fails),
+// then maxZoom is patched again.
+func (b *Builder) renderRangesOnly(p MapPlan, defaults config.MapDefaults, worldDir string, zoomout, zoomin, maxZoomin int, opts BuildOptions) error {
+	mapDef := p.mapDef
+	propsPath := filepath.Join(p.mapOutput, "unmined.map.properties.js")
+	saved, err := os.ReadFile(propsPath)
+	if err != nil {
+		return fmt.Errorf("failed to save properties file before rendering ranges: %w", err)
+	}
+	propsMode := os.FileMode(0644)
+	if st, err := os.Stat(propsPath); err == nil {
+		propsMode = st.Mode().Perm()
+	}
+
+	// Start from the manifest's hashes, minus ranges no longer configured
+	hashes := map[string]string{}
+	configured := map[string]bool{}
+	for _, k := range p.keys {
+		configured[k] = true
+	}
+	if p.manifest != nil {
+		for k, h := range p.manifest.RangeHashes {
+			if configured[k] {
+				hashes[k] = h
+			}
+		}
+	}
+
+	var failed []string
+	func() {
+		defer func() {
+			if err := os.WriteFile(propsPath, saved, propsMode); err != nil {
+				log.Error().Err(err).Msg("failed to restore properties file after rendering ranges")
+				failed = append(failed, "restoring unmined.map.properties.js")
+			}
+		}()
+		for _, i := range p.rangeIdx {
+			r := mapDef.Ranges[i]
+			if err := b.buildRange(r, mapDef, defaults, worldDir, p.mapOutput, zoomout, zoomin, opts.LogLevel, p.rangeForced(i)); err != nil {
+				log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
+				delete(hashes, p.keys[i])
+				failed = append(failed, r.Name)
+				continue
+			}
+			hashes[p.keys[i]] = p.hashes[i]
+		}
+	}()
+
+	if maxZoomin > zoomin {
+		if err := b.patchPropertiesMaxZoom(p.mapOutput, maxZoomin); err != nil {
+			log.Warn().Err(err).Msg("failed to patch maxZoom in properties file")
+		}
+	}
+
+	// The base map wasn't re-rendered, so keep the manifest's render time
+	m := Manifest{RangeHashes: hashes}
+	if p.manifest != nil {
+		m.LastRendered = p.manifest.LastRendered
+		m.LastRenderedEpoch = p.manifest.LastRenderedEpoch
+	}
+	if err := b.writeBuildManifest(p.mapOutput, opts.WorldName, mapDef, m); err != nil {
+		return err
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("failed to render: %s", strings.Join(failed, ", "))
 	}
 	return nil
 }

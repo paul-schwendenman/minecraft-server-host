@@ -170,6 +170,16 @@ Key                Type    Description
 ``zoomout`` / ``zoomin`` int Override zoom levels for this range
 =================  ======  ================================================
 
+Editing ranges doesn't need ``--force``. Each map's ``manifest.json`` stores
+a hash of every range's render settings (center, radius, zoom, the map's
+dimension and options, image format). When the world hasn't changed since the
+last render, a build renders only ranges whose hash is new or different and
+skips the base map, keeping ``unmined.map.properties.js`` (which every range
+render overwrites) as it was. Removed ranges keep their tiles. A changed
+``imageformat`` always renders the whole map instead.
+``minecraftctl map build now <world> --ranges-only`` re-renders every range
+and skips the base map.
+
 Example:
 
 .. code-block:: yaml
@@ -205,7 +215,7 @@ Editing Tips
 - Keep ``radius`` and zoom levels small to control output size.
 - You can add or remove maps freely; scripts detect them automatically.
 - To force a re-render, delete the map’s ``manifest.json`` or run
-  ``rebuild-map.sh --force``.
+  ``rebuild-map.sh --force``. Changed ranges don't need this (see Ranges).
 - Use different zoom levels per map to balance quality vs. disk usage.
 
 

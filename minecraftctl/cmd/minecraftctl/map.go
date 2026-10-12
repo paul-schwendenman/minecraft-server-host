@@ -59,13 +59,24 @@ var mapBuildCmd = &cobra.Command{
 }
 
 var mapBuildNowCmd = &cobra.Command{
-	Use:               "now <world> [worlds...]",
-	Short:             "Build maps for one or more worlds immediately",
+	Use:   "now <world> [worlds...]",
+	Short: "Build maps for one or more worlds immediately",
+	Long: `Build maps for one or more worlds immediately.
+
+For each map:
+  - imageformat changed (or never rendered): render the whole map
+  - world changed since the last render, or --force: render the whole map
+  - otherwise: render only ranges that are new or changed in map-config.yml
+    (hashes kept in the map's manifest.json), skipping the base map
+
+--ranges-only re-renders every range and skips the base map. It fails before
+rendering anything if a map's imageformat changed.`,
 	Args:              cobra.MinimumNArgs(1),
 	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mapName, _ := cmd.Flags().GetString("map")
 		force, _ := cmd.Flags().GetBool("force")
+		rangesOnly, _ := cmd.Flags().GetBool("ranges-only")
 		lockFile, _ := cmd.Flags().GetString("lock-file")
 		lockTimeout, _ := cmd.Flags().GetDuration("lock-timeout")
 		noLock, _ := cmd.Flags().GetBool("no-lock")
@@ -95,6 +106,7 @@ var mapBuildNowCmd = &cobra.Command{
 				WorldName:   worldNames[0],
 				MapName:     mapName,
 				Force:       force,
+				RangesOnly:  rangesOnly,
 				LockFile:    lockFile,
 				LockTimeout: lockTimeout,
 				NoLock:      noLock,
@@ -108,6 +120,7 @@ var mapBuildNowCmd = &cobra.Command{
 		return buildBatch(worldNames, maps.BuildOptions{
 			MapName:     mapName,
 			Force:       force,
+			RangesOnly:  rangesOnly,
 			LockFile:    lockFile,
 			LockTimeout: lockTimeout,
 			NoLock:      noLock,
@@ -794,6 +807,7 @@ func init() {
 	// Flags for map build now command
 	mapBuildNowCmd.Flags().String("map", "", "Build only a specific map (by name)")
 	mapBuildNowCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
+	mapBuildNowCmd.Flags().Bool("ranges-only", false, "Re-render every range and skip the base map (fails if imageformat changed)")
 	mapBuildNowCmd.Flags().String("lock-file", "", "Path to lock file (default: from config)")
 	mapBuildNowCmd.Flags().Duration("lock-timeout", 0, "Maximum time to wait for lock (0 = block forever)")
 	mapBuildNowCmd.Flags().Bool("no-lock", false, "Disable file locking")

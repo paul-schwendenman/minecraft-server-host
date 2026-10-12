@@ -167,6 +167,9 @@ minecraftctl map build now <world-name> --map overworld
 # Force rebuild
 minecraftctl map build now <world-name> --force
 
+# Re-render every range, skip the base map
+minecraftctl map build now <world-name> --ranges-only
+
 # Check status of map build timer/service
 minecraftctl map build status <world-name>
 
@@ -174,6 +177,8 @@ minecraftctl map build status <world-name>
 minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
+
+A build renders the whole map (ranges, then the base map) when the world changed since the last render, `imageformat` changed, or `--force` is given. Otherwise it renders only the ranges that are new or changed in `map-config.yml` and skips the base map: each map's `manifest.json` keeps a hash of every range's render settings (`range_hashes`). Removed ranges keep their tiles. `--ranges-only` re-renders every range regardless, and fails before rendering anything if a map's `imageformat` changed (that needs a full rebuild).
 
 The map build timer runs while its world runs (it requires `minecraft@<world>.service`). `enable` only starts it right away if that world is already running, so enabling it for another world never starts a second server.
 
