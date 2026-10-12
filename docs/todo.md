@@ -4,7 +4,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 
 ## Now
 
-- [ ] **Autoshutdown can't see SSH sessions on Ubuntu 26.04**: there's no `/run/utmp`, so `who` prints nothing even with an interactive login, and `autoshutdown.sh`'s `who | grep 'pts/'` check never matches (found on test 2026-10-12). Anyone working over SSH gets powered off after two idle checks (10 min). Detect sessions another way, e.g. `loginctl list-sessions` filtered to remote sessions with a TTY, or `/dev/pts/[0-9]*` owned by a non-root user. Also update the "stay SSH'd in" advice in `docs/moving-worlds.md`.
+- [ ] **Check autoshutdown's SSH detection on test** after the next AMI build: `who` is always empty on Ubuntu 26.04 (no `/run/utmp`), so `autoshutdown.sh` now matches sshd's `<user>@pts/N` process titles with `pgrep`. SSH in with no players, then confirm two timer runs log "Skipping shutdown: active SSH session(s): ubuntu@pts/0". After logging out, the box should power off.
 - [ ] **Autoshutdown hard backstop**, layers 1–3 ([autoshutdown-review.md](plans/autoshutdown-review.md#deferred-hard-backstop-not-implemented)):
   - [ ] `max-uptime.timer`: powers off after N hours no matter what (suggested 12h)
   - [ ] Boot watchdog: power off if RCON isn't answering 30–45 min after boot

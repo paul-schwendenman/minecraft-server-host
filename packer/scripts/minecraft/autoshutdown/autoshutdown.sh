@@ -19,10 +19,14 @@ power_off() {
   exit 0
 }
 
-# Skip shutdown if SSH sessions exist
-if who | grep 'pts/' >/dev/null 2>&1; then
+# Skip shutdown while someone has an interactive SSH session. sshd titles each
+# session's process "<user>@pts/N" (or "<user>@notty" for `ssh host cmd`), as
+# "sshd-session: ..." on OpenSSH >= 9.8 and "sshd: ..." before. `who` can't be
+# used: Ubuntu 26.04 has no /run/utmp, so it never lists anyone.
+SSH_SESSIONS=$(pgrep -af '^sshd(-session)?: [^ ]+@pts/' || true)
+if [[ -n "${SSH_SESSIONS}" ]]; then
   rm -f "${TOUCH_FILE}"
-  logger -t autoshutdown "Skipping shutdown: active SSH session(s) detected"
+  logger -t autoshutdown "Skipping shutdown: active SSH session(s): $(echo "${SSH_SESSIONS}" | sed 's/^[0-9]* sshd[^:]*: //' | paste -sd ' ' -)"
   exit 0
 fi
 

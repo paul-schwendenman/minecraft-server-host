@@ -16,11 +16,13 @@ AWS_PROFILE=minecraft AWS_REGION=us-east-2 aws ec2 describe-instances \
 ## Before you start: keep both instances up
 
 `autoshutdown.sh` runs every 5 minutes and skips shutdown only while someone has
-an interactive SSH session (a `pts/` entry in `who`). **If no `minecraft@`
+an interactive SSH session (an sshd process titled `<user>@pts/N`; a plain
+`ssh host cmd` doesn't count). **If no `minecraft@`
 service is running, it powers off at the first check** — it does not know about
 copies, map builds or backups in progress.
 
-- Stay SSH'd in to both hosts for the whole copy, or
+- Stay SSH'd in to both hosts for the whole copy (AMIs built before
+  2026-10-12 on Ubuntu 26.04 can't see SSH sessions, so use the timer there), or
 - `sudo systemctl stop autoshutdown.timer` on the host. `stop` (not `disable`)
   lasts until the next boot, so the timer comes back on its own.
 
