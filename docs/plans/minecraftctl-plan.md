@@ -89,7 +89,7 @@
 ---
 
 ## Phase 7 — UX & Guardrails
-- `--dry-run` and `doctor` command.
+- `--dry-run` and `doctor` command. ✅ (`doctor`; `--dry-run` on `config sync`, `world switch`, `world create`, `map build now`, `map clean`, `backup prune`)
 - JSON logs via Zerolog.
 
 ---
@@ -123,6 +123,6 @@
 - [x] `map manifest build`
 - [x] `map preview`
 - [x] Systemd integration
-- [ ] `doctor`, `--dry-run`: no `doctor` yet, and `--dry-run` exists only on `config sync`
+- [x] `doctor`, `--dry-run` (on `config sync`, `world switch`, `world create`, `map build now`, `map clean`, `backup prune`)
 - [x] CI/CD + release pipeline (`.github/workflows/minecraftctl.yml`, releases on `minecraftctl-*` tags)
 - [ ] Remove legacy scripts after burn-in: `rebuild-map.sh` and `build-map-manifests.sh` are now thin wrappers around minecraftctl, but systemd still calls them

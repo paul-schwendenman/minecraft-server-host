@@ -31,6 +31,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | `status` | `cmd/minecraftctl/status.go` | Server status like the web UI: running world, version, active players, EC2 public IP |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
 | `backup` | `cmd/minecraftctl/backup.go` | list, create, restore, prune, stats, check (restic-based backups) |
+| `doctor` | `cmd/minecraftctl/doctor.go` | Read-only health checks (`pkg/doctor`): PASS/WARN/FAIL/SKIP per line; exit 1 on FAIL (or WARN with `--strict`); `--json` |
 
 #### Service Management Commands
 
@@ -39,12 +40,13 @@ The CLI includes systemd service management commands for controlling Minecraft s
 **World service commands:**
 - `world status|start|stop|restart|enable|disable <world>` - Control `minecraft@<world>.service`
 - `world switch <world>` - Stop the running world and start another (`pkg/worlds/switch.go`); distinct exit codes per outcome. `start`/`restart` refuse while another world runs
+- `world create <world> --version <v> [--dry-run]` - Create a world dir; `worlds.PlanCreateWorld` lists the steps (dirs, symlink, files, chown, timers) and `--dry-run` prints them without running them
 - `world logs <world>` - View logs via journalctl (`-f` to follow, `-n` for lines)
 - `world backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-world-backup@<world>`
 
 **Map service commands:**
 - `map config cat|show <world>` - Print the raw `map-config.yml` (`config get` prints the parsed config with defaults applied)
-- `map build now <world>` - Build maps immediately
+- `map build now <world>` - Build maps immediately (`--dry-run`: print each map's full/ranges/skip plan and reason via `Builder.Plan`, no lock, no render)
 - `map build status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-build@<world>`
 - `map clean <world> [map] [--dry-run]` - Remove tiles not in each map's rendered format, plus map dirs not in `map-config.yml` (`pkg/maps/clean.go`). `build` does the tile part itself after a successful full render on an `imageformat` change
 - `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`
@@ -53,7 +55,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `backup list [tag]` - List available snapshots (optionally filter by world name)
 - `backup create [world]` - Create backup (defaults to all worlds)
 - `backup restore <snapshot> [--target <path>]` - Restore a snapshot
-- `backup prune` - Remove old snapshots per retention policy
+- `backup prune [--dry-run]` - Remove old snapshots per retention policy (`--dry-run` passes through to `restic forget --prune --dry-run` and skips the check)
 - `backup stats` - Show repository statistics
 - `backup check` - Verify repository integrity
 
@@ -70,6 +72,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 | `pkg/nbt` | NBT level.dat reader |
 | `pkg/systemd` | Systemctl/journalctl wrapper functions |
 | `pkg/backup` | Restic backup management (list, create, restore, prune) |
+| `pkg/doctor` | `doctor` checks; everything external goes through an injectable `Env` |
 
 ## Key Concepts
 

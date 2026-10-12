@@ -131,7 +131,10 @@ Retention policy:
   - Keep 4 weekly snapshots
   - Keep 3 monthly snapshots
 
-This command also verifies repository integrity after pruning.`,
+This command also verifies repository integrity after pruning.
+
+--dry-run passes --dry-run to restic forget, which lists the snapshots it
+would remove; nothing is removed and the integrity check is skipped.`,
 	Args:              cobra.NoArgs,
 	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -144,7 +147,8 @@ This command also verifies repository integrity after pruning.`,
 			return err
 		}
 
-		return cfg.Prune()
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		return cfg.Prune(dryRun)
 	},
 }
 
@@ -197,6 +201,7 @@ func init() {
 	BackupCmd.AddCommand(backupCreateCmd)
 	BackupCmd.AddCommand(backupRestoreCmd)
 	BackupCmd.AddCommand(backupPruneCmd)
+	backupPruneCmd.Flags().Bool("dry-run", false, "List the snapshots that would be removed without removing them")
 	BackupCmd.AddCommand(backupStatsCmd)
 	BackupCmd.AddCommand(backupCheckCmd)
 }

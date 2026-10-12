@@ -100,6 +100,9 @@ minecraftctl world create <world-name> --version <version> --no-systemd
 
 # Example: Create a world with version 1.21.1 and seed
 minecraftctl world create vanilla-121 --version 1.21.1 --seed 8675309
+
+# Print the dirs, symlinks, files and timers it would create, creating nothing
+minecraftctl world create vanilla-121 --version 1.21.1 --dry-run
 ```
 
 **Note**: The `world create` command requires:
@@ -170,6 +173,9 @@ minecraftctl map build now <world-name> --force
 # Re-render every range, skip the base map
 minecraftctl map build now <world-name> --ranges-only
 
+# Print what each map would render (full/ranges/skip) and why; renders nothing
+minecraftctl map build now <world-name> --dry-run
+
 # Check status of map build timer/service
 minecraftctl map build status <world-name>
 
@@ -231,6 +237,28 @@ minecraftctl rcon send "say Hello World"
 # Execute commands from file
 minecraftctl rcon exec commands.txt
 ```
+
+### Backups
+
+```bash
+# List the snapshots the retention policy would remove; removes nothing
+minecraftctl backup prune --dry-run
+```
+
+`backup prune --dry-run` passes `--dry-run` to `restic forget --prune` and skips the integrity check that a real prune runs afterwards.
+
+### Doctor
+
+```bash
+# Read-only checks: PASS / WARN / FAIL / SKIP per line
+minecraftctl doctor
+
+# Exit 1 on warnings too; or print JSON
+minecraftctl doctor --strict
+minecraftctl doctor --json
+```
+
+Checks: the config loads; the worlds dir exists and is owned by `minecraft` (uid 25565); each world has `world/level.dat`; the AMI's units (`autoshutdown.timer`, `minecraft-active.service`, `minecraft-world-watch.timer`, `minecraft-world-backup.timer`, `minecraft-world-prune.timer`) and each world's timers are enabled, and the backup timers (and the running world's map-build timer) are active; RCON answers if a world is running; restic's settings are present and the repository answers within 30s; the uNmINeD binary is present. Exits 1 on any FAIL, 0 on warnings unless `--strict`. Without systemd (e.g. on a Mac) server-only checks warn or skip instead of failing. Run it as root on the server so restic runs as `minecraft`, like the backups do.
 
 ### JAR Management
 

@@ -239,71 +239,114 @@ type CreateWorldOptions struct {
 	EnableSystemd   bool
 }
 
-// CreateWorld creates a new Minecraft world directory with the necessary configuration files
-func CreateWorld(worldName string, opts CreateWorldOptions) error {
+// CreateStep is one thing CreateWorld does
+type CreateStep struct {
+	// Desc says what the step does, e.g. "create directory /srv/x"
+	Desc string
+	run  func() error
+}
+
+// CreatePlan is what CreateWorld will do, in order
+type CreatePlan struct {
+	World string
+	Dir   string
+	Steps []CreateStep
+}
+
+// Run carries out the plan's steps, stopping at the first that fails
+func (p *CreatePlan) Run() error {
+	for _, step := range p.Steps {
+		if err := step.run(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// jarPathFor is where CreateWorld expects a version's server jar. A var for
+// tests.
+var jarPathFor = func(version string) string {
+	return fmt.Sprintf("/opt/minecraft/jars/minecraft_server_%s.jar", version)
+}
+
+// PlanCreateWorld checks a world can be created and works out the
+// directories, symlinks, files and timers CreateWorld would create, without
+// changing anything. Files that already exist are left alone, so they're not
+// in the plan.
+func PlanCreateWorld(worldName string, opts CreateWorldOptions) (*CreatePlan, error) {
 	cfg := config.Get()
 	worldDir := filepath.Join(cfg.WorldsDir, worldName)
-	jarPath := fmt.Sprintf("/opt/minecraft/jars/minecraft_server_%s.jar", opts.Version)
+	jarPath := jarPathFor(opts.Version)
 
 	// Check if world already exists
 	if _, err := os.Stat(worldDir); err == nil {
 		// Check if it's actually a world (has level.dat)
 		levelDatPath := filepath.Join(worldDir, "world", "level.dat")
 		if _, err := os.Stat(levelDatPath); err == nil {
-			return fmt.Errorf("world already exists: %s", worldName)
+			return nil, fmt.Errorf("world already exists: %s", worldName)
 		}
 	}
 
 	// Validate that jar exists
 	if _, err := os.Stat(jarPath); os.IsNotExist(err) {
-		return fmt.Errorf("Minecraft server jar not found: %s", jarPath)
+		return nil, fmt.Errorf("Minecraft server jar not found: %s", jarPath)
 	}
 
-	// Create world directory
-	if err := os.MkdirAll(worldDir, 0755); err != nil {
-		return fmt.Errorf("failed to create world directory: %w", err)
+	plan := &CreatePlan{World: worldName, Dir: worldDir}
+	add := func(desc string, run func() error) {
+		plan.Steps = append(plan.Steps, CreateStep{Desc: desc, run: run})
 	}
 
-	// Link the server jar
+	add("create directory "+worldDir, func() error {
+		if err := os.MkdirAll(worldDir, 0755); err != nil {
+			return fmt.Errorf("failed to create world directory: %w", err)
+		}
+		return nil
+	})
+
+	// Link the server jar, replacing any existing link
 	serverJarPath := filepath.Join(worldDir, "server.jar")
-	// Remove existing symlink if it exists
-	if _, err := os.Lstat(serverJarPath); err == nil {
-		if err := os.Remove(serverJarPath); err != nil {
-			return fmt.Errorf("failed to remove existing server.jar: %w", err)
+	add(fmt.Sprintf("symlink %s -> %s", serverJarPath, jarPath), func() error {
+		if _, err := os.Lstat(serverJarPath); err == nil {
+			if err := os.Remove(serverJarPath); err != nil {
+				return fmt.Errorf("failed to remove existing server.jar: %w", err)
+			}
 		}
-	}
-	if err := os.Symlink(jarPath, serverJarPath); err != nil {
-		return fmt.Errorf("failed to create symlink to server jar: %w", err)
-	}
+		if err := os.Symlink(jarPath, serverJarPath); err != nil {
+			return fmt.Errorf("failed to create symlink to server jar: %w", err)
+		}
+		return nil
+	})
 
-	// Create eula.txt
 	eulaPath := filepath.Join(worldDir, "eula.txt")
-	if err := os.WriteFile(eulaPath, []byte("eula=true\n"), 0644); err != nil {
-		return fmt.Errorf("failed to create eula.txt: %w", err)
-	}
-
-	// Load RCON settings from /etc/minecraft.env
-	rconPort := cfg.Rcon.Port
-	rconPassword := cfg.Rcon.Password
-	if ef, err := envfile.Load(envfile.DefaultMinecraftEnvPath); err == nil {
-		if port, err := ef.GetInt("RCON_PORT"); err == nil {
-			rconPort = port
+	add("write "+eulaPath, func() error {
+		if err := os.WriteFile(eulaPath, []byte("eula=true\n"), 0644); err != nil {
+			return fmt.Errorf("failed to create eula.txt: %w", err)
 		}
-		if pwd, ok := ef.Get("RCON_PASSWORD"); ok {
-			rconPassword = pwd
-		}
-	} else {
-		log.Warn().Msg("/etc/minecraft.env not found, using config values for RCON")
-	}
+		return nil
+	})
 
-	// If RCON password is still empty, try to get it from config
-	if rconPassword == "" {
-		rconPassword = cfg.Rcon.Password
-	}
-
-	// Create server.properties
 	serverPropsPath := filepath.Join(worldDir, "server.properties")
 	if _, err := os.Stat(serverPropsPath); os.IsNotExist(err) {
+		// Load RCON settings from /etc/minecraft.env
+		rconPort := cfg.Rcon.Port
+		rconPassword := cfg.Rcon.Password
+		if ef, err := envfile.Load(envfile.DefaultMinecraftEnvPath); err == nil {
+			if port, err := ef.GetInt("RCON_PORT"); err == nil {
+				rconPort = port
+			}
+			if pwd, ok := ef.Get("RCON_PASSWORD"); ok {
+				rconPassword = pwd
+			}
+		} else {
+			log.Warn().Msg("/etc/minecraft.env not found, using config values for RCON")
+		}
+
+		// If RCON password is still empty, try to get it from config
+		if rconPassword == "" {
+			rconPassword = cfg.Rcon.Password
+		}
+
 		var props strings.Builder
 		props.WriteString("enable-rcon=true\n")
 		props.WriteString(fmt.Sprintf("rcon.port=%d\n", rconPort))
@@ -314,16 +357,76 @@ func CreateWorld(worldName string, opts CreateWorldOptions) error {
 			props.WriteString(fmt.Sprintf("level-seed=%s\n", opts.Seed))
 		}
 
-		if err := os.WriteFile(serverPropsPath, []byte(props.String()), 0644); err != nil {
-			return fmt.Errorf("failed to create server.properties: %w", err)
-		}
+		add(fmt.Sprintf("write %s (rcon.port=%d)", serverPropsPath, rconPort), func() error {
+			if err := os.WriteFile(serverPropsPath, []byte(props.String()), 0644); err != nil {
+				return fmt.Errorf("failed to create server.properties: %w", err)
+			}
+			return nil
+		})
 	}
 
-	// Create map-config.yml if requested
 	if opts.CreateMapConfig {
 		mapConfigPath := filepath.Join(worldDir, "map-config.yml")
 		if _, err := os.Stat(mapConfigPath); os.IsNotExist(err) {
-			mapConfig := `# Default map configuration for uNmINeD
+			add("write "+mapConfigPath, func() error {
+				if err := os.WriteFile(mapConfigPath, []byte(defaultMapConfig), 0644); err != nil {
+					return fmt.Errorf("failed to create map-config.yml: %w", err)
+				}
+				return nil
+			})
+		}
+	}
+
+	// Fix permissions: chown all created files to minecraft:minecraft
+	// This ensures the systemd service (which runs as minecraft user) can write to these files
+	add(fmt.Sprintf("chown -R minecraft:minecraft %s", worldDir), func() error {
+		if err := chownToMinecraftUser(worldDir); err != nil {
+			log.Warn().Err(err).Str("world", worldName).Msg("failed to chown world directory to minecraft user, continuing")
+		}
+		return nil
+	})
+
+	// Enable the world's timers (starting the backup ones) if requested. The
+	// world's own minecraft@ service is left alone: only one world can run at a
+	// time, so which world starts at boot is decided outside minecraftctl.
+	if opts.EnableSystemd {
+		add("systemctl daemon-reload", func() error {
+			if err := systemd.DaemonReload(); err != nil {
+				return fmt.Errorf("failed to reload systemd daemon: %w", err)
+			}
+			return nil
+		})
+		var enable, enableNow []string
+		for _, timer := range WorldTimers(worldName) {
+			if strings.HasPrefix(timer, "minecraft-map-build@") {
+				enable = append(enable, timer)
+			} else {
+				enableNow = append(enableNow, timer)
+			}
+		}
+		desc := fmt.Sprintf("systemctl enable %s; systemctl enable --now %s",
+			strings.Join(enable, " "), strings.Join(enableNow, " "))
+		// enableWorldTimers logs (doesn't fail on) a timer it can't enable
+		add(desc, func() error {
+			enableWorldTimers(worldName)
+			return nil
+		})
+	}
+
+	return plan, nil
+}
+
+// CreateWorld creates a new Minecraft world directory with the necessary configuration files
+func CreateWorld(worldName string, opts CreateWorldOptions) error {
+	plan, err := PlanCreateWorld(worldName, opts)
+	if err != nil {
+		return err
+	}
+	return plan.Run()
+}
+
+// defaultMapConfig is the map-config.yml a new world gets
+const defaultMapConfig = `# Default map configuration for uNmINeD
 # Adjust zoom levels, dimensions, and regions as needed
 
 defaults:
@@ -365,31 +468,6 @@ maps:
     options:
       shadows: 2d
 `
-
-			if err := os.WriteFile(mapConfigPath, []byte(mapConfig), 0644); err != nil {
-				return fmt.Errorf("failed to create map-config.yml: %w", err)
-			}
-		}
-	}
-
-	// Fix permissions: chown all created files to minecraft:minecraft
-	// This ensures the systemd service (which runs as minecraft user) can write to these files
-	if err := chownToMinecraftUser(worldDir); err != nil {
-		log.Warn().Err(err).Str("world", worldName).Msg("failed to chown world directory to minecraft user, continuing")
-	}
-
-	// Enable the world's timers (starting the backup ones) if requested. The
-	// world's own minecraft@ service is left alone: only one world can run at a
-	// time, so which world starts at boot is decided outside minecraftctl.
-	if opts.EnableSystemd {
-		if err := systemd.DaemonReload(); err != nil {
-			return fmt.Errorf("failed to reload systemd daemon: %w", err)
-		}
-		enableWorldTimers(worldName)
-	}
-
-	return nil
-}
 
 // chownToMinecraftUser recursively changes ownership of a directory to minecraft:minecraft
 func chownToMinecraftUser(path string) error {

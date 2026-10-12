@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -70,7 +72,10 @@ For each map:
     (hashes kept in the map's manifest.json), skipping the base map
 
 --ranges-only re-renders every range and skips the base map. It fails before
-rendering anything if a map's imageformat changed.`,
+rendering anything if a map's imageformat changed.
+
+--dry-run prints what each map would do and why, without rendering anything
+or taking the build lock.`,
 	Args:              cobra.MinimumNArgs(1),
 	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -84,6 +89,7 @@ rendering anything if a map's imageformat changed.`,
 		parallel, _ := cmd.Flags().GetBool("parallel")
 		maxWorkers, _ := cmd.Flags().GetInt("max-workers")
 		logLevel, _ := cmd.Flags().GetString("log-level")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		// Expand all patterns to world names
 		worldNames := make([]string, 0)
@@ -97,6 +103,14 @@ rendering anything if a map's imageformat changed.`,
 
 		if len(worldNames) == 0 {
 			return fmt.Errorf("no worlds found matching patterns")
+		}
+
+		if dryRun {
+			return printBuildPlans(cmd.OutOrStdout(), worldNames, maps.BuildOptions{
+				MapName:    mapName,
+				Force:      force,
+				RangesOnly: rangesOnly,
+			})
 		}
 
 		if len(worldNames) == 1 && !parallel {
@@ -814,6 +828,7 @@ func init() {
 	mapBuildNowCmd.Flags().Bool("non-blocking", false, "Exit immediately if lock is held")
 	mapBuildNowCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
 	mapBuildNowCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
+	mapBuildNowCmd.Flags().Bool("dry-run", false, "Print what would render and why, without rendering")
 	mapBuildNowCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
 	mapPreviewCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
@@ -1212,6 +1227,40 @@ func runWorldBatch(worldNames []string, parallel bool, maxWorkers int, failureMs
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// printBuildPlans prints, for each world and map, what a build with opts
+// would do and why. Worlds that can't be planned are reported and the rest
+// still printed; the error names them.
+func printBuildPlans(w io.Writer, worldNames []string, baseOpts maps.BuildOptions) error {
+	var failed []string
+	for _, worldName := range worldNames {
+		opts := baseOpts
+		opts.WorldName = worldName
+		plans, err := maps.NewBuilder().Plan(opts)
+		fmt.Fprintf(w, "%s:\n", worldName)
+		if len(plans) == 0 && err == nil {
+			fmt.Fprintln(w, "  no maps to build")
+		}
+		for _, p := range plans {
+			line := fmt.Sprintf("  %s: %s (%s)", p.Map, p.Action, p.Reason)
+			if p.Action != maps.ActionSkip && len(p.Ranges) > 0 {
+				line += "; ranges: " + strings.Join(p.Ranges, ", ")
+			}
+			if p.Action == maps.ActionFull {
+				line += "; then the base map"
+			}
+			fmt.Fprintln(w, line)
+		}
+		if err != nil {
+			fmt.Fprintf(w, "  error: %v\n", err)
+			failed = append(failed, worldName)
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("can't plan a build for: %s", strings.Join(failed, ", "))
 	}
 	return nil
 }

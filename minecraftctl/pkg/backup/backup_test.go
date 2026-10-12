@@ -2,10 +2,13 @@ package backup
 
 import (
 	"os"
+	"os/exec"
 	"os/user"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestBackupArgsUseFixedHost(t *testing.T) {
@@ -237,5 +240,79 @@ func TestRestoredWorldsDir(t *testing.T) {
 		if got := c.restoredWorldsDir(target); got != want {
 			t.Errorf("restoredWorldsDir(%q) = %q, want %q", target, got, want)
 		}
+	}
+}
+
+func recordRuns(t *testing.T) *[][]string {
+	t.Helper()
+	var got [][]string
+	orig := run
+	run = func(cmd *exec.Cmd) error {
+		got = append(got, cmd.Args[1:])
+		return nil
+	}
+	t.Cleanup(func() { run = orig })
+	return &got
+}
+
+func TestPruneDryRun(t *testing.T) {
+	got := recordRuns(t)
+	c := &Config{Repository: "s3:example/bucket", Password: "pw"}
+
+	if err := c.Prune(true); err != nil {
+		t.Fatalf("Prune(true) = %v", err)
+	}
+	if len(*got) != 1 {
+		t.Fatalf("Prune(true) ran %d restic commands, want 1 (no check/stats): %v", len(*got), *got)
+	}
+	args := (*got)[0]
+	if args[0] != "forget" || !slices.Contains(args, "--prune") || !slices.Contains(args, "--dry-run") {
+		t.Errorf("Prune(true) args = %v, want forget ... --prune --dry-run", args)
+	}
+}
+
+func TestPruneRunsCheckAndStats(t *testing.T) {
+	got := recordRuns(t)
+	c := &Config{Repository: "s3:example/bucket", Password: "pw"}
+
+	if err := c.Prune(false); err != nil {
+		t.Fatalf("Prune(false) = %v", err)
+	}
+	if len(*got) != 3 || (*got)[1][0] != "check" || (*got)[2][0] != "stats" {
+		t.Fatalf("Prune(false) ran %v, want forget, check, stats", *got)
+	}
+	if slices.Contains((*got)[0], "--dry-run") {
+		t.Errorf("Prune(false) args %v include --dry-run", (*got)[0])
+	}
+}
+
+// fakeRestic puts a restic script running body first on PATH
+func fakeRestic(t *testing.T, body string) {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "restic"), []byte("#!/bin/sh\n"+body+"\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+func TestPing(t *testing.T) {
+	c := &Config{Repository: "s3:example/bucket", Password: "pw", RetryLock: "30m"}
+
+	fakeRestic(t, `case "$*" in *retry-lock*) exit 9;; "cat config") exit 0;; esac; exit 1`)
+	if err := c.Ping(5 * time.Second); err != nil {
+		t.Errorf("Ping() = %v, want nil (and no --retry-lock)", err)
+	}
+
+	fakeRestic(t, `echo "Fatal: unable to open config file: Stat: Access Denied" >&2; exit 1`)
+	err := c.Ping(5 * time.Second)
+	if err == nil || !strings.Contains(err.Error(), "Access Denied") {
+		t.Errorf("Ping() = %v, want the error with restic's message", err)
+	}
+
+	fakeRestic(t, `exec sleep 5`)
+	err = c.Ping(100 * time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "timed out") {
+		t.Errorf("Ping() = %v, want a timeout", err)
 	}
 }

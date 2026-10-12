@@ -144,6 +144,21 @@ func IsEnabled(unit string) (bool, error) {
 	return true, nil
 }
 
+// UnitFileState returns `systemctl is-enabled` for unit: enabled, disabled,
+// static, indirect, not-found, ... is-enabled exits non-zero for anything
+// but enabled/static, so only a run with no output is an error.
+func UnitFileState(unit string) (string, error) {
+	out, err := execCommand("systemctl", "is-enabled", unit).Output()
+	state := strings.TrimSpace(string(out))
+	if state == "" {
+		if err == nil {
+			err = fmt.Errorf("no output")
+		}
+		return "", fmt.Errorf("systemctl is-enabled %s: %w", unit, err)
+	}
+	return state, nil
+}
+
 // Unit is a loaded unit as listed by `systemctl list-units`.
 type Unit struct {
 	Name   string // e.g. minecraft@default.service

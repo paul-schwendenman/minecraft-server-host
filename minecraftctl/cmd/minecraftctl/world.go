@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -143,6 +144,7 @@ var (
 	createSeed        string
 	createNoMapConfig bool
 	createNoSystemd   bool
+	createDryRun      bool
 )
 
 var (
@@ -183,7 +185,15 @@ var worldCreateCmd = &cobra.Command{
 			EnableSystemd:   !createNoSystemd,
 		}
 
-		if err := worlds.CreateWorld(worldName, opts); err != nil {
+		plan, err := worlds.PlanCreateWorld(worldName, opts)
+		if err != nil {
+			return err
+		}
+		if createDryRun {
+			printCreatePlan(cmd.OutOrStdout(), plan)
+			return nil
+		}
+		if err := plan.Run(); err != nil {
 			return err
 		}
 
@@ -198,6 +208,14 @@ var worldCreateCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+// printCreatePlan prints what `world create` would do
+func printCreatePlan(w io.Writer, plan *worlds.CreatePlan) {
+	fmt.Fprintf(w, "Dry run: would create world '%s':\n", plan.World)
+	for _, step := range plan.Steps {
+		fmt.Fprintf(w, "  %s\n", step.Desc)
+	}
 }
 
 var worldRegisterCmd = &cobra.Command{
@@ -474,6 +492,7 @@ func init() {
 	worldCreateCmd.Flags().StringVar(&createSeed, "seed", "", "World seed (optional)")
 	worldCreateCmd.Flags().BoolVar(&createNoMapConfig, "no-map-config", false, "Skip creating map-config.yml")
 	worldCreateCmd.Flags().BoolVar(&createNoSystemd, "no-systemd", false, "Skip enabling the world's systemd timers")
+	worldCreateCmd.Flags().BoolVar(&createDryRun, "dry-run", false, "Print what would be created without creating anything")
 
 	// Upgrade command flags
 	worldUpgradeCmd.Flags().StringVar(&upgradeVersion, "version", "", "Target Minecraft server version (e.g., 1.21.11)")

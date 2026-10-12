@@ -155,3 +155,21 @@ func TestListUnitsArgs(t *testing.T) {
 		t.Errorf("systemctl args = %q", joined)
 	}
 }
+
+func TestUnitFileState(t *testing.T) {
+	stubSystemctl(t, `echo disabled; exit 1`)
+	got, err := UnitFileState("x.timer")
+	if err != nil || got != "disabled" {
+		t.Errorf("UnitFileState() = %q, %v; want disabled, nil", got, err)
+	}
+
+	stubSystemctl(t, `echo not-found; exit 4`)
+	if got, _ := UnitFileState("x.timer"); got != "not-found" {
+		t.Errorf("UnitFileState() = %q, want not-found", got)
+	}
+
+	stubSystemctl(t, `exit 1`)
+	if _, err := UnitFileState("x.timer"); err == nil {
+		t.Error("UnitFileState() with no output: want error")
+	}
+}
