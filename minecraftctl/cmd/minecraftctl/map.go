@@ -29,14 +29,24 @@ var (
 	mapLogsNoPager bool
 )
 
-// mapWorldCompletionFunc provides tab completion for world names in map commands
+// mapWorldCompletionFunc provides tab completion for commands that take one
+// or more worlds (or glob patterns), offering worlds not already given
 func mapWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// For commands that accept multiple worlds, always complete world names
 	names, err := worlds.GetWorldNames()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	return names, cobra.ShellCompDirectiveNoFileComp
+	given := make(map[string]bool, len(args))
+	for _, a := range args {
+		given[a] = true
+	}
+	remaining := make([]string, 0, len(names))
+	for _, n := range names {
+		if !given[n] {
+			remaining = append(remaining, n)
+		}
+	}
+	return remaining, cobra.ShellCompDirectiveNoFileComp
 }
 
 // MapCmd is an alias for the command defined in internal/commands
@@ -184,10 +194,11 @@ var mapManifestCmd = &cobra.Command{
 }
 
 var mapIndexCmd = &cobra.Command{
-	Use:   "index",
-	Short: "Generate aggregate manifest and HTML index page",
-	Long:  "Generates world_manifest.json and index.html in the maps directory",
-	Args:  cobra.NoArgs,
+	Use:               "index",
+	Short:             "Generate aggregate manifest and HTML index page",
+	Long:              "Generates world_manifest.json and index.html in the maps directory",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		builder := maps.NewManifestBuilder()
 		return builder.BuildAggregateIndex()

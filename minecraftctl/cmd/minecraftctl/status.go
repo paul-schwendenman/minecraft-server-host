@@ -35,7 +35,8 @@ are always null since DNS isn't visible from the server, and active_world is
 the world actually running rather than the ActiveWorld tag), and "details" is the
 raw server response, as returned by the details API (null if the server didn't
 respond, in which case "error" says why).`,
-	Args: cobra.NoArgs,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out := cmd.OutOrStdout()
 

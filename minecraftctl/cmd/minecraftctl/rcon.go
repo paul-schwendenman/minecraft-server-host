@@ -15,8 +15,10 @@ import (
 var RconCmd = commands.RconCmd
 
 var rconStatusCmd = &cobra.Command{
-	Use:   "status",
-	Short: "Check server status via RCON",
+	Use:               "status",
+	Short:             "Check server status via RCON",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := rcon.NewClient()
 		if err != nil {
@@ -35,9 +37,10 @@ var rconStatusCmd = &cobra.Command{
 }
 
 var rconSendCmd = &cobra.Command{
-	Use:   "send <command>",
-	Short: "Send a command via RCON",
-	Args:  cobra.MinimumNArgs(1),
+	Use:               "send <command>",
+	Short:             "Send a command via RCON",
+	Args:              cobra.MinimumNArgs(1),
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client, err := rcon.NewClient()
 		if err != nil {

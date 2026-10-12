@@ -17,10 +17,11 @@ import (
 var ConfigCmd = commands.ConfigCmd
 
 var configCheckCmd = &cobra.Command{
-	Use:   "check <world>",
-	Short: "Check RCON settings in server.properties",
-	Long:  "Verify that RCON settings in server.properties match minecraft.env",
-	Args:  cobra.ExactArgs(1),
+	Use:               "check <world>",
+	Short:             "Check RCON settings in server.properties",
+	Long:              "Verify that RCON settings in server.properties match minecraft.env",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		cfg := config.Get()
@@ -109,7 +110,8 @@ process environment, as it is under minecraft@.service's EnvironmentFile=,
 the process environment is used instead.
 
 This also runs automatically as ExecStartPre of minecraft@.service.`,
-	Args: cobra.ExactArgs(1),
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
@@ -163,9 +165,10 @@ This also runs automatically as ExecStartPre of minecraft@.service.`,
 }
 
 var configGetCmd = &cobra.Command{
-	Use:   "get <world> <key>",
-	Short: "Get a property value from server.properties",
-	Args:  cobra.ExactArgs(2),
+	Use:               "get <world> <key>",
+	Short:             "Get a property value from server.properties",
+	Args:              cobra.ExactArgs(2),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		key := args[1]
@@ -188,9 +191,10 @@ var configGetCmd = &cobra.Command{
 }
 
 var configSetCmd = &cobra.Command{
-	Use:   "set <world> <key> <value>",
-	Short: "Set a property value in server.properties",
-	Args:  cobra.ExactArgs(3),
+	Use:               "set <world> <key> <value>",
+	Short:             "Set a property value in server.properties",
+	Args:              cobra.ExactArgs(3),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		key := args[1]
@@ -222,9 +226,10 @@ var configSetCmd = &cobra.Command{
 }
 
 var configListCmd = &cobra.Command{
-	Use:   "list <world>",
-	Short: "List all properties from server.properties",
-	Args:  cobra.ExactArgs(1),
+	Use:               "list <world>",
+	Short:             "List all properties from server.properties",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: worldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 		showPasswords, _ := cmd.Flags().GetBool("show-passwords")

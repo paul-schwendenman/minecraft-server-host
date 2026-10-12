@@ -29,9 +29,11 @@ func worldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) (
 var WorldCmd = commands.WorldCmd
 
 var worldListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all worlds",
-	Long:  "List all worlds. Use --full to show service status, enabled state, and timer information.",
+	Use:               "list",
+	Short:             "List all worlds",
+	Long:              "List all worlds. Use --full to show service status, enabled state, and timer information.",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldList, err := worlds.ListWorlds()
 		if err != nil {
@@ -165,6 +167,8 @@ var worldCreateCmd = &cobra.Command{
 	Short: "Create a new Minecraft world",
 	Long:  "Create a new Minecraft world directory with server configuration. Requires the Minecraft server jar to be installed at /opt/minecraft/jars/minecraft_server_<version>.jar",
 	Args:  cobra.ExactArgs(1),
+	// A new world name, so nothing to complete
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		worldName := args[0]
 

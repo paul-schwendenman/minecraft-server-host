@@ -13,9 +13,11 @@ import (
 )
 
 var gendocsCmd = &cobra.Command{
-	Use:    "gendocs",
-	Short:  "Generate documentation (man pages and shell completions)",
-	Hidden: true,
+	Use:               "gendocs",
+	Short:             "Generate documentation (man pages and shell completions)",
+	Hidden:            true,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		manDir, _ := cmd.Flags().GetString("man-dir")
 		completionsDir, _ := cmd.Flags().GetString("completions-dir")

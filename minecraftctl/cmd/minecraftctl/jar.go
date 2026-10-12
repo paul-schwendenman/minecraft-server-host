@@ -16,9 +16,28 @@ var jarCmd = &cobra.Command{
 	Long:  "Commands for downloading, listing, and verifying Minecraft server JAR files",
 }
 
+// jarVersionCompletionFunc completes versions of the JARs in the jars
+// directory (a directory listing, no hashing or network)
+func jarVersionCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	jarList, err := jars.ListJars(config.Get().JarsDir)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	versions := make([]string, 0, len(jarList))
+	for _, j := range jarList {
+		versions = append(versions, j.Version)
+	}
+	return versions, cobra.ShellCompDirectiveNoFileComp
+}
+
 var jarListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all installed JARs",
+	Use:               "list",
+	Short:             "List all installed JARs",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg := config.Get()
 		jarList, err := jars.ListJars(cfg.JarsDir)
@@ -54,10 +73,11 @@ var (
 )
 
 var jarDownloadCmd = &cobra.Command{
-	Use:   "download <version>",
-	Short: "Download a Minecraft server JAR",
-	Long:  "Download a Minecraft server JAR from a URL with optional checksum verification",
-	Args:  cobra.ExactArgs(1),
+	Use:               "download <version>",
+	Short:             "Download a Minecraft server JAR",
+	Long:              "Download a Minecraft server JAR from a URL with optional checksum verification",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		version := args[0]
 		cfg := config.Get()
@@ -89,10 +109,11 @@ var jarDownloadCmd = &cobra.Command{
 }
 
 var jarVerifyCmd = &cobra.Command{
-	Use:   "verify <version>",
-	Short: "Verify a JAR's checksum",
-	Long:  "Verify a JAR's checksum against the checksums.txt file",
-	Args:  cobra.ExactArgs(1),
+	Use:               "verify <version>",
+	Short:             "Verify a JAR's checksum",
+	Long:              "Verify a JAR's checksum against the checksums.txt file",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: jarVersionCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		version := args[0]
 		cfg := config.Get()
@@ -107,9 +128,10 @@ var jarVerifyCmd = &cobra.Command{
 }
 
 var jarInfoCmd = &cobra.Command{
-	Use:   "info <version>",
-	Short: "Show detailed information about a JAR",
-	Args:  cobra.ExactArgs(1),
+	Use:               "info <version>",
+	Short:             "Show detailed information about a JAR",
+	Args:              cobra.ExactArgs(1),
+	ValidArgsFunction: jarVersionCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		version := args[0]
 		cfg := config.Get()
