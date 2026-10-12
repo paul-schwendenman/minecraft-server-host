@@ -125,4 +125,4 @@
 - [x] Systemd integration
 - [x] `doctor`, `--dry-run` (on `config sync`, `world switch`, `world create`, `map build now`, `map clean`, `backup prune`)
 - [x] CI/CD + release pipeline (`.github/workflows/minecraftctl.yml`, releases on `minecraftctl-*` tags)
-- [ ] Remove legacy scripts after burn-in: `rebuild-map.sh` and `build-map-manifests.sh` are now thin wrappers around minecraftctl, but systemd still calls them
+- [x] Remove legacy scripts after burn-in: `rebuild-map.sh` and `build-map-manifests.sh` are gone; the map-build units call minecraftctl directly (unverified until an AMI build)

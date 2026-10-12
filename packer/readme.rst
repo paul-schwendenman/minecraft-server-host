@@ -136,6 +136,8 @@ Systemd Units
 - **minecraft-map-build@.timer** / **.service**: renders a world's maps 5
   minutes after the world starts, then every 15 minutes while it runs. The
   timer requires the world's ``minecraft@`` unit, so it's enabled per world but never started on its own.
+  The service runs ``minecraftctl map build now <world>`` then
+  ``minecraftctl map manifest <world> --update-index``.
   Each successful build starts ``minecraft-map-backup@`` to upload the maps.
 - **minecraft-map-backup@.timer** / **.service**: uploads a world's rendered
   maps to S3, after each build and twice a day.
@@ -183,8 +185,6 @@ Helper Scripts
   the tag watcher's scripts (see "Which world runs"). Installed in
   ``/usr/local/libexec``, not on the ``PATH``, since only their units run
   them.
-- **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
-  ``minecraftctl map build`` used by the map-build units.
 - **stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``
   (source ``minecraft-stop-gate.sh``): wraps ``minecraft@`` ``ExecStopPost``
   commands. Runs CMD after a clean stop, or after a failure if the main
