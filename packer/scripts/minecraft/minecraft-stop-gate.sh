@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Run an ExecStopPost command only when the stop is worth acting on.
 #
-# Usage: minecraft-stop-gate --unit UNIT [--min-uptime SECS] -- CMD...
+# Usage: /usr/local/libexec/minecraft/stop-gate --unit UNIT [--min-uptime SECS] -- CMD...
 #
 # systemd passes SERVICE_RESULT, EXIT_CODE and EXIT_STATUS to ExecStopPost.
 # CMD runs when SERVICE_RESULT is "success" (or unset, i.e. not run by
@@ -18,12 +18,12 @@ set -euo pipefail
 # Messages go to stderr, which systemd logs under the unit.
 
 usage() {
-  echo "Usage: minecraft-stop-gate --unit UNIT [--min-uptime SECS] -- CMD..." >&2
+  echo "Usage: /usr/local/libexec/minecraft/stop-gate --unit UNIT [--min-uptime SECS] -- CMD..." >&2
   exit 2
 }
 
 log() {
-  echo "minecraft-stop-gate: $1" >&2
+  echo "stop-gate: $1" >&2
 }
 
 is_number() {

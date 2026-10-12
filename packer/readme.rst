@@ -118,7 +118,7 @@ Systemd Units
   (one world = one unit). A drop-in
   (``minecraft@.service.d/minecraft-world-backup.conf``) takes a restic
   snapshot of the world when it stops, except after a failed start that ran
-  under 5 minutes (see ``minecraft-stop-gate``). That backup is best-effort:
+  under 5 minutes (see ``stop-gate``). That backup is best-effort:
   it waits only ``1m`` for the restic lock (``MC_RESTIC_RETRY_LOCK``), so a
   running prune can't hold up a world switch or poweroff. If it gives up, the
   world's daily timer backup catches up. The drop-in also sets
@@ -185,10 +185,13 @@ Helper Scripts
   them.
 - **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
   ``minecraftctl map build`` used by the map-build units.
-- **minecraft-stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``:
-  wraps ``minecraft@`` ``ExecStopPost`` commands. Runs CMD after a clean stop,
-  or after a failure if the main process ran at least SECS; otherwise logs
-  and skips it, so a crash loop doesn't back up on every iteration.
+- **stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``
+  (source ``minecraft-stop-gate.sh``): wraps ``minecraft@`` ``ExecStopPost``
+  commands. Runs CMD after a clean stop, or after a failure if the main
+  process ran at least SECS; otherwise logs and skips it, so a crash loop
+  doesn't back up on every iteration. Installed as
+  ``/usr/local/libexec/minecraft/stop-gate``, not on the ``PATH``, since only
+  the drop-ins run it.
 - **backup-maps.sh**: uploads a world's maps to the S3 map bucket.
 - **autoshutdown.sh**: the idle check behind ``autoshutdown.timer``.
 - **mount-ebs.sh**, **setup-env.sh**, **setup-maps.sh**,

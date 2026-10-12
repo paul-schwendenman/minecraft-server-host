@@ -1,5 +1,6 @@
 #!/usr/bin/env bats
-# Tests for minecraft-stop-gate.sh, the ExecStopPost gate used by the
+# Tests for minecraft-stop-gate.sh (installed as
+# /usr/local/libexec/minecraft/stop-gate), the ExecStopPost gate used by the
 # minecraft@.service backup and map-build drop-ins.
 
 load test_helper
@@ -203,4 +204,13 @@ set_uptime() {
     run bash "$SCRIPT" --unit minecraft@w.service --min-uptime soon -- backup create w
 
     [ "$status" -eq 2 ]
+}
+
+@test "stop-gate: installer and drop-ins agree on the libexec path" {
+    local gate=/usr/local/libexec/minecraft/stop-gate
+
+    grep -qF "minecraft-stop-gate.sh\" ${gate}" "${SCRIPTS_DIR}/minecraft/install_minecraft_service.sh"
+    grep -qF "ExecStopPost=${gate} " "${SCRIPTS_DIR}/minecraft/worlds/minecraft-override-world-backup.conf"
+    grep -qF "ExecStopPost=${gate} " "${SCRIPTS_DIR}/minecraft/maps/minecraft-override-rebuild.conf"
+    ! grep -rn "/usr/local/bin/minecraft-stop-gate" "${SCRIPTS_DIR}"
 }
