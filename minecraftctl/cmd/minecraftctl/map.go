@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -337,24 +338,44 @@ var mapConfigGetCmd = &cobra.Command{
 			return fmt.Errorf("failed to get field: %w", err)
 		}
 
-		// Output based on format
-		switch format {
-		case "json":
-			// TODO: implement JSON output
-			// For now, just output YAML
-			fallthrough
-		case "yaml", "":
-			data, err := yaml.Marshal(value)
-			if err != nil {
-				return fmt.Errorf("failed to marshal value: %w", err)
-			}
-			fmt.Print(string(data))
-		default:
-			return fmt.Errorf("unsupported format: %s (supported: yaml, json)", format)
+		data, err := marshalConfigValue(value, format)
+		if err != nil {
+			return err
 		}
+		fmt.Print(string(data))
 
 		return nil
 	},
+}
+
+// marshalConfigValue renders a map config value as YAML or JSON. The config
+// structs only carry yaml tags, so JSON goes through a YAML round trip to keep
+// the same key names and omitempty behaviour as the YAML output.
+func marshalConfigValue(value interface{}, format string) ([]byte, error) {
+	switch format {
+	case "yaml", "":
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		return data, nil
+	case "json":
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		var generic interface{}
+		if err := yaml.Unmarshal(data, &generic); err != nil {
+			return nil, fmt.Errorf("failed to convert value: %w", err)
+		}
+		out, err := json.MarshalIndent(generic, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		return append(out, '\n'), nil
+	default:
+		return nil, fmt.Errorf("unsupported format: %s (supported: yaml, json)", format)
+	}
 }
 
 var mapConfigCatCmd = &cobra.Command{
