@@ -1,6 +1,6 @@
 # Plan: Switch Which World the Server Runs
 
-Status: **phase 1 implemented** (2026-09-25), not yet deployed or tried on test.
+Status: **done**. All three phases are implemented and deployed (#178, #183); worlds have been switched on prod since 2026-09-30.
 The plan was reviewed on 2026-09-25; the phase 1 changes it asked for (marked
 **Review** below) are in the code too. **Phase 2 implemented** (2026-09-25),
 tried on test 2026-09-28. **Phase 3 implemented** (2026-09-28), not yet
