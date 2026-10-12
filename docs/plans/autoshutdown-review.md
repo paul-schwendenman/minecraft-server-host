@@ -11,7 +11,7 @@ walks this decision tree:
 
 | # | Condition | Action |
 |---|-----------|--------|
-| 1 | `who` shows a `pts/` session | Remove idle marker, exit 0 (stay up) |
+| 1 | An sshd process titled `<user>@pts/N` (interactive SSH; was `who`, which is always empty on Ubuntu 26.04) | Remove idle marker, exit 0 (stay up) |
 | 2 | No `minecraft@*.service` with sub-state `running` | Power off immediately |
 | 3 | `/etc/minecraft.env` unreadable / `minecraftctl` missing | Exit 1 (stay up) |
 | 4 | RCON `list` fails or is unparseable | Treat as 0 players |

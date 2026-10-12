@@ -18,8 +18,30 @@ exec "$@"
 EOF
     chmod +x "${MOCK_BIN}/timeout"
 
+    # pgrep matches the regex against a fake process list (mock_processes),
+    # printing hits with a pid like `pgrep -af`, exit 1 when nothing matches
+    cat > "${MOCK_BIN}/pgrep" << 'EOF'
+#!/usr/bin/env bash
+echo "$0 $@" >> "${TEST_TEMP_DIR}/mock_calls.log"
+grep -nE -- "${!#}" "${TEST_TEMP_DIR}/processes" | sed 's/^\([0-9]*\):/100\1 /'
+EOF
+    chmod +x "${MOCK_BIN}/pgrep"
+
+    # Processes seen by the SSH check: sshd's listener and a scripted (notty)
+    # session, but no interactive one
+    mock_processes \
+        "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups" \
+        "sshd-session: ubuntu [priv]" \
+        "sshd-session: ubuntu@notty" \
+        "bash -c minecraftctl world list"
+
     # Create wrapped script
     SCRIPT=$(wrap_script "${SCRIPTS_DIR}/minecraft/autoshutdown/autoshutdown.sh")
+}
+
+# Set the command lines the pgrep mock sees, one per argument
+mock_processes() {
+    printf '%s\n' "$@" > "${TEST_TEMP_DIR}/processes"
 }
 
 teardown() {
@@ -28,7 +50,6 @@ teardown() {
 
 @test "autoshutdown: exits with error when minecraft.env missing" {
     rm -f "${MINECRAFT_ENV}"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -39,7 +60,6 @@ teardown() {
 
 @test "autoshutdown: exits with error when minecraftctl not found" {
     # Don't create minecraftctl mock
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -50,8 +70,11 @@ teardown() {
 
 @test "autoshutdown: skips shutdown when SSH sessions exist" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    # Mock 'who' to show SSH session
-    create_mock "who" 0 "paul     pts/0        Dec 18 10:00"
+    mock_processes \
+        "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups" \
+        "sshd-session: paul [priv]" \
+        "sshd-session: paul@pts/0" \
+        "-bash"
 
     run bash "$SCRIPT"
 
@@ -62,7 +85,6 @@ teardown() {
 
 @test "autoshutdown: creates touch file on first zero-player check" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 ""  # No SSH sessions
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -75,7 +97,6 @@ teardown() {
 
 @test "autoshutdown: shuts down on second consecutive zero-player check" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file to simulate first check already happened
@@ -92,7 +113,6 @@ teardown() {
 
 @test "autoshutdown: removes touch file when players are online" {
     create_mock "minecraftctl" 0 "There are 5 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     # Create touch file from previous check
@@ -109,7 +129,6 @@ teardown() {
 
 @test "autoshutdown: handles RCON failure gracefully" {
     create_mock "minecraftctl" 1 ""  # RCON fails
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -121,7 +140,6 @@ teardown() {
 @test "autoshutdown: parses player count correctly from various formats" {
     # Test with different player counts
     create_mock "minecraftctl" 0 "There are 12 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -133,7 +151,7 @@ teardown() {
 
 @test "autoshutdown: removes touch file when SSH session detected" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 "paul     pts/0        Dec 18 10:00"
+    mock_processes "sshd-session: paul@pts/0"
 
     # Create touch file
     touch "${STATE_DIR}/no_one_playing"
@@ -145,8 +163,59 @@ teardown() {
     [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
 
+@test "autoshutdown: logs which SSH sessions kept it up" {
+    mock_processes "sshd-session: paul@pts/0" "sshd-session: ubuntu@pts/1"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "active SSH session(s): paul@pts/0 ubuntu@pts/1"
+    ! assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: skips shutdown for pre-9.8 OpenSSH session titles" {
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    mock_processes "sshd: paul [priv]" "sshd: paul@pts/0"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
+    ! assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: non-interactive SSH sessions don't prevent shutdown" {
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    # The default process list from setup: listener, [priv] and notty only
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: only sshd's own titles count as SSH sessions" {
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    # A pts held by something other than sshd (detached tmux), and a command
+    # line that merely contains the pattern
+    mock_processes \
+        "tmux new -s build" \
+        "grep -E ^sshd(-session)?: [^ ]+@pts/" \
+        "bash -c echo sshd-session: paul@pts/0"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "poweroff"
+}
+
 @test "autoshutdown: shuts down immediately when no minecraft services running" {
-    create_mock "who" 0 ""
     # Create a mock that outputs nothing (not even a newline) to simulate no services
     cat > "${MOCK_BIN}/systemctl" << 'EOF'
 #!/usr/bin/env bash
@@ -162,7 +231,6 @@ EOF
 }
 
 @test "autoshutdown: cleans up touch file when no minecraft services running" {
-    create_mock "who" 0 ""
     # Create a mock that outputs nothing (not even a newline) to simulate no services
     cat > "${MOCK_BIN}/systemctl" << 'EOF'
 #!/usr/bin/env bash
@@ -184,7 +252,6 @@ EOF
 
 @test "autoshutdown: touch file lives in state dir, not on the data volume" {
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -197,7 +264,6 @@ EOF
 @test "autoshutdown: creates state dir if RuntimeDirectory did not" {
     rmdir "${STATE_DIR}"
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -211,7 +277,6 @@ EOF
     # under set -e, and the box never shut down (13 silent failures in one boot).
     chmod 555 "${STATE_DIR}"
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
 
     run bash "$SCRIPT"
@@ -223,7 +288,6 @@ EOF
 }
 
 @test "autoshutdown: unexpected failure is logged with line number" {
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     # minecraftctl exists but the env file sources a failing command
     echo "false" >> "${MINECRAFT_ENV}"
@@ -235,7 +299,6 @@ EOF
 }
 
 @test "autoshutdown: skips shutdown while a world switch holds the lock" {
-    create_mock "who" 0 ""
     create_mock "flock" 1 ""
     # No world running mid-switch: would otherwise power off at once
     cat > "${MOCK_BIN}/systemctl" << 'MOCK'
@@ -255,7 +318,6 @@ MOCK
 }
 
 @test "autoshutdown: carries on when the switch lock is free" {
-    create_mock "who" 0 ""
     create_mock "flock" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
@@ -268,7 +330,6 @@ MOCK
 }
 
 @test "autoshutdown: carries on without the lock file" {
-    create_mock "who" 0 ""
     create_mock "flock" 1 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
@@ -281,7 +342,6 @@ MOCK
 }
 
 @test "autoshutdown: bounds the RCON call with timeout" {
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     create_mock "minecraftctl" 0 "There are 3 of a max of 20 players online"
 
@@ -293,7 +353,6 @@ MOCK
 }
 
 @test "autoshutdown: logs RCON auth failure and counts it as 0 players" {
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     # minecraftctl logs its error to stderr (zerolog console) and exits 1
     cat > "${MOCK_BIN}/minecraftctl" << 'EOF'
@@ -313,7 +372,6 @@ EOF
 }
 
 @test "autoshutdown: logs RCON timeout and counts it as 0 players" {
-    create_mock "who" 0 ""
     create_mock "systemctl" 0 "minecraft@world.service loaded active running"
     create_mock "minecraftctl" 0 "There are 5 of a max of 20 players online"
     create_mock "timeout" 124 ""
