@@ -29,7 +29,7 @@ Outstanding work, roughly in priority order. Details live in the linked plans.
 ## Later
 
 - [x] Per-world timers (`minecraft-world-backup@`, `minecraft-map-backup@`) are enabled by `world register` during cloud-init, after `timers.target` is reached, so on a replaced instance they stay inactive until the next boot (seen on test 2026-10-12). Start them as well as enabling them, or accept that the first boot only gets stop-time backups. The `enableWorldTimers` comment ("they'll start on their schedule") is wrong. Done (WIP): `world register`/`create` now `enable --now` the two backup timers (map-build stays enable-only); needs verifying on test.
-- [ ] **`minecraftctl backup rotate-password`** ([plan](plans/minecraftctl-backup-password-rotation-plan.md)): not urgent.
+- [x] **`minecraftctl backup rotate-password`** ([plan](plans/minecraftctl-backup-password-rotation-plan.md)): not urgent. Done (WIP, 2026-10-12): `backup rotate-password`; needs verifying on test.
 - [ ] **Test gaps** ([test_plan.md](plans/test_plan.md), Phase 4): Cobra command tests, `maps.go` with uNmINeD mocked, RCON integration, UI E2E. Go coverage is 37%; target is 70%.
 - [x] `map` JSON output: `TODO` at `minecraftctl/cmd/minecraftctl/map.go:343`. Done (WIP): `map config get --format json`.
 - [ ] Remove the `rebuild-map.sh` / `build-map-manifests.sh` wrappers: point `minecraft-map-build@.service` and `minecraft-override-rebuild.conf` at `minecraftctl` directly (minecraftctl already supports globs, `--non-blocking` and `--update-index`, so the wrappers add nothing), then drop their bats and shellcheck tests. This is the last item in the [migration plan](plans/minecraftctl-migration-plan.md).

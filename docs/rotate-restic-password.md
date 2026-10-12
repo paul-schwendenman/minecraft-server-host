@@ -12,7 +12,29 @@ the repo first (add a new key, verify, remove the old one), then update Terrafor
 Restic keeps passwords as key slots that all unlock the same master key. Rotating
 adds and removes slots. Nothing is re-encrypted.
 
-## Prerequisites
+## On the server: `minecraftctl backup rotate-password`
+
+With the instance running, the command does the repo and env-file part:
+
+```bash
+ssh <instance>
+sudo minecraftctl backup rotate-password --dry-run   # see the steps
+sudo minecraftctl backup rotate-password             # asks before starting
+```
+
+It adds a key for a new random password, verifies it (`restic key list` +
+`restic check` with the new password), copies `/etc/minecraft.env` to
+`/etc/minecraft.env.bak`, rewrites its `RESTIC_PASSWORD` line, removes the old
+key, and prints the new password once. If verification fails it leaves both keys
+and the env file alone and prints how to remove the new key. Then do
+[Update Terraform](#update-terraform) (tfvars stays manual) and delete
+`/etc/minecraft.env.bak`. The hand edit of `/etc/minecraft.env` in step 4 there
+isn't needed (it's already updated), and step 5 has no file to shred.
+
+The manual steps below are the fallback (e.g. the instance won't start, or you
+want to rotate from a laptop with the instance stopped).
+
+## Manual rotation: prerequisites
 
 - `restic` installed locally (`brew install restic`; the AMI ships 0.18.1)
 - AWS credentials with read/write on the backups bucket

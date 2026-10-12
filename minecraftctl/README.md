@@ -247,6 +247,14 @@ minecraftctl backup prune --dry-run
 
 `backup prune --dry-run` passes `--dry-run` to `restic forget --prune` and skips the integrity check that a real prune runs afterwards.
 
+```bash
+# Replace the restic repository password (as root, on the server)
+sudo minecraftctl backup rotate-password            # asks first; --yes to skip
+sudo minecraftctl backup rotate-password --dry-run  # print the steps only
+```
+
+`backup rotate-password` generates a password (32 random bytes, unpadded base64url), runs `restic key add` (the password goes through a 0600 temp file, never argv), then verifies with the new password: `restic key list` must mark the new key current and still list the old one, and `restic check` must pass. Only then does it copy `/etc/minecraft.env` (or `--env-file`) to `<env-file>.bak` (0600), rewrite just its `RESTIC_PASSWORD` line (atomically, keeping comments, order, quoting and mode), and `restic key remove` the old key. If verification fails, both keys stay, the env file isn't touched, and it prints how to remove the new key. It prints the new password once: copy it into `infra/<env>/terraform.tfvars` (`restic_password`) and the password manager by hand. Without a terminal it needs `--yes`. The manual runbook is [docs/rotate-restic-password.md](../docs/rotate-restic-password.md).
+
 ### Doctor
 
 ```bash

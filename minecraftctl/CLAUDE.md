@@ -30,7 +30,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `status` | `cmd/minecraftctl/status.go` | Server status like the web UI: running world, version, active players, EC2 public IP |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
-| `backup` | `cmd/minecraftctl/backup.go` | list, create, restore, prune, stats, check (restic-based backups) |
+| `backup` | `cmd/minecraftctl/backup.go` | list, create, restore, prune, stats, check, rotate-password (restic-based backups; rotate-password is in `backup_rotate.go`) |
 | `doctor` | `cmd/minecraftctl/doctor.go` | Read-only health checks (`pkg/doctor`): PASS/WARN/FAIL/SKIP per line; exit 1 on FAIL (or WARN with `--strict`); `--json` |
 
 #### Service Management Commands
@@ -58,6 +58,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `backup prune [--dry-run]` - Remove old snapshots per retention policy (`--dry-run` passes through to `restic forget --prune --dry-run` and skips the check)
 - `backup stats` - Show repository statistics
 - `backup check` - Verify repository integrity
+- `backup rotate-password [--yes] [--dry-run]` - Replace the repo password (`pkg/backup/rotate.go`): key add → verify with the new password (key list + check) → `.bak` + rewrite `RESTIC_PASSWORD` (`envfile.SetKey`) → key remove old. Root only; old key is never removed unless the new one verified
 
 ### Packages
 
@@ -71,7 +72,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 | `pkg/config` | Global config via Viper |
 | `pkg/nbt` | NBT level.dat reader |
 | `pkg/systemd` | Systemctl/journalctl wrapper functions |
-| `pkg/backup` | Restic backup management (list, create, restore, prune) |
+| `pkg/backup` | Restic backup management (list, create, restore, prune, key rotation) |
 | `pkg/doctor` | `doctor` checks; everything external goes through an injectable `Env` |
 
 ## Key Concepts
