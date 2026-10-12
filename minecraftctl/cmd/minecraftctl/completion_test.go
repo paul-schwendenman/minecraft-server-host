@@ -147,3 +147,23 @@ func TestJarVersionCompletion(t *testing.T) {
 		t.Errorf("jar info completions = %v, want [1.20.4 1.21.1]", got)
 	}
 }
+
+func TestMapCleanCompletion(t *testing.T) {
+	setupCompletionTestConfig(t)
+	createTestWorld(t, config.Get().WorldsDir, "gamma", true)
+
+	got, _ := mapCleanCmd.ValidArgsFunction(mapCleanCmd, nil, "")
+	if !slices.Contains(got, "gamma") {
+		t.Errorf("map clean first-arg completions = %v, missing gamma", got)
+	}
+
+	got, directive := mapCleanCmd.ValidArgsFunction(mapCleanCmd, []string{"gamma"}, "")
+	if !slices.Equal(got, []string{"overworld"}) || directive&cobra.ShellCompDirectiveNoFileComp == 0 {
+		t.Errorf("map clean map completions = %v (directive %d), want [overworld] without files", got, directive)
+	}
+
+	got, _ = mapCleanCmd.ValidArgsFunction(mapCleanCmd, []string{"gamma", "overworld"}, "")
+	if len(got) != 0 {
+		t.Errorf("map clean third-arg completions = %v, want none", got)
+	}
+}

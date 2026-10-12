@@ -19,6 +19,15 @@ const (
 	DefaultUnminedPath = "/opt/unmined/unmined-cli"
 )
 
+// runUnmined runs uNmINeD with args, streaming its output. A var so tests can
+// stand in for the binary.
+var runUnmined = func(unminedPath string, args []string) error {
+	cmd := exec.Command(unminedPath, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
 // Builder handles building maps using uNmINeD
 type Builder struct {
 	unminedPath string
@@ -151,7 +160,9 @@ func (b *Builder) buildMap(
 	// file, and an incremental render only redraws changed regions. So when a
 	// map is rendered in a new format, re-render all of it, or the unchanged
 	// regions show as holes.
+	formatChanged := false
 	if prev := renderedImageFormat(mapOutput); prev != "" && !strings.EqualFold(prev, defaults.ImageFormat) {
+		formatChanged = true
 		log.Info().Str("map", mapDef.Name).Str("from", prev).Str("to", defaults.ImageFormat).
 			Msg("image format changed, re-rendering the whole map")
 		opts.Force = true
@@ -199,6 +210,7 @@ func (b *Builder) buildMap(
 	//
 	// Track max zoomin across all ranges so we can patch the properties file
 	maxZoomin := zoomin
+	rangeFailed := false
 	for _, r := range mapDef.Ranges {
 		rangeZoomin := zoomin
 		if r.Zoomin != nil {
@@ -209,6 +221,7 @@ func (b *Builder) buildMap(
 		}
 		if err := b.buildRange(r, mapDef, defaults, worldDir, mapOutput, zoomout, zoomin, opts.LogLevel, opts.Force); err != nil {
 			log.Error().Err(err).Str("range", r.Name).Msg("failed to build range")
+			rangeFailed = true
 			continue
 		}
 	}
@@ -217,10 +230,7 @@ func (b *Builder) buildMap(
 		Strs("args", baseArgs).Msg("rendering base map")
 
 	// Build base map LAST so it sets the correct full-world bounds
-	cmd := exec.Command(b.unminedPath, baseArgs...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := runUnmined(b.unminedPath, baseArgs); err != nil {
 		return fmt.Errorf("failed to render base map: %w", err)
 	}
 
@@ -232,7 +242,37 @@ func (b *Builder) buildMap(
 	}
 
 	// Update manifest
-	return b.updateManifest(mapOutput, opts.WorldName, mapDef.Name, mapDef.Dimension)
+	if err := b.updateManifest(mapOutput, opts.WorldName, mapDef.Name, mapDef.Dimension); err != nil {
+		return err
+	}
+
+	if formatChanged {
+		b.removeOldFormatTiles(mapDef.Name, mapOutput, defaults.ImageFormat, rangeFailed)
+	}
+	return nil
+}
+
+// removeOldFormatTiles deletes the tiles left over from the previous image
+// format once a map has been fully re-rendered in the new one. If a range
+// failed, or the properties file doesn't name the new format, the old tiles
+// are kept: the render is incomplete and `map clean` can tidy up later.
+func (b *Builder) removeOldFormatTiles(mapName, mapOutput, format string, rangeFailed bool) {
+	if rangeFailed {
+		log.Warn().Str("map", mapName).Msg("a range failed to render, keeping old-format tiles")
+		return
+	}
+	if got := renderedImageFormat(mapOutput); !strings.EqualFold(got, format) {
+		log.Warn().Str("map", mapName).Str("rendered", got).Str("want", format).
+			Msg("properties file doesn't show the new format, keeping old-format tiles")
+		return
+	}
+	files, bytes, err := removeStaleTiles(mapOutput, format, false)
+	if err != nil {
+		log.Error().Err(err).Str("map", mapName).Msg("failed to remove old-format tiles")
+		return
+	}
+	log.Info().Str("map", mapName).Int("files", files).Int64("bytes", bytes).
+		Msg("removed old-format tiles")
 }
 
 func (b *Builder) buildRange(
@@ -284,10 +324,7 @@ func (b *Builder) buildRange(
 
 	log.Info().Str("range", r.Name).Strs("args", args).Msg("rendering range")
 
-	cmd := exec.Command(b.unminedPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return runUnmined(b.unminedPath, args)
 }
 
 // regionSize is the width of a Minecraft region in blocks. uNmINeD tiles are

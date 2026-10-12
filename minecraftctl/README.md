@@ -177,6 +177,19 @@ minecraftctl map build disable <world-name>
 
 The map build timer runs while its world runs (it requires `minecraft@<world>.service`). `enable` only starts it right away if that world is already running, so enabling it for another world never starts a second server.
 
+Changing `imageformat` re-renders the whole map, and once that full render succeeds the tiles in the old format are deleted. To tidy up by hand:
+
+```bash
+# Show stale tiles (not in the map's rendered format) and map dirs not in map-config.yml
+minecraftctl map clean <world-name> --dry-run
+
+# Remove them (one map only: stale tiles, no orphan dirs)
+minecraftctl map clean <world-name>
+minecraftctl map clean <world-name> overworld
+```
+
+The next map backup (`aws s3 sync --delete`) removes them from S3 too.
+
 ### Server Status
 
 ```bash

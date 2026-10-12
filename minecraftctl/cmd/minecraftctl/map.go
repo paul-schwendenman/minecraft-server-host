@@ -193,6 +193,76 @@ var mapManifestCmd = &cobra.Command{
 	},
 }
 
+// worldThenMapCompletionFunc completes a world, then a map from that world's
+// map-config.yml
+func worldThenMapCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	switch len(args) {
+	case 0:
+		return worldCompletionFunc(cmd, args, toComplete)
+	case 1:
+		mapConfig, err := config.LoadMapConfig(filepath.Join(config.Get().WorldsDir, args[0]))
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		names := make([]string, 0, len(mapConfig.Maps))
+		for _, m := range mapConfig.Maps {
+			names = append(names, m.Name)
+		}
+		return names, cobra.ShellCompDirectiveNoFileComp
+	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+var mapCleanCmd = &cobra.Command{
+	Use:   "clean <world> [map]",
+	Short: "Remove stale map tiles and map directories",
+	Long: `Removes tiles in an image format a map no longer uses (it keeps the format
+named in the map's unmined.map.properties.js; maps whose format is unknown are
+skipped). Without a map argument, also removes directories under the world's
+maps dir that no map in map-config.yml renders to (skipped, with a note, when
+a map's output_subdir is the maps dir itself or outside it).
+
+Takes the map build lock, so it fails while a map build is running.
+
+The next map backup (aws s3 sync --delete) removes them from S3 too.`,
+	Args:              cobra.RangeArgs(1, 2),
+	ValidArgsFunction: worldThenMapCompletionFunc,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		opts := maps.CleanOptions{WorldName: args[0], DryRun: dryRun}
+		if len(args) > 1 {
+			opts.MapName = args[1]
+		}
+		result, err := maps.NewBuilder().Clean(opts)
+		if result != nil {
+			printCleanResult(cmd, result, dryRun)
+		}
+		return err
+	},
+}
+
+func printCleanResult(cmd *cobra.Command, r *maps.CleanResult, dryRun bool) {
+	out := cmd.OutOrStdout()
+	verb := "removed"
+	if dryRun {
+		verb = "would remove"
+	}
+	for _, m := range r.Maps {
+		if m.Skipped != "" {
+			fmt.Fprintf(out, "%s: skipped, %s\n", m.Map, m.Skipped)
+			continue
+		}
+		fmt.Fprintf(out, "%s (%s): %s %d stale tiles, %s\n", m.Map, m.Format, verb, m.Files, formatSize(m.Bytes))
+	}
+	for _, o := range r.Orphans {
+		fmt.Fprintf(out, "%s/: not in map-config.yml, %s (%d files, %s)\n", filepath.Base(o.Dir), verb, o.Files, formatSize(o.Bytes))
+	}
+	if r.OrphansSkipped != "" {
+		fmt.Fprintf(out, "Not checking for map directories missing from map-config.yml: %s\n", r.OrphansSkipped)
+	}
+	fmt.Fprintf(out, "Total: %s %d files, %s\n", verb, r.TotalFiles(), formatSize(r.TotalBytes()))
+}
+
 var mapIndexCmd = &cobra.Command{
 	Use:               "index",
 	Short:             "Generate aggregate manifest and HTML index page",
@@ -747,6 +817,8 @@ func init() {
 
 	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
+	mapCleanCmd.Flags().Bool("dry-run", false, "List what would be removed without removing it")
+
 	// Map build command with subcommands
 	MapCmd.AddCommand(mapBuildCmd)
 	mapBuildCmd.AddCommand(mapBuildNowCmd)
@@ -760,6 +832,7 @@ func init() {
 	MapCmd.AddCommand(mapPreviewCmd)
 	MapCmd.AddCommand(mapManifestCmd)
 	MapCmd.AddCommand(mapIndexCmd)
+	MapCmd.AddCommand(mapCleanCmd)
 
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)

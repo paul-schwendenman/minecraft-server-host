@@ -26,7 +26,7 @@ Uses [Cobra](https://github.com/spf13/cobra) for commands. Entry point: `cmd/min
 | Command | File | Description |
 |---------|------|-------------|
 | `world` | `cmd/minecraftctl/world.go`, `world_switch.go` | list, info, create, register, upgrade, switch, status, start, stop, restart, enable, disable, logs, backup |
-| `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, config, backup |
+| `map` | `cmd/minecraftctl/map.go` | build (now, status, start, stop, enable, disable, logs), preview, manifest, index, clean, config, backup |
 | `jar` | `cmd/minecraftctl/jar.go` | list, download, verify, info |
 | `status` | `cmd/minecraftctl/status.go` | Server status like the web UI: running world, version, active players, EC2 public IP |
 | `rcon` | `cmd/minecraftctl/rcon.go` | status, send, exec |
@@ -46,6 +46,7 @@ The CLI includes systemd service management commands for controlling Minecraft s
 - `map config cat|show <world>` - Print the raw `map-config.yml` (`config get` prints the parsed config with defaults applied)
 - `map build now <world>` - Build maps immediately
 - `map build status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-build@<world>`
+- `map clean <world> [map] [--dry-run]` - Remove tiles not in each map's rendered format, plus map dirs not in `map-config.yml` (`pkg/maps/clean.go`). `build` does the tile part itself after a successful full render on an `imageformat` change
 - `map backup status|start|stop|enable|disable|logs <world>` - Control `minecraft-map-backup@<world>`
 
 **Backup commands (restic-based):**
