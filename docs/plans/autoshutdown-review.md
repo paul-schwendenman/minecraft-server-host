@@ -132,8 +132,9 @@ Planned layers, cheapest first:
    - `StartLimitIntervalSec=10min` / `StartLimitBurst=5`. With `RestartSec=20`,
      a world that crashes more than about 2 minutes after each start never
      reaches the limit; layer 1 would cover that.
-   - `minecraft-stop-gate` wraps `ExecStopPost`. Backups run after a clean
-     stop, or after a failure if the server ran 5+ minutes. Map builds run
+   - `stop-gate` (`/usr/local/libexec/minecraft/stop-gate`) wraps
+     `ExecStopPost`. Backups run after a clean stop, or after a failure if the
+     server ran 5+ minutes. Map builds run
      only after a clean stop, though that drop-in isn't installed.
 4. **Optional off-box stop.** EventBridge schedule plus Lambda that stops
    instances running longer than X hours. The only layer that survives a hung

@@ -326,29 +326,6 @@ func TestSaveMapConfig(t *testing.T) {
 	})
 }
 
-func TestCapitalizeFieldName(t *testing.T) {
-	tests := []struct {
-		input string
-		want  string
-	}{
-		{"name", "Name"},
-		{"zoomout", "Zoomout"},
-		{"imageFormat", "ImageFormat"},
-		{"", ""},
-		{"A", "A"},
-		{"abc", "Abc"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			got := capitalizeFieldName(tt.input)
-			if got != tt.want {
-				t.Errorf("capitalizeFieldName(%q) = %q, want %q", tt.input, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestGetConfigField(t *testing.T) {
 	zoomout := 4
 	topY := 64
@@ -389,9 +366,10 @@ func TestGetConfigField(t *testing.T) {
 		{"invalid field", "invalid", nil, true},
 		{"invalid array index", "maps[99]", nil, true},
 		{"invalid nested", "defaults.invalid", nil, true},
-		// Note: camelCase fields like "imageFormat" or "topY" don't work with
-		// capitalizeFieldName since it only capitalizes the first letter.
-		// "imageformat" -> "Imageformat" but struct has "ImageFormat"
+		{"yaml key imageformat", "defaults.imageformat", "jpeg", false},
+		{"yaml key topY", "maps[0].options.topY", 64, false},
+		{"yaml key output_subdir", "maps[0].output_subdir", "", false},
+		{"go field name, any case", "defaults.ImageFormat", "jpeg", false},
 	}
 
 	for _, tt := range tests {
@@ -426,6 +404,18 @@ func TestSetConfigField(t *testing.T) {
 		}
 		if mapConfig.Defaults.Zoomout != 5 {
 			t.Errorf("Zoomout = %d, want 5", mapConfig.Defaults.Zoomout)
+		}
+	})
+
+	t.Run("set defaults.imageformat by yaml key", func(t *testing.T) {
+		mapConfig := &MapConfig{
+			Defaults: MapDefaults{ImageFormat: "jpeg"},
+		}
+		if err := SetConfigField("defaults.imageformat", "webp", mapConfig); err != nil {
+			t.Fatalf("SetConfigField failed: %v", err)
+		}
+		if mapConfig.Defaults.ImageFormat != "webp" {
+			t.Errorf("ImageFormat = %q, want webp", mapConfig.Defaults.ImageFormat)
 		}
 	})
 

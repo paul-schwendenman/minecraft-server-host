@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -28,14 +31,24 @@ var (
 	mapLogsNoPager bool
 )
 
-// mapWorldCompletionFunc provides tab completion for world names in map commands
+// mapWorldCompletionFunc provides tab completion for commands that take one
+// or more worlds (or glob patterns), offering worlds not already given
 func mapWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	// For commands that accept multiple worlds, always complete world names
 	names, err := worlds.GetWorldNames()
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveError
 	}
-	return names, cobra.ShellCompDirectiveNoFileComp
+	given := make(map[string]bool, len(args))
+	for _, a := range args {
+		given[a] = true
+	}
+	remaining := make([]string, 0, len(names))
+	for _, n := range names {
+		if !given[n] {
+			remaining = append(remaining, n)
+		}
+	}
+	return remaining, cobra.ShellCompDirectiveNoFileComp
 }
 
 // MapCmd is an alias for the command defined in internal/commands
@@ -48,13 +61,27 @@ var mapBuildCmd = &cobra.Command{
 }
 
 var mapBuildNowCmd = &cobra.Command{
-	Use:               "now <world> [worlds...]",
-	Short:             "Build maps for one or more worlds immediately",
+	Use:   "now <world> [worlds...]",
+	Short: "Build maps for one or more worlds immediately",
+	Long: `Build maps for one or more worlds immediately.
+
+For each map:
+  - imageformat changed (or never rendered): render the whole map
+  - world changed since the last render, or --force: render the whole map
+  - otherwise: render only ranges that are new or changed in map-config.yml
+    (hashes kept in the map's manifest.json), skipping the base map
+
+--ranges-only re-renders every range and skips the base map. It fails before
+rendering anything if a map's imageformat changed.
+
+--dry-run prints what each map would do and why, without rendering anything
+or taking the build lock.`,
 	Args:              cobra.MinimumNArgs(1),
 	ValidArgsFunction: mapWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		mapName, _ := cmd.Flags().GetString("map")
 		force, _ := cmd.Flags().GetBool("force")
+		rangesOnly, _ := cmd.Flags().GetBool("ranges-only")
 		lockFile, _ := cmd.Flags().GetString("lock-file")
 		lockTimeout, _ := cmd.Flags().GetDuration("lock-timeout")
 		noLock, _ := cmd.Flags().GetBool("no-lock")
@@ -62,6 +89,7 @@ var mapBuildNowCmd = &cobra.Command{
 		parallel, _ := cmd.Flags().GetBool("parallel")
 		maxWorkers, _ := cmd.Flags().GetInt("max-workers")
 		logLevel, _ := cmd.Flags().GetString("log-level")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
 
 		// Expand all patterns to world names
 		worldNames := make([]string, 0)
@@ -77,6 +105,14 @@ var mapBuildNowCmd = &cobra.Command{
 			return fmt.Errorf("no worlds found matching patterns")
 		}
 
+		if dryRun {
+			return printBuildPlans(cmd.OutOrStdout(), worldNames, maps.BuildOptions{
+				MapName:    mapName,
+				Force:      force,
+				RangesOnly: rangesOnly,
+			})
+		}
+
 		if len(worldNames) == 1 && !parallel {
 			// Single world, process directly
 			builder := maps.NewBuilder()
@@ -84,6 +120,7 @@ var mapBuildNowCmd = &cobra.Command{
 				WorldName:   worldNames[0],
 				MapName:     mapName,
 				Force:       force,
+				RangesOnly:  rangesOnly,
 				LockFile:    lockFile,
 				LockTimeout: lockTimeout,
 				NoLock:      noLock,
@@ -97,6 +134,7 @@ var mapBuildNowCmd = &cobra.Command{
 		return buildBatch(worldNames, maps.BuildOptions{
 			MapName:     mapName,
 			Force:       force,
+			RangesOnly:  rangesOnly,
 			LockFile:    lockFile,
 			LockTimeout: lockTimeout,
 			NoLock:      noLock,
@@ -182,11 +220,82 @@ var mapManifestCmd = &cobra.Command{
 	},
 }
 
+// worldThenMapCompletionFunc completes a world, then a map from that world's
+// map-config.yml
+func worldThenMapCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	switch len(args) {
+	case 0:
+		return worldCompletionFunc(cmd, args, toComplete)
+	case 1:
+		mapConfig, err := config.LoadMapConfig(filepath.Join(config.Get().WorldsDir, args[0]))
+		if err != nil {
+			return nil, cobra.ShellCompDirectiveNoFileComp
+		}
+		names := make([]string, 0, len(mapConfig.Maps))
+		for _, m := range mapConfig.Maps {
+			names = append(names, m.Name)
+		}
+		return names, cobra.ShellCompDirectiveNoFileComp
+	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
+var mapCleanCmd = &cobra.Command{
+	Use:   "clean <world> [map]",
+	Short: "Remove stale map tiles and map directories",
+	Long: `Removes tiles in an image format a map no longer uses (it keeps the format
+named in the map's unmined.map.properties.js; maps whose format is unknown are
+skipped). Without a map argument, also removes directories under the world's
+maps dir that no map in map-config.yml renders to (skipped, with a note, when
+a map's output_subdir is the maps dir itself or outside it).
+
+Takes the map build lock, so it fails while a map build is running.
+
+The next map backup (aws s3 sync --delete) removes them from S3 too.`,
+	Args:              cobra.RangeArgs(1, 2),
+	ValidArgsFunction: worldThenMapCompletionFunc,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		opts := maps.CleanOptions{WorldName: args[0], DryRun: dryRun}
+		if len(args) > 1 {
+			opts.MapName = args[1]
+		}
+		result, err := maps.NewBuilder().Clean(opts)
+		if result != nil {
+			printCleanResult(cmd, result, dryRun)
+		}
+		return err
+	},
+}
+
+func printCleanResult(cmd *cobra.Command, r *maps.CleanResult, dryRun bool) {
+	out := cmd.OutOrStdout()
+	verb := "removed"
+	if dryRun {
+		verb = "would remove"
+	}
+	for _, m := range r.Maps {
+		if m.Skipped != "" {
+			fmt.Fprintf(out, "%s: skipped, %s\n", m.Map, m.Skipped)
+			continue
+		}
+		fmt.Fprintf(out, "%s (%s): %s %d stale tiles, %s\n", m.Map, m.Format, verb, m.Files, formatSize(m.Bytes))
+	}
+	for _, o := range r.Orphans {
+		fmt.Fprintf(out, "%s/: not in map-config.yml, %s (%d files, %s)\n", filepath.Base(o.Dir), verb, o.Files, formatSize(o.Bytes))
+	}
+	if r.OrphansSkipped != "" {
+		fmt.Fprintf(out, "Not checking for map directories missing from map-config.yml: %s\n", r.OrphansSkipped)
+	}
+	fmt.Fprintf(out, "Total: %s %d files, %s\n", verb, r.TotalFiles(), formatSize(r.TotalBytes()))
+}
+
 var mapIndexCmd = &cobra.Command{
-	Use:   "index",
-	Short: "Generate aggregate manifest and HTML index page",
-	Long:  "Generates world_manifest.json and index.html in the maps directory",
-	Args:  cobra.NoArgs,
+	Use:               "index",
+	Short:             "Generate aggregate manifest and HTML index page",
+	Long:              "Generates world_manifest.json and index.html in the maps directory",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		builder := maps.NewManifestBuilder()
 		return builder.BuildAggregateIndex()
@@ -337,24 +446,44 @@ var mapConfigGetCmd = &cobra.Command{
 			return fmt.Errorf("failed to get field: %w", err)
 		}
 
-		// Output based on format
-		switch format {
-		case "json":
-			// TODO: implement JSON output
-			// For now, just output YAML
-			fallthrough
-		case "yaml", "":
-			data, err := yaml.Marshal(value)
-			if err != nil {
-				return fmt.Errorf("failed to marshal value: %w", err)
-			}
-			fmt.Print(string(data))
-		default:
-			return fmt.Errorf("unsupported format: %s (supported: yaml, json)", format)
+		data, err := marshalConfigValue(value, format)
+		if err != nil {
+			return err
 		}
+		fmt.Print(string(data))
 
 		return nil
 	},
+}
+
+// marshalConfigValue renders a map config value as YAML or JSON. The config
+// structs only carry yaml tags, so JSON goes through a YAML round trip to keep
+// the same key names and omitempty behaviour as the YAML output.
+func marshalConfigValue(value interface{}, format string) ([]byte, error) {
+	switch format {
+	case "yaml", "":
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		return data, nil
+	case "json":
+		data, err := yaml.Marshal(value)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		var generic interface{}
+		if err := yaml.Unmarshal(data, &generic); err != nil {
+			return nil, fmt.Errorf("failed to convert value: %w", err)
+		}
+		out, err := json.MarshalIndent(generic, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal value: %w", err)
+		}
+		return append(out, '\n'), nil
+	default:
+		return nil, fmt.Errorf("unsupported format: %s (supported: yaml, json)", format)
+	}
 }
 
 var mapConfigCatCmd = &cobra.Command{
@@ -692,12 +821,14 @@ func init() {
 	// Flags for map build now command
 	mapBuildNowCmd.Flags().String("map", "", "Build only a specific map (by name)")
 	mapBuildNowCmd.Flags().Bool("force", false, "Force rebuild even if map is up to date")
+	mapBuildNowCmd.Flags().Bool("ranges-only", false, "Re-render every range and skip the base map (fails if imageformat changed)")
 	mapBuildNowCmd.Flags().String("lock-file", "", "Path to lock file (default: from config)")
 	mapBuildNowCmd.Flags().Duration("lock-timeout", 0, "Maximum time to wait for lock (0 = block forever)")
 	mapBuildNowCmd.Flags().Bool("no-lock", false, "Disable file locking")
 	mapBuildNowCmd.Flags().Bool("non-blocking", false, "Exit immediately if lock is held")
 	mapBuildNowCmd.Flags().Bool("parallel", false, "Process multiple worlds in parallel")
 	mapBuildNowCmd.Flags().Int("max-workers", runtime.NumCPU(), "Maximum number of parallel workers")
+	mapBuildNowCmd.Flags().Bool("dry-run", false, "Print what would render and why, without rendering")
 	mapBuildNowCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
 
 	mapPreviewCmd.Flags().String("log-level", "warning", "uNmINeD log level (verbose, debug, information, warning, error, fatal)")
@@ -715,6 +846,8 @@ func init() {
 
 	mapConfigGetCmd.Flags().String("format", "yaml", "Output format (yaml, json)")
 
+	mapCleanCmd.Flags().Bool("dry-run", false, "List what would be removed without removing it")
+
 	// Map build command with subcommands
 	MapCmd.AddCommand(mapBuildCmd)
 	mapBuildCmd.AddCommand(mapBuildNowCmd)
@@ -728,6 +861,7 @@ func init() {
 	MapCmd.AddCommand(mapPreviewCmd)
 	MapCmd.AddCommand(mapManifestCmd)
 	MapCmd.AddCommand(mapIndexCmd)
+	MapCmd.AddCommand(mapCleanCmd)
 
 	mapConfigCmd.AddCommand(mapConfigGenerateCmd)
 	mapConfigCmd.AddCommand(mapConfigGetCmd)
@@ -1093,6 +1227,40 @@ func runWorldBatch(worldNames []string, parallel bool, maxWorkers int, failureMs
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// printBuildPlans prints, for each world and map, what a build with opts
+// would do and why. Worlds that can't be planned are reported and the rest
+// still printed; the error names them.
+func printBuildPlans(w io.Writer, worldNames []string, baseOpts maps.BuildOptions) error {
+	var failed []string
+	for _, worldName := range worldNames {
+		opts := baseOpts
+		opts.WorldName = worldName
+		plans, err := maps.NewBuilder().Plan(opts)
+		fmt.Fprintf(w, "%s:\n", worldName)
+		if len(plans) == 0 && err == nil {
+			fmt.Fprintln(w, "  no maps to build")
+		}
+		for _, p := range plans {
+			line := fmt.Sprintf("  %s: %s (%s)", p.Map, p.Action, p.Reason)
+			if p.Action != maps.ActionSkip && len(p.Ranges) > 0 {
+				line += "; ranges: " + strings.Join(p.Ranges, ", ")
+			}
+			if p.Action == maps.ActionFull {
+				line += "; then the base map"
+			}
+			fmt.Fprintln(w, line)
+		}
+		if err != nil {
+			fmt.Fprintf(w, "  error: %v\n", err)
+			failed = append(failed, worldName)
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("can't plan a build for: %s", strings.Join(failed, ", "))
 	}
 	return nil
 }

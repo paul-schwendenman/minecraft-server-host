@@ -22,6 +22,7 @@ func init() {
 	rootCmd.AddCommand(BackupCmd)
 	rootCmd.AddCommand(jarCmd)
 	rootCmd.AddCommand(StatusCmd)
+	rootCmd.AddCommand(DoctorCmd)
 }
 
 func main() {

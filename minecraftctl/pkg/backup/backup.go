@@ -2,6 +2,7 @@
 package backup
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -176,7 +177,8 @@ func ownedBy(path string, uid int) bool {
 	return ok && int(st.Uid) == uid
 }
 
-func run(cmd *exec.Cmd) error {
+// run runs cmd attached to the terminal. A var so tests can record commands.
+var run = func(cmd *exec.Cmd) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -356,16 +358,30 @@ func RemapOwners(root, skip string, from []uint32, uid, gid uint32) error {
 	})
 }
 
-// Prune removes old snapshots according to retention policy
-func (c *Config) Prune() error {
-	fmt.Println("Pruning old snapshots...")
-	err := c.runRestic("forget",
+// pruneArgs are the restic arguments for Prune
+func pruneArgs(dryRun bool) []string {
+	args := []string{"forget",
 		"--keep-daily", "7",
 		"--keep-weekly", "4",
 		"--keep-monthly", "3",
 		"--prune",
-	)
-	if err != nil {
+	}
+	if dryRun {
+		args = append(args, "--dry-run")
+	}
+	return args
+}
+
+// Prune removes old snapshots according to retention policy, then checks
+// the repository. With dryRun, restic only lists what it would remove, and
+// the check is skipped.
+func (c *Config) Prune(dryRun bool) error {
+	if dryRun {
+		fmt.Println("Pruning old snapshots (dry run, nothing is removed)...")
+		return c.runRestic(pruneArgs(true)...)
+	}
+	fmt.Println("Pruning old snapshots...")
+	if err := c.runRestic(pruneArgs(false)...); err != nil {
 		return err
 	}
 
@@ -376,6 +392,42 @@ func (c *Config) Prune() error {
 
 	fmt.Println("\nRepository statistics:")
 	return c.runRestic("stats")
+}
+
+// Ping checks the repository can be opened, by reading its config, giving up
+// after timeout. It doesn't wait for locks.
+func (c *Config) Ping(timeout time.Duration) error {
+	probe := *c
+	probe.RetryLock = ""
+	cmd := probe.command(probe.RunAs, "cat", "config")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	// Don't wait on a child of restic that keeps the output pipe open
+	cmd.WaitDelay = time.Second
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			msg := strings.TrimSpace(out.String())
+			if i := strings.LastIndex(msg, "\n"); i >= 0 {
+				msg = msg[i+1:]
+			}
+			if msg != "" {
+				return fmt.Errorf("%w: %s", err, msg)
+			}
+			return err
+		}
+		return nil
+	case <-time.After(timeout):
+		_ = cmd.Process.Kill()
+		<-done
+		return fmt.Errorf("timed out after %s", timeout)
+	}
 }
 
 // Stats shows repository statistics

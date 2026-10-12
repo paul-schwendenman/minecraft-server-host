@@ -1,6 +1,11 @@
 # TODO: `minecraftctl backup rotate-password`
 
-Status: **not started** — filed as a future enhancement, not urgent.
+Status: **implemented (WIP, 2026-10-12), needs verifying on test** —
+`minecraftctl backup rotate-password` (`cmd/minecraftctl/backup_rotate.go`,
+`pkg/backup/rotate.go`, `envfile.SetKey`). One change from the order below:
+the env file is rewritten after verification but *before* the old key is
+removed, so it always holds a working password (a failed `key remove`
+leaves two working keys, and a timer backup in between still works).
 
 ## Motivation
 

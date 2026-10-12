@@ -47,27 +47,7 @@ func newRootCmd() *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true, // main reports errors once
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// Set up logging level
-			if verbose {
-				zerolog.SetGlobalLevel(zerolog.DebugLevel)
-			} else {
-				zerolog.SetGlobalLevel(zerolog.InfoLevel)
-			}
-
-			// Initialize config (also loads /etc/minecraft.env if present)
-			if err := config.InitWithEnvFile(cfgFile, envFile); err != nil {
-				return fmt.Errorf("failed to initialize config: %w", err)
-			}
-
-			// Bind flags to viper
-			viper.BindPFlag("worlds_dir", cmd.Flags().Lookup("worlds-dir"))
-			viper.BindPFlag("maps_dir", cmd.Flags().Lookup("maps-dir"))
-			viper.BindPFlag("jars_dir", cmd.Flags().Lookup("jars-dir"))
-			viper.BindPFlag("rcon.host", cmd.Flags().Lookup("rcon-host"))
-			viper.BindPFlag("rcon.port", cmd.Flags().Lookup("rcon-port"))
-			viper.BindPFlag("rcon.password", cmd.Flags().Lookup("rcon-password"))
-
-			return nil
+			return InitConfig(cmd)
 		},
 		Version: version.Version,
 	}
@@ -98,4 +78,33 @@ func newRootCmd() *cobra.Command {
 	// Note: Subcommands are added in their respective files via init()
 
 	return cmd
+}
+
+// InitConfig sets the log level, loads the config (and /etc/minecraft.env)
+// and binds the global flags. Every command runs it before it starts; a
+// command with its own PersistentPreRunE (doctor) calls it itself.
+func InitConfig(cmd *cobra.Command) error {
+	// Set up logging level
+	if verbose {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
+	// Initialize config (also loads /etc/minecraft.env if present)
+	initErr := config.InitWithEnvFile(cfgFile, envFile)
+
+	// Bind flags to viper, even if the config file is broken, so doctor
+	// still sees them
+	viper.BindPFlag("worlds_dir", cmd.Flags().Lookup("worlds-dir"))
+	viper.BindPFlag("maps_dir", cmd.Flags().Lookup("maps-dir"))
+	viper.BindPFlag("jars_dir", cmd.Flags().Lookup("jars-dir"))
+	viper.BindPFlag("rcon.host", cmd.Flags().Lookup("rcon-host"))
+	viper.BindPFlag("rcon.port", cmd.Flags().Lookup("rcon-port"))
+	viper.BindPFlag("rcon.password", cmd.Flags().Lookup("rcon-password"))
+
+	if initErr != nil {
+		return fmt.Errorf("failed to initialize config: %w", initErr)
+	}
+	return nil
 }

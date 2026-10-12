@@ -26,11 +26,20 @@ func backupWorldCompletionFunc(cmd *cobra.Command, args []string, toComplete str
 	return names, cobra.ShellCompDirectiveNoFileComp
 }
 
+// latestSnapshotCompletionFunc offers "latest" for the snapshot argument
+func latestSnapshotCompletionFunc(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) != 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	return []string{"latest"}, cobra.ShellCompDirectiveNoFileComp
+}
+
 var backupListCmd = &cobra.Command{
-	Use:   "list [tag]",
-	Short: "List available backup snapshots",
-	Long:  "List all available backup snapshots. Optionally filter by tag (world name or 'all').",
-	Args:  cobra.MaximumNArgs(1),
+	Use:               "list [tag]",
+	Short:             "List available backup snapshots",
+	Long:              "List all available backup snapshots. Optionally filter by tag (world name or 'all').",
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: backupWorldCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !backup.IsResticInstalled() {
 			return fmt.Errorf("restic is not installed")
@@ -90,6 +99,8 @@ Examples:
   minecraftctl backup restore abc123
   minecraftctl backup restore latest --target /tmp/restore-test`,
 	Args: cobra.ExactArgs(1),
+	// Snapshot IDs would need a restic (network) call, so only offer "latest"
+	ValidArgsFunction: latestSnapshotCompletionFunc,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !backup.IsResticInstalled() {
 			return fmt.Errorf("restic is not installed")
@@ -120,8 +131,12 @@ Retention policy:
   - Keep 4 weekly snapshots
   - Keep 3 monthly snapshots
 
-This command also verifies repository integrity after pruning.`,
-	Args: cobra.NoArgs,
+This command also verifies repository integrity after pruning.
+
+--dry-run passes --dry-run to restic forget, which lists the snapshots it
+would remove; nothing is removed and the integrity check is skipped.`,
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !backup.IsResticInstalled() {
 			return fmt.Errorf("restic is not installed")
@@ -132,15 +147,17 @@ This command also verifies repository integrity after pruning.`,
 			return err
 		}
 
-		return cfg.Prune()
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		return cfg.Prune(dryRun)
 	},
 }
 
 var backupStatsCmd = &cobra.Command{
-	Use:   "stats",
-	Short: "Show backup repository statistics",
-	Long:  "Display statistics about the backup repository including size and deduplication.",
-	Args:  cobra.NoArgs,
+	Use:               "stats",
+	Short:             "Show backup repository statistics",
+	Long:              "Display statistics about the backup repository including size and deduplication.",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !backup.IsResticInstalled() {
 			return fmt.Errorf("restic is not installed")
@@ -156,10 +173,11 @@ var backupStatsCmd = &cobra.Command{
 }
 
 var backupCheckCmd = &cobra.Command{
-	Use:   "check",
-	Short: "Verify backup repository integrity",
-	Long:  "Check the backup repository for errors and verify data integrity.",
-	Args:  cobra.NoArgs,
+	Use:               "check",
+	Short:             "Verify backup repository integrity",
+	Long:              "Check the backup repository for errors and verify data integrity.",
+	Args:              cobra.NoArgs,
+	ValidArgsFunction: cobra.NoFileCompletions,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if !backup.IsResticInstalled() {
 			return fmt.Errorf("restic is not installed")
@@ -183,6 +201,7 @@ func init() {
 	BackupCmd.AddCommand(backupCreateCmd)
 	BackupCmd.AddCommand(backupRestoreCmd)
 	BackupCmd.AddCommand(backupPruneCmd)
+	backupPruneCmd.Flags().Bool("dry-run", false, "List the snapshots that would be removed without removing them")
 	BackupCmd.AddCommand(backupStatsCmd)
 	BackupCmd.AddCommand(backupCheckCmd)
 }

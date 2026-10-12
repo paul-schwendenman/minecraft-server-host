@@ -20,6 +20,6 @@ IOWeight=20
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "say Saving world before map build..."
 ExecStartPre=-/usr/local/bin/minecraftctl rcon send "save-all"
 
-# Always rebuild map and manifests
-ExecStart=/usr/local/bin/rebuild-map.sh /srv/minecraft-server/%i
-ExecStartPost=/usr/local/bin/build-map-manifests.sh /srv/minecraft-server/%i
+# Build the maps, then the world's manifests and the aggregate index
+ExecStart=/usr/local/bin/minecraftctl map build now %i
+ExecStartPost=/usr/local/bin/minecraftctl map manifest %i --update-index

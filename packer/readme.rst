@@ -118,7 +118,7 @@ Systemd Units
   (one world = one unit). A drop-in
   (``minecraft@.service.d/minecraft-world-backup.conf``) takes a restic
   snapshot of the world when it stops, except after a failed start that ran
-  under 5 minutes (see ``minecraft-stop-gate``). That backup is best-effort:
+  under 5 minutes (see ``stop-gate``). That backup is best-effort:
   it waits only ``1m`` for the restic lock (``MC_RESTIC_RETRY_LOCK``), so a
   running prune can't hold up a world switch or poweroff. If it gives up, the
   world's daily timer backup catches up. The drop-in also sets
@@ -136,6 +136,8 @@ Systemd Units
 - **minecraft-map-build@.timer** / **.service**: renders a world's maps 5
   minutes after the world starts, then every 15 minutes while it runs. The
   timer requires the world's ``minecraft@`` unit, so it's enabled per world but never started on its own.
+  The service runs ``minecraftctl map build now <world>`` then
+  ``minecraftctl map manifest <world> --update-index``.
   Each successful build starts ``minecraft-map-backup@`` to upload the maps.
 - **minecraft-map-backup@.timer** / **.service**: uploads a world's rendered
   maps to S3, after each build and twice a day.
@@ -183,12 +185,13 @@ Helper Scripts
   the tag watcher's scripts (see "Which world runs"). Installed in
   ``/usr/local/libexec``, not on the ``PATH``, since only their units run
   them.
-- **rebuild-map.sh**, **build-map-manifests.sh**: wrappers around
-  ``minecraftctl map build`` used by the map-build units.
-- **minecraft-stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``:
-  wraps ``minecraft@`` ``ExecStopPost`` commands. Runs CMD after a clean stop,
-  or after a failure if the main process ran at least SECS; otherwise logs
-  and skips it, so a crash loop doesn't back up on every iteration.
+- **stop-gate** ``--unit UNIT [--min-uptime SECS] -- CMD...``
+  (source ``minecraft-stop-gate.sh``): wraps ``minecraft@`` ``ExecStopPost``
+  commands. Runs CMD after a clean stop, or after a failure if the main
+  process ran at least SECS; otherwise logs and skips it, so a crash loop
+  doesn't back up on every iteration. Installed as
+  ``/usr/local/libexec/minecraft/stop-gate``, not on the ``PATH``, since only
+  the drop-ins run it.
 - **backup-maps.sh**: uploads a world's maps to the S3 map bucket.
 - **autoshutdown.sh**: the idle check behind ``autoshutdown.timer``.
 - **mount-ebs.sh**, **setup-env.sh**, **setup-maps.sh**,

@@ -155,3 +155,145 @@ func TestListUnitsArgs(t *testing.T) {
 		t.Errorf("systemctl args = %q", joined)
 	}
 }
+
+func TestUnitFileState(t *testing.T) {
+	stubSystemctl(t, `echo disabled; exit 1`)
+	got, err := UnitFileState("x.timer")
+	if err != nil || got != "disabled" {
+		t.Errorf("UnitFileState() = %q, %v; want disabled, nil", got, err)
+	}
+
+	stubSystemctl(t, `echo not-found; exit 4`)
+	if got, _ := UnitFileState("x.timer"); got != "not-found" {
+		t.Errorf("UnitFileState() = %q, want not-found", got)
+	}
+
+	stubSystemctl(t, `exit 1`)
+	if _, err := UnitFileState("x.timer"); err == nil {
+		t.Error("UnitFileState() with no output: want error")
+	}
+}
+
+// recordCommands replaces execCommand with a stub that records each
+// invocation ("name arg...") and runs script with the call's args as "$@".
+func recordCommands(t *testing.T, script string) *[]string {
+	t.Helper()
+	orig := execCommand
+	var calls []string
+	execCommand = func(name string, args ...string) *exec.Cmd {
+		calls = append(calls, strings.TrimSpace(name+" "+strings.Join(args, " ")))
+		return exec.Command("sh", append([]string{"-c", script, name}, args...)...)
+	}
+	t.Cleanup(func() { execCommand = orig })
+	return &calls
+}
+
+func TestUnitActions(t *testing.T) {
+	calls := recordCommands(t, "exit 0")
+	actions := []struct {
+		fn   func(string) error
+		want string
+	}{
+		{Status, "systemctl status u.service"},
+		{Start, "systemctl start u.service"},
+		{Stop, "systemctl stop u.service"},
+		{Restart, "systemctl restart u.service"},
+		{Enable, "systemctl enable u.service"},
+		{EnableNow, "systemctl enable --now u.service"},
+		{Disable, "systemctl disable u.service"},
+	}
+	for _, a := range actions {
+		if err := a.fn("u.service"); err != nil {
+			t.Errorf("%s: %v", a.want, err)
+		}
+	}
+	if err := DaemonReload(); err != nil {
+		t.Errorf("DaemonReload: %v", err)
+	}
+	want := make([]string, 0, len(actions)+1)
+	for _, a := range actions {
+		want = append(want, a.want)
+	}
+	want = append(want, "systemctl daemon-reload")
+	if strings.Join(*calls, "\n") != strings.Join(want, "\n") {
+		t.Errorf("calls = %q, want %q", *calls, want)
+	}
+}
+
+func TestIsActiveAndIsEnabled(t *testing.T) {
+	calls := recordCommands(t, "exit 0")
+	if ok, err := IsActive("u.service"); !ok || err != nil {
+		t.Errorf("IsActive() = %v, %v; want true", ok, err)
+	}
+	if ok, err := IsEnabled("u.timer"); !ok || err != nil {
+		t.Errorf("IsEnabled() = %v, %v; want true", ok, err)
+	}
+	want := "systemctl is-active --quiet u.service\nsystemctl is-enabled --quiet u.timer"
+	if got := strings.Join(*calls, "\n"); got != want {
+		t.Errorf("calls = %q, want %q", got, want)
+	}
+
+	// A non-zero exit just means "no"
+	recordCommands(t, "exit 3")
+	if ok, err := IsActive("u.service"); ok || err != nil {
+		t.Errorf("IsActive(inactive) = %v, %v; want false, nil", ok, err)
+	}
+	if ok, err := IsEnabled("u.timer"); ok || err != nil {
+		t.Errorf("IsEnabled(disabled) = %v, %v; want false, nil", ok, err)
+	}
+
+	// systemctl missing altogether is an error
+	orig := execCommand
+	execCommand = func(string, ...string) *exec.Cmd { return exec.Command("/nonexistent/systemctl") }
+	t.Cleanup(func() { execCommand = orig })
+	if _, err := IsActive("u.service"); err == nil {
+		t.Error("IsActive() without systemctl: want error")
+	}
+	if _, err := IsEnabled("u.timer"); err == nil {
+		t.Error("IsEnabled() without systemctl: want error")
+	}
+}
+
+func TestGetActiveState(t *testing.T) {
+	calls := recordCommands(t, `echo failed`)
+	if got := GetActiveState("u.service"); got != "failed" {
+		t.Errorf("GetActiveState() = %q, want failed", got)
+	}
+	if want := "systemctl show -p ActiveState --value u.service"; (*calls)[0] != want {
+		t.Errorf("call = %q, want %q", (*calls)[0], want)
+	}
+
+	recordCommands(t, `exit 1`)
+	if got := GetActiveState("u.service"); got != "unknown" {
+		t.Errorf("GetActiveState() on error = %q, want unknown", got)
+	}
+}
+
+func TestLogsArgs(t *testing.T) {
+	tests := []struct {
+		opts LogOptions
+		want string
+	}{
+		{LogOptions{}, "journalctl -u u.service -n 100"},
+		{LogOptions{Follow: true}, "journalctl -u u.service -f"},
+		{LogOptions{Follow: true, Lines: 5}, "journalctl -u u.service -f -n 5"},
+		{
+			LogOptions{Lines: 20, Since: "1 hour ago", Output: "json", NoPager: true},
+			"journalctl -u u.service -n 20 --since 1 hour ago -o json --no-pager",
+		},
+	}
+	for _, tt := range tests {
+		calls := recordCommands(t, "exit 0")
+		if err := Logs("u.service", tt.opts); err != nil {
+			t.Errorf("Logs(%+v) = %v", tt.opts, err)
+		}
+		if (*calls)[0] != tt.want {
+			t.Errorf("Logs(%+v) ran %q, want %q", tt.opts, (*calls)[0], tt.want)
+		}
+	}
+
+	recordCommands(t, "exit 1")
+	if err := Logs("u.service", LogOptions{}); err == nil {
+		t.Error("Logs() with journalctl failing: want error")
+	}
+}

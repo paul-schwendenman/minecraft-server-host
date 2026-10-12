@@ -50,20 +50,8 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "shellcheck: minecraft/maps/rebuild-map.sh" {
-    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/maps/rebuild-map.sh"
-    echo "$output"
-    [ "$status" -eq 0 ]
-}
-
 @test "shellcheck: minecraft/maps/backup-maps.sh" {
     run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/maps/backup-maps.sh"
-    echo "$output"
-    [ "$status" -eq 0 ]
-}
-
-@test "shellcheck: minecraft/maps/build-map-manifests.sh" {
-    run shellcheck $SHELLCHECK_OPTS "${SCRIPTS_DIR}/minecraft/maps/build-map-manifests.sh"
     echo "$output"
     [ "$status" -eq 0 ]
 }

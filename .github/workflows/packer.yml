@@ -29,7 +29,7 @@ jobs:
         working-directory: packer
         run: |
           echo "Running bats tests..."
-          bats tests/autoshutdown.bats tests/rebuild-map.bats tests/create-world.bats
+          bats tests/autoshutdown.bats tests/create-world.bats
           echo "✅ All bats tests passed"
 
   validate:

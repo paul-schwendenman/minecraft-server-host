@@ -3,7 +3,6 @@ package maps
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -113,10 +112,7 @@ func (b *Builder) GeneratePreview(worldName, mapName, logLevel string) error {
 	// Apply map-specific options (gndxray, topY, bottomY, shadows, etc.)
 	args = b.addMapOptions(args, mapDef.Options)
 
-	cmd := exec.Command(b.unminedPath, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := runUnmined(b.unminedPath, args); err != nil {
 		return fmt.Errorf("failed to render preview: %w", err)
 	}
 

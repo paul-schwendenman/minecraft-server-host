@@ -344,12 +344,23 @@ func SaveMapConfig(path string, mapConfig *MapConfig) error {
 	return nil
 }
 
-// capitalizeFieldName converts a field name from YAML (lowercase) to Go struct field name
-func capitalizeFieldName(name string) string {
-	if len(name) == 0 {
-		return name
+// fieldByPathName finds the struct field a dot-path segment names. It matches
+// the field's yaml key first (so paths read like map-config.yml, e.g.
+// "imageformat", "output_subdir", "topY"), then the Go field name ignoring case.
+func fieldByPathName(current reflect.Value, name string) reflect.Value {
+	t := current.Type()
+	for i := 0; i < t.NumField(); i++ {
+		key := strings.Split(t.Field(i).Tag.Get("yaml"), ",")[0]
+		if key == name {
+			return current.Field(i)
+		}
 	}
-	return strings.ToUpper(name[:1]) + name[1:]
+	for i := 0; i < t.NumField(); i++ {
+		if strings.EqualFold(t.Field(i).Name, name) {
+			return current.Field(i)
+		}
+	}
+	return reflect.Value{}
 }
 
 // resolvePathSegment navigates from current to the field (or slice element,
@@ -373,7 +384,7 @@ func resolvePathSegment(current reflect.Value, part string, pathSoFar string) (r
 		index = parsedIndex
 	}
 
-	field := current.FieldByName(capitalizeFieldName(fieldName))
+	field := fieldByPathName(current, fieldName)
 	if !field.IsValid() {
 		return reflect.Value{}, fmt.Errorf("field not found: %s", fieldName)
 	}
@@ -456,7 +467,7 @@ func SetConfigField(path string, value interface{}, mapConfig *MapConfig) error 
 		return fmt.Errorf("setting entire array elements is not supported")
 	}
 
-	field := current.FieldByName(capitalizeFieldName(lastPart))
+	field := fieldByPathName(current, lastPart)
 	if !field.IsValid() {
 		return fmt.Errorf("field not found: %s", lastPart)
 	}

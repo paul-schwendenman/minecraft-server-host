@@ -339,7 +339,7 @@ done
 ### Migration
 - [x] Deploy to production
 - [x] Monitor for issues
-- [ ] Remove old scripts after successful migration: `rebuild-map.sh` and `build-map-manifests.sh` are now thin wrappers, still called by `minecraft-map-build@.service` and `minecraft-override-rebuild.conf`
+- [x] Remove old scripts after successful migration: `rebuild-map.sh` and `build-map-manifests.sh` are gone; `minecraft-map-build@.service` and `minecraft-override-rebuild.conf` call `minecraftctl map build now` / `map manifest --update-index` directly (unverified until an AMI build)
 
 ## Compatibility Notes
 

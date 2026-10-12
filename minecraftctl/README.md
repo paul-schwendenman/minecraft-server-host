@@ -100,6 +100,9 @@ minecraftctl world create <world-name> --version <version> --no-systemd
 
 # Example: Create a world with version 1.21.1 and seed
 minecraftctl world create vanilla-121 --version 1.21.1 --seed 8675309
+
+# Print the dirs, symlinks, files and timers it would create, creating nothing
+minecraftctl world create vanilla-121 --version 1.21.1 --dry-run
 ```
 
 **Note**: The `world create` command requires:
@@ -116,10 +119,12 @@ minecraftctl world register <world-name>
 
 The `world register` command is used to "reattach" an existing world to a new server instance. This is particularly useful when booting from an existing EBS world volume. It:
 
-- Enables `minecraft-map-build@<world>.timer`
-- Enables `minecraft-world-backup@<world>.timer`
-- Enables `minecraft-map-backup@<world>.timer`
 - Reloads systemd daemon
+- Enables `minecraft-map-build@<world>.timer` (not started: it requires `minecraft@<world>.service`, so it starts with the world)
+- Enables and starts `minecraft-world-backup@<world>.timer`
+- Enables and starts `minecraft-map-backup@<world>.timer`
+
+`world register` runs from cloud-init after `timers.target`, so the backup timers are started as well as enabled; otherwise they'd stay inactive until the next boot. `world create` does the same unless `--no-systemd` is given.
 
 **Note**: The `world register` command does NOT modify any world files (eula.txt, server.properties, map-config.yml, etc.). It only sets up systemd timers for an existing world.
 
@@ -165,6 +170,12 @@ minecraftctl map build now <world-name> --map overworld
 # Force rebuild
 minecraftctl map build now <world-name> --force
 
+# Re-render every range, skip the base map
+minecraftctl map build now <world-name> --ranges-only
+
+# Print what each map would render (full/ranges/skip) and why; renders nothing
+minecraftctl map build now <world-name> --dry-run
+
 # Check status of map build timer/service
 minecraftctl map build status <world-name>
 
@@ -173,7 +184,22 @@ minecraftctl map build enable <world-name>
 minecraftctl map build disable <world-name>
 ```
 
+A build renders the whole map (ranges, then the base map) when the world changed since the last render, `imageformat` changed, or `--force` is given. Otherwise it renders only the ranges that are new or changed in `map-config.yml` and skips the base map: each map's `manifest.json` keeps a hash of every range's render settings (`range_hashes`). Removed ranges keep their tiles. `--ranges-only` re-renders every range regardless, and fails before rendering anything if a map's `imageformat` changed (that needs a full rebuild).
+
 The map build timer runs while its world runs (it requires `minecraft@<world>.service`). `enable` only starts it right away if that world is already running, so enabling it for another world never starts a second server.
+
+Changing `imageformat` re-renders the whole map, and once that full render succeeds the tiles in the old format are deleted. To tidy up by hand:
+
+```bash
+# Show stale tiles (not in the map's rendered format) and map dirs not in map-config.yml
+minecraftctl map clean <world-name> --dry-run
+
+# Remove them (one map only: stale tiles, no orphan dirs)
+minecraftctl map clean <world-name>
+minecraftctl map clean <world-name> overworld
+```
+
+The next map backup (`aws s3 sync --delete`) removes them from S3 too.
 
 ### Server Status
 
@@ -211,6 +237,36 @@ minecraftctl rcon send "say Hello World"
 # Execute commands from file
 minecraftctl rcon exec commands.txt
 ```
+
+### Backups
+
+```bash
+# List the snapshots the retention policy would remove; removes nothing
+minecraftctl backup prune --dry-run
+```
+
+`backup prune --dry-run` passes `--dry-run` to `restic forget --prune` and skips the integrity check that a real prune runs afterwards.
+
+```bash
+# Replace the restic repository password (as root, on the server)
+sudo minecraftctl backup rotate-password            # asks first; --yes to skip
+sudo minecraftctl backup rotate-password --dry-run  # print the steps only
+```
+
+`backup rotate-password` generates a password (32 random bytes, unpadded base64url), runs `restic key add` (the password goes through a 0600 temp file, never argv), then verifies with the new password: `restic key list` must mark the new key current and still list the old one, and `restic check` must pass. Only then does it copy `/etc/minecraft.env` (or `--env-file`) to `<env-file>.bak` (0600), rewrite just its `RESTIC_PASSWORD` line (atomically, keeping comments, order, quoting and mode), and `restic key remove` the old key. If verification fails, both keys stay, the env file isn't touched, and it prints how to remove the new key. It prints the new password once: copy it into `infra/<env>/terraform.tfvars` (`restic_password`) and the password manager by hand. Without a terminal it needs `--yes`. The manual runbook is [docs/rotate-restic-password.md](../docs/rotate-restic-password.md).
+
+### Doctor
+
+```bash
+# Read-only checks: PASS / WARN / FAIL / SKIP per line
+minecraftctl doctor
+
+# Exit 1 on warnings too; or print JSON
+minecraftctl doctor --strict
+minecraftctl doctor --json
+```
+
+Checks: the config loads; the worlds dir exists and is owned by `minecraft` (uid 25565); each world has `world/level.dat`; the AMI's units (`autoshutdown.timer`, `minecraft-active.service`, `minecraft-world-watch.timer`, `minecraft-world-backup.timer`, `minecraft-world-prune.timer`) and each world's timers are enabled, and the backup timers (and the running world's map-build timer) are active; RCON answers if a world is running; restic's settings are present and the repository answers within 30s; the uNmINeD binary is present. Exits 1 on any FAIL, 0 on warnings unless `--strict`. Without systemd (e.g. on a Mac) server-only checks warn or skip instead of failing. Run it as root on the server so restic runs as `minecraft`, like the backups do.
 
 ### JAR Management
 

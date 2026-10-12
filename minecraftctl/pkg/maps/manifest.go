@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
+
+	"github.com/paul/minecraftctl/pkg/config"
 )
 
 // Manifest represents a map manifest.json file
@@ -16,6 +17,10 @@ type Manifest struct {
 	Path              string `json:"path,omitempty"`
 	LastRendered      string `json:"last_rendered"`
 	LastRenderedEpoch int64  `json:"last_rendered_epoch"`
+	// RangeHashes maps each range's name to a hash of its render settings
+	// (see rangeHash), so a build on an unchanged world renders only new or
+	// changed ranges. Only ranges that rendered successfully are listed.
+	RangeHashes map[string]string `json:"range_hashes,omitempty"`
 }
 
 // readManifest reads a manifest.json file
@@ -33,20 +38,16 @@ func readManifest(path string) (*Manifest, error) {
 	return &manifest, nil
 }
 
-// updateManifest updates or creates a manifest.json file
-func (b *Builder) updateManifest(mapOutput, worldName, mapName, dimension string) error {
+// writeBuildManifest writes a map's manifest.json after a build. m carries
+// the render time and range hashes; the rest comes from the map definition.
+func (b *Builder) writeBuildManifest(mapOutput, worldName string, mapDef config.MapDefinition, m Manifest) error {
 	manifestPath := filepath.Join(mapOutput, "manifest.json")
 
-	now := time.Now()
-	manifest := Manifest{
-		World:             worldName,
-		Map:               mapName,
-		Dimension:         dimension,
-		LastRendered:      now.Format(time.RFC3339),
-		LastRenderedEpoch: now.Unix(),
-	}
+	m.World = worldName
+	m.Map = mapDef.Name
+	m.Dimension = mapDef.Dimension
 
-	data, err := json.MarshalIndent(manifest, "", "  ")
+	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal manifest: %w", err)
 	}
