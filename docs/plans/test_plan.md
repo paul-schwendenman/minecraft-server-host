@@ -27,7 +27,7 @@ This document outlines the complete testing strategy for the Minecraft Server Ho
 | UI - Worlds App | Vitest + Playwright | 1 | 2 | Minimal | ✅ `pnpm -r test` |
 | UI - @minecraft/ui | Vitest + Playwright | 4 | 20 | Good | ✅ `pnpm -r test` |
 | UI - @minecraft/data | Vitest | 1 | 21 | Good | ✅ `pnpm -r test` |
-| Go CLI | Go testing | 13 | 282 | 37% | ✅ Coverage reporting |
+| Go CLI | Go testing | 13 | 282 | 80% (`cover -func`; 74% of all statements) | ✅ Coverage reporting |
 | Lambda - control | pytest + moto | 3 | 19 | Good | ✅ pytest in CI |
 | Lambda - details | pytest | 2 | 13 | Good | ✅ pytest in CI |
 | Lambda - worlds | pytest + moto | 2 | 15 | Good | ✅ pytest in CI |
@@ -515,9 +515,9 @@ jobs:
 
 | Component | Task | Effort | Impact | Status |
 |-----------|------|--------|--------|--------|
-| Go CLI | CLI command tests with Cobra | Medium | Low | Not started |
-| Go CLI | Add maps.go tests (mock uNmINeD) | High | Low | Not started |
-| Go CLI | Add rcon tests (integration) | High | Low | Not started |
+| Go CLI | CLI command tests with Cobra | Medium | Low | 🟡 Partial (2026-10-12): `config check/sync/get/set/list`, `rcon status/send/exec` (fake RCON server); `map.go` closures and the interactive editor still untested |
+| Go CLI | Add maps.go tests (mock uNmINeD) | High | Low | ✅ Done (2026-10-12): build, preview, manifests and index via the `runUnmined` seam |
+| Go CLI | Add rcon tests (integration) | High | Low | ✅ Done (2026-10-12): in-process `rcontest` server for `pkg/rcon`, `pkg/worlds` and the `rcon` commands |
 | Packer | Full provisioning integration tests | Very High | Low | Not started |
 | UI | Add comprehensive E2E tests | High | Medium | Not started |
 
@@ -527,7 +527,7 @@ jobs:
 
 | Metric | Initial | Current | Target | Status |
 |--------|---------|---------|--------|--------|
-| Go CLI coverage | 0% | 37% | 70% | 🟡 On track |
+| Go CLI coverage | 0% | 80% | 70% | ✅ Achieved (2026-10-12) |
 | Go CLI tests | 0 | 282 | 300+ | ✅ Achieved |
 | UI lib tests | 0 | 41 | 50+ | 🟡 On track |
 | Lambda tests | 0 | 47 | 50+ | ✅ Achieved |
@@ -626,10 +626,11 @@ minecraft-server-host/
 
 ### Recommended Future Improvements
 
-1. **Increase Go CLI coverage to 70%**
-   - Add CLI command tests using Cobra test utilities
-   - Add maps.go tests with uNmINeD mocking
-   - Add rcon integration tests
+1. **Go CLI coverage** (70% reached 2026-10-12: 80% by `go tool cover -func`,
+   74% counting Cobra `RunE` closures, which `-func` leaves out)
+   - Remaining gaps are mostly `cmd/minecraftctl/map.go` (interactive config
+     editor, batch build/manifest closures), `world.go` service commands and
+     `gendocs.go`
 
 2. **Add comprehensive E2E tests**
    - Manager app full user flow testing

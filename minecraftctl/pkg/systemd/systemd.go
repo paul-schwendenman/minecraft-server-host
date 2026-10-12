@@ -120,7 +120,7 @@ func DaemonReload() error {
 
 // IsActive checks if a unit is active (returns true if active, false otherwise)
 func IsActive(unit string) (bool, error) {
-	cmd := exec.Command("systemctl", "is-active", "--quiet", unit)
+	cmd := execCommand("systemctl", "is-active", "--quiet", unit)
 	err := cmd.Run()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
@@ -133,7 +133,7 @@ func IsActive(unit string) (bool, error) {
 
 // IsEnabled checks if a unit is enabled (returns true if enabled, false otherwise)
 func IsEnabled(unit string) (bool, error) {
-	cmd := exec.Command("systemctl", "is-enabled", "--quiet", unit)
+	cmd := execCommand("systemctl", "is-enabled", "--quiet", unit)
 	err := cmd.Run()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); ok {
@@ -199,7 +199,7 @@ func parseListUnits(out string) []Unit {
 
 // GetActiveState returns the active state of a unit (active, inactive, failed, etc.)
 func GetActiveState(unit string) string {
-	cmd := exec.Command("systemctl", "show", "-p", "ActiveState", "--value", unit)
+	cmd := execCommand("systemctl", "show", "-p", "ActiveState", "--value", unit)
 	output, err := cmd.Output()
 	if err != nil {
 		return "unknown"
@@ -239,7 +239,7 @@ func Logs(unit string, opts LogOptions) error {
 		args = append(args, "--no-pager")
 	}
 
-	cmd := exec.Command("journalctl", args...)
+	cmd := execCommand("journalctl", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
