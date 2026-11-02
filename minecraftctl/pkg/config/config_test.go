@@ -498,6 +498,20 @@ func TestValidateMapConfig(t *testing.T) {
 		}
 	})
 
+	t.Run("crop radius", func(t *testing.T) {
+		mapConfig := &MapConfig{
+			Defaults: MapDefaults{ChunkProcessors: 1},
+			Maps: []MapDefinition{
+				{Name: "ok", Dimension: "overworld", Crop: &MapCrop{Center: [2]int{1, 2}, Radius: 10}},
+				{Name: "bad", Dimension: "overworld", Crop: &MapCrop{Center: [2]int{1, 2}}},
+			},
+		}
+		errs := ValidateMapConfig(mapConfig)
+		if len(errs) != 1 || errs[0] != "maps[1].crop.radius must be > 0" {
+			t.Errorf("errs = %v, want only maps[1].crop.radius", errs)
+		}
+	})
+
 	t.Run("empty maps", func(t *testing.T) {
 		mapConfig := &MapConfig{
 			Defaults: MapDefaults{ChunkProcessors: 1},

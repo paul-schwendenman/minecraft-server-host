@@ -71,6 +71,13 @@ func (b *Builder) GeneratePreview(worldName, mapName, logLevel string) error {
 		centerZ = cz
 	}
 
+	// A cropped map previews the middle of its crop: spawn or the region
+	// center is likely outside it
+	if mapDef.Crop != nil {
+		centerX = mapDef.Crop.Center[0]
+		centerZ = mapDef.Crop.Center[1]
+	}
+
 	// Calculate preview area (64 blocks around center)
 	const previewRange = 64
 	x1 := centerX - previewRange

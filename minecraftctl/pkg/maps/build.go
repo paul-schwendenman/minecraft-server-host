@@ -199,6 +199,14 @@ func (b *Builder) runPlan(p MapPlan, opts BuildOptions) error {
 		baseArgs = append(baseArgs, "--force")
 	}
 
+	crop, err := cropArea(mapDef)
+	if err != nil {
+		return err
+	}
+	if crop != "" {
+		baseArgs = append(baseArgs, "--area="+crop)
+	}
+
 	// Add optional map options
 	baseArgs = b.addMapOptions(baseArgs, mapDef.Options)
 
@@ -251,7 +259,7 @@ func (b *Builder) runPlan(p MapPlan, opts BuildOptions) error {
 
 	// Update manifest
 	now := time.Now()
-	m := Manifest{LastRendered: now.Format(time.RFC3339), LastRenderedEpoch: now.Unix(), RangeHashes: hashes}
+	m := Manifest{LastRendered: now.Format(time.RFC3339), LastRenderedEpoch: now.Unix(), Crop: crop, RangeHashes: hashes}
 	if err := b.writeBuildManifest(mapOutput, opts.WorldName, mapDef, m); err != nil {
 		return err
 	}
@@ -323,6 +331,7 @@ func (b *Builder) renderRangesOnly(p MapPlan, defaults config.MapDefaults, world
 	if p.manifest != nil {
 		m.LastRendered = p.manifest.LastRendered
 		m.LastRenderedEpoch = p.manifest.LastRenderedEpoch
+		m.Crop = p.manifest.Crop
 	}
 	if err := b.writeBuildManifest(p.mapOutput, opts.WorldName, mapDef, m); err != nil {
 		return err
@@ -372,6 +381,21 @@ func (b *Builder) buildRange(
 		return err
 	}
 
+	// A cropped map limits its ranges too: render only the part of the range
+	// inside the crop, and nothing if it's entirely outside
+	if mapDef.Crop != nil {
+		cx1, cz1, cx2, cz2, err := areaBounds(mapDef.Crop.Center, mapDef.Crop.Radius)
+		if err != nil {
+			return fmt.Errorf("map %s: invalid crop: %w", mapDef.Name, err)
+		}
+		x1, z1 = max(x1, cx1), max(z1, cz1)
+		x2, z2 = min(x2, cx2), min(z2, cz2)
+		if x1 >= x2 || z1 >= z2 {
+			log.Warn().Str("map", mapDef.Name).Str("range", r.Name).Msg("range is outside the map's crop, skipping")
+			return nil
+		}
+	}
+
 	areaArg := fmt.Sprintf("--area=b((%d,%d),(%d,%d))", x1, z1, x2, z2)
 
 	zoomout := defaultZoomout
@@ -418,15 +442,34 @@ const regionSize = 512
 // (and feed the zoomed-out levels), the blank part shows up in the final map as
 // a white frame around the range.
 func rangeBounds(r config.MapRange) (x1, z1, x2, z2 int, err error) {
-	x1 = floorTo(r.Center[0]-r.Radius, regionSize)
-	z1 = floorTo(r.Center[1]-r.Radius, regionSize)
-	x2 = ceilTo(r.Center[0]+r.Radius, regionSize)
-	z2 = ceilTo(r.Center[1]+r.Radius, regionSize)
+	return areaBounds(r.Center, r.Radius)
+}
 
-	if r.Radius <= 0 {
-		return 0, 0, 0, 0, fmt.Errorf("invalid range bounds")
+// areaBounds returns the block bounds of a square around center, snapped
+// outward to region boundaries (see rangeBounds)
+func areaBounds(center [2]int, radius int) (x1, z1, x2, z2 int, err error) {
+	if radius <= 0 {
+		return 0, 0, 0, 0, fmt.Errorf("radius must be > 0")
 	}
+	x1 = floorTo(center[0]-radius, regionSize)
+	z1 = floorTo(center[1]-radius, regionSize)
+	x2 = ceilTo(center[0]+radius, regionSize)
+	z2 = ceilTo(center[1]+radius, regionSize)
 	return x1, z1, x2, z2, nil
+}
+
+// cropArea returns the uNmINeD --area value for a map's crop, snapped to
+// region boundaries, or "" if the map isn't cropped. It is also stored in the
+// map's manifest so a changed crop re-renders the map.
+func cropArea(mapDef config.MapDefinition) (string, error) {
+	if mapDef.Crop == nil {
+		return "", nil
+	}
+	x1, z1, x2, z2, err := areaBounds(mapDef.Crop.Center, mapDef.Crop.Radius)
+	if err != nil {
+		return "", fmt.Errorf("map %s: invalid crop: %w", mapDef.Name, err)
+	}
+	return fmt.Sprintf("b((%d,%d),(%d,%d))", x1, z1, x2, z2), nil
 }
 
 func floorTo(v, m int) int {

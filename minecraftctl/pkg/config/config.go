@@ -61,7 +61,16 @@ type MapDefinition struct {
 	Zoomout      *int       `yaml:"zoomout,omitempty" mapstructure:"zoomout"`
 	Zoomin       *int       `yaml:"zoomin,omitempty" mapstructure:"zoomin"`
 	Options      MapOptions `yaml:"options,omitempty" mapstructure:"options"`
-	Ranges       []MapRange `yaml:"ranges,omitempty" mapstructure:"ranges"`
+	// Crop limits the whole map (base render, ranges and preview) to a square
+	// around a center: ranges are clipped to it. nil renders the whole dimension.
+	Crop   *MapCrop   `yaml:"crop,omitempty" mapstructure:"crop"`
+	Ranges []MapRange `yaml:"ranges,omitempty" mapstructure:"ranges"`
+}
+
+// MapCrop is a square area, in blocks, that a map is limited to
+type MapCrop struct {
+	Center [2]int `yaml:"center" mapstructure:"center"`
+	Radius int    `yaml:"radius" mapstructure:"radius"`
 }
 
 // MapOptions holds optional rendering options
@@ -556,6 +565,10 @@ func ValidateMapConfig(mapConfig *MapConfig) []string {
 		}
 		if m.Zoomin != nil && *m.Zoomin < 0 {
 			errs = append(errs, fmt.Sprintf("maps[%d].zoomin must be >= 0", i))
+		}
+
+		if m.Crop != nil && m.Crop.Radius <= 0 {
+			errs = append(errs, fmt.Sprintf("maps[%d].crop.radius must be > 0", i))
 		}
 
 		// Validate ranges
