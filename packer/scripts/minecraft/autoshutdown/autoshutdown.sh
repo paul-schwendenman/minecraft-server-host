@@ -48,6 +48,19 @@ else
   logger -p user.warning -t autoshutdown "${SWITCH_LOCK} missing, can't tell whether a world switch is running"
 fi
 
+# Skip while maps are being built or uploaded: a render can take a long time,
+# and powering off mid-build loses it (and the S3 upload that follows). Checked
+# before the running-world test, since a build can run with no world up.
+# Matches the process however it was started (timer, `map build start`, by
+# hand), along with the manifest step and the upload after it. uNmINeD runs as
+# a child of `minecraftctl map build`, so it's covered too.
+MAP_WORK=$(pgrep -af '(^|/)minecraftctl map (build now|manifest)( |$)|(^|/)backup-maps\.sh( |$)' || true)
+if [[ -n "${MAP_WORK}" ]]; then
+  rm -f "${TOUCH_FILE}"
+  logger -t autoshutdown "Skipping shutdown: map build/upload running: $(echo "${MAP_WORK}" | sed 's/^[0-9]* //' | paste -sd ';' -)"
+  exit 0
+fi
+
 # Check if any minecraft service is running
 RUNNING_SERVICES=$(systemctl list-units --type=service --state=running 'minecraft@*.service' --no-legend 2>/dev/null | wc -l)
 

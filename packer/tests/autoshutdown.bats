@@ -383,3 +383,58 @@ EOF
     ! assert_mock_called_with "rcon send list"
     [ -f "${STATE_DIR}/no_one_playing" ]
 }
+
+@test "autoshutdown: skips shutdown while a map build runs" {
+    # No world running and an idle marker from last time: would power off
+    cat > "${MOCK_BIN}/systemctl" << 'MOCK'
+#!/usr/bin/env bash
+exit 0
+MOCK
+    chmod +x "${MOCK_BIN}/systemctl"
+    mock_processes \
+        "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups" \
+        "/usr/local/bin/minecraftctl map build now default" \
+        "/opt/unmined/unmined-cli web render --world /srv/minecraft-server/default/world"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    ! assert_mock_called_with "poweroff"
+    assert_mock_called_with "map build/upload running: /usr/local/bin/minecraftctl map build now default"
+    [ ! -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: skips shutdown while map manifests or the upload run" {
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    for proc in \
+        "/usr/local/bin/minecraftctl map manifest default --update-index" \
+        "/bin/bash /usr/local/bin/backup-maps.sh default"; do
+        mock_processes "${proc}"
+        touch "${STATE_DIR}/no_one_playing"
+        rm -f "${TEST_TEMP_DIR}/mock_calls.log"
+
+        run bash "$SCRIPT"
+
+        [ "$status" -eq 0 ]
+        ! assert_mock_called_with "poweroff"
+        ! assert_mock_called_with "rcon send list"
+        assert_mock_called_with "map build/upload running"
+    done
+}
+
+@test "autoshutdown: other map commands don't hold off shutdown" {
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    mock_processes \
+        "minecraftctl map build status default" \
+        "journalctl -u minecraft-map-build@default -f" \
+        "less backup-maps.sh.bak"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "poweroff"
+}
