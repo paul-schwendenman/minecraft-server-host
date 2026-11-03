@@ -402,6 +402,37 @@ MOCK
     [ "$status" -eq 0 ]
     ! assert_mock_called_with "poweroff"
     assert_mock_called_with "map build/upload running: /usr/local/bin/minecraftctl map build now default"
+    # A build isn't activity: the idle count carries on afterwards
+    [ -f "${STATE_DIR}/no_one_playing" ]
+}
+
+@test "autoshutdown: powers off at the first idle check after a build" {
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 0 of a max of 20 players online"
+    # First idle check, then a build
+    run bash "$SCRIPT"
+    [ -f "${STATE_DIR}/no_one_playing" ]
+    mock_processes "/usr/local/bin/minecraftctl map build now default"
+    run bash "$SCRIPT"
+    ! assert_mock_called_with "poweroff"
+
+    # Build done, still nobody on
+    mock_processes "sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups"
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    assert_mock_called_with "poweroff"
+}
+
+@test "autoshutdown: players who joined during a build reset the idle count" {
+    create_mock "systemctl" 0 "minecraft@world.service loaded active running"
+    create_mock "minecraftctl" 0 "There are 2 of a max of 20 players online"
+    touch "${STATE_DIR}/no_one_playing"
+
+    run bash "$SCRIPT"
+
+    [ "$status" -eq 0 ]
+    ! assert_mock_called_with "poweroff"
     [ ! -f "${STATE_DIR}/no_one_playing" ]
 }
 

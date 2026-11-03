@@ -54,9 +54,13 @@ fi
 # Matches the process however it was started (timer, `map build start`, by
 # hand), along with the manifest step and the upload after it. uNmINeD runs as
 # a child of `minecraftctl map build`, so it's covered too.
+#
+# The idle marker is kept: a build isn't activity, so a box that was already
+# idle powers off at the first check after the build ends instead of starting
+# the count over. That check still asks RCON, so players who joined meanwhile
+# clear it as usual.
 MAP_WORK=$(pgrep -af '(^|/)minecraftctl map (build now|manifest)( |$)|(^|/)backup-maps\.sh( |$)' || true)
 if [[ -n "${MAP_WORK}" ]]; then
-  rm -f "${TOUCH_FILE}"
   logger -t autoshutdown "Skipping shutdown: map build/upload running: $(echo "${MAP_WORK}" | sed 's/^[0-9]* //' | paste -sd ';' -)"
   exit 0
 fi
