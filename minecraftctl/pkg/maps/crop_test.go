@@ -157,8 +157,9 @@ func TestBuildMapCropClipsRanges(t *testing.T) {
 		Ranges: []config.MapRange{
 			// Snaps to b((512,-512),(1536,512)): clipped to x 512..1024
 			{Name: "edge", Center: [2]int{1000, 0}, Radius: 400, Zoomin: intp(3)},
-			// Snaps to b((4608,4608),(5632,5632)): entirely outside
-			{Name: "far", Center: [2]int{5000, 5000}, Radius: 300, Zoomin: intp(3)},
+			// Snaps to b((4608,4608),(5632,5632)): entirely outside, so its
+			// zoomin doesn't count toward the viewer's maxZoom
+			{Name: "far", Center: [2]int{5000, 5000}, Radius: 300, Zoomin: intp(5)},
 		}}
 	b := &Builder{unminedPath: "unmined-cli"}
 	if err := b.buildMap(mapDef, defaults, worldDir, worldMaps, time.Now().Unix(), BuildOptions{WorldName: "w", LogLevel: "warning"}); err != nil {
@@ -172,6 +173,9 @@ func TestBuildMapCropClipsRanges(t *testing.T) {
 	}
 	if got, want := areaArg(calls[1]), "b((-1024,-1024),(1024,1024))"; got != want {
 		t.Errorf("base --area = %s, want %s", got, want)
+	}
+	if got := readProps(t, filepath.Join(worldMaps, "m")); !strings.Contains(got, "maxZoom: 3") {
+		t.Errorf("properties = %q, want maxZoom 3 (from edge, not far)", got)
 	}
 	// The skipped range counts as done, so it isn't retried on every build
 	m := readTestManifest(t, filepath.Join(worldMaps, "m"))

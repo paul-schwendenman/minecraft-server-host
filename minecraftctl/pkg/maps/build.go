@@ -166,9 +166,12 @@ func (b *Builder) runPlan(p MapPlan, opts BuildOptions) error {
 	}
 
 	// The viewer's maxZoom has to cover every configured range, not just the
-	// ones rendered this time
+	// ones rendered this time. Ranges outside the crop render nothing.
 	maxZoomin := zoomin
 	for _, r := range mapDef.Ranges {
+		if _, _, _, _, ok, err := rangeArea(r, mapDef); err != nil || !ok {
+			continue
+		}
 		if r.Zoomin != nil && *r.Zoomin > maxZoomin {
 			maxZoomin = *r.Zoomin
 		}
@@ -376,24 +379,13 @@ func (b *Builder) buildRange(
 	logLevel string,
 	force bool,
 ) error {
-	x1, z1, x2, z2, err := rangeBounds(r)
+	x1, z1, x2, z2, ok, err := rangeArea(r, mapDef)
 	if err != nil {
 		return err
 	}
-
-	// A cropped map limits its ranges too: render only the part of the range
-	// inside the crop, and nothing if it's entirely outside
-	if mapDef.Crop != nil {
-		cx1, cz1, cx2, cz2, err := areaBounds(mapDef.Crop.Center, mapDef.Crop.Radius)
-		if err != nil {
-			return fmt.Errorf("map %s: invalid crop: %w", mapDef.Name, err)
-		}
-		x1, z1 = max(x1, cx1), max(z1, cz1)
-		x2, z2 = min(x2, cx2), min(z2, cz2)
-		if x1 >= x2 || z1 >= z2 {
-			log.Warn().Str("map", mapDef.Name).Str("range", r.Name).Msg("range is outside the map's crop, skipping")
-			return nil
-		}
+	if !ok {
+		log.Warn().Str("map", mapDef.Name).Str("range", r.Name).Msg("range is outside the map's crop, skipping")
+		return nil
 	}
 
 	areaArg := fmt.Sprintf("--area=b((%d,%d),(%d,%d))", x1, z1, x2, z2)
@@ -443,6 +435,28 @@ const regionSize = 512
 // a white frame around the range.
 func rangeBounds(r config.MapRange) (x1, z1, x2, z2 int, err error) {
 	return areaBounds(r.Center, r.Radius)
+}
+
+// rangeArea returns the area a range renders: its bounds clipped to the map's
+// crop, if any. ok is false when the range is entirely outside the crop.
+func rangeArea(r config.MapRange, mapDef config.MapDefinition) (x1, z1, x2, z2 int, ok bool, err error) {
+	x1, z1, x2, z2, err = rangeBounds(r)
+	if err != nil {
+		return 0, 0, 0, 0, false, err
+	}
+	if mapDef.Crop == nil {
+		return x1, z1, x2, z2, true, nil
+	}
+	cx1, cz1, cx2, cz2, err := areaBounds(mapDef.Crop.Center, mapDef.Crop.Radius)
+	if err != nil {
+		return 0, 0, 0, 0, false, fmt.Errorf("map %s: invalid crop: %w", mapDef.Name, err)
+	}
+	x1, z1 = max(x1, cx1), max(z1, cz1)
+	x2, z2 = min(x2, cx2), min(z2, cz2)
+	if x1 >= x2 || z1 >= z2 {
+		return 0, 0, 0, 0, false, nil
+	}
+	return x1, z1, x2, z2, true, nil
 }
 
 // areaBounds returns the block bounds of a square around center, snapped
