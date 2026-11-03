@@ -13,6 +13,15 @@ AWS_PROFILE=minecraft AWS_REGION=us-east-2 aws ec2 describe-instances \
   --output text
 ```
 
+For one-off read-only checks, SSM Run Command works without a key or a session
+(it doesn't count as SSH for autoshutdown either):
+
+```bash
+AWS_PROFILE=minecraft AWS_REGION=us-east-2 aws ssm send-command \
+  --instance-ids <id> --document-name AWS-RunShellScript \
+  --parameters 'commands=["journalctl -t autoshutdown -n 20 --no-pager"]'
+```
+
 ## Before you start: keep both instances up
 
 `autoshutdown.sh` runs every 5 minutes and skips shutdown only while someone has
