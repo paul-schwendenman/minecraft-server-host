@@ -132,8 +132,43 @@ Key                Type    Description
 =================  ======  ================================================
 ``zoomout`` / ``zoomin`` int  Override default zoom levels
 ``options``        obj     Extra options for ``unmined-cli``
+``crop``           obj     Limit the whole map to one area (see below)
 ``ranges``         list    Focused render regions (see below)
 =================  ======  ================================================
+
+
+Crop
+----
+
+``crop`` limits a map to a square around a point instead of the whole
+dimension. It's for a separate close-up map of one place, rendered with its
+own zoom levels, rather than a range inside the main map. Ranges add extra
+zoom levels only inside their area, but the viewer then offers those levels
+everywhere, so zooming in past the base level elsewhere shows blank tiles.
+
+=================  ======  ================================================
+Key                Type    Description
+=================  ======  ================================================
+``center``         [x, z]  Center of the area in blocks
+``radius``         int     Half the width of the area in blocks
+=================  ======  ================================================
+
+The area is snapped outward to region (512-block) boundaries and passed to
+uNmINeD as ``--area``. Ranges on a cropped map are clipped to the crop, and
+a range entirely outside it is skipped. The map's preview is centered on the crop instead of
+spawn. The crop is stored in the map's ``manifest.json``, so a changed crop
+re-renders the whole map with ``--force``. Tiles outside a shrunk or moved
+crop are left on disk.
+
+.. code-block:: yaml
+
+   - name: island
+     dimension: overworld
+     zoomout: 2
+     zoomin: 4
+     crop:
+       center: [-7424, 576]
+       radius: 384
 
 
 Options

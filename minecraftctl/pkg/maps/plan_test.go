@@ -523,6 +523,13 @@ func TestBuildManifestsKeepsBuildState(t *testing.T) {
 	b, _, worldMaps := rangesFixture(t, mapDef, defaults)
 	ow := filepath.Join(worldMaps, "overworld")
 	before := readTestManifest(t, ow)
+	// A crop is build state too: losing it would force a full render of a
+	// cropped map on every build
+	before.Crop = "b((0,0),(512,512))"
+	data, _ := json.Marshal(before)
+	if err := os.WriteFile(filepath.Join(ow, "manifest.json"), data, 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := os.WriteFile(filepath.Join(b.worldsDir, "w", "map-config.yml"),
 		[]byte("maps:\n  - name: overworld\n    dimension: overworld\n"), 0644); err != nil {
@@ -534,7 +541,7 @@ func TestBuildManifestsKeepsBuildState(t *testing.T) {
 	_ = mb.BuildManifests("w", ManifestOptions{})
 
 	m := readTestManifest(t, ow)
-	if m.LastRenderedEpoch != before.LastRenderedEpoch || len(m.RangeHashes) != len(before.RangeHashes) {
+	if m.LastRenderedEpoch != before.LastRenderedEpoch || len(m.RangeHashes) != len(before.RangeHashes) || m.Crop != before.Crop {
 		t.Errorf("manifest lost build state: %+v", m)
 	}
 	if m.Path != "w/overworld" {

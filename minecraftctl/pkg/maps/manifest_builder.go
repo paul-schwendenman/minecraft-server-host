@@ -131,10 +131,11 @@ func (mb *ManifestBuilder) BuildManifests(worldName string, opts ManifestOptions
 		}
 
 		manifestPath := filepath.Join(mapOutput, "manifest.json")
-		// Keep the build's state (render time, range hashes): the next build
-		// reads it to decide what to render
+		// Keep the build's state (render time, crop, range hashes): the next
+		// build reads it to decide what to render
 		if prev, err := readManifest(manifestPath); err == nil {
 			manifest.LastRenderedEpoch = prev.LastRenderedEpoch
+			manifest.Crop = prev.Crop
 			manifest.RangeHashes = prev.RangeHashes
 		}
 		if err := mb.writeManifest(manifestPath, manifest); err != nil {

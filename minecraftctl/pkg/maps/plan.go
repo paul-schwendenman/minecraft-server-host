@@ -91,6 +91,10 @@ func decideMap(in planInput) (MapPlan, error) {
 	}
 
 	formatChanged := in.renderedFormat != "" && !strings.EqualFold(in.renderedFormat, in.defaults.ImageFormat)
+	crop, err := cropArea(in.mapDef)
+	if err != nil {
+		return p, err
+	}
 
 	if in.rangesOnly {
 		if formatChanged {
@@ -129,6 +133,12 @@ func decideMap(in planInput) (MapPlan, error) {
 	case in.manifest == nil:
 		p.Action = ActionFull
 		p.Reason = "no manifest"
+	case in.manifest.Crop != crop:
+		// uNmINeD's incremental check only looks at the world, so a moved or
+		// resized crop needs --force to render the newly included regions
+		p.Action = ActionFull
+		p.Reason = fmt.Sprintf("crop changed (%s→%s)", cropLabel(in.manifest.Crop), cropLabel(crop))
+		p.Force = true
 	case in.manifest.LastRenderedEpoch < in.worldMtime:
 		p.Action = ActionFull
 		p.Reason = "world changed since last render"
@@ -167,6 +177,14 @@ func decideMap(in planInput) (MapPlan, error) {
 	// incremental check doesn't notice, so ranges always render with --force
 	p.Force = true
 	return p, nil
+}
+
+// cropLabel names a crop area for plan reasons
+func cropLabel(area string) string {
+	if area == "" {
+		return "none"
+	}
+	return area
 }
 
 // forceChangedRanges marks the ranges whose stored hash is missing or

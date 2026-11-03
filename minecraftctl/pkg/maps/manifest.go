@@ -17,6 +17,9 @@ type Manifest struct {
 	Path              string `json:"path,omitempty"`
 	LastRendered      string `json:"last_rendered"`
 	LastRenderedEpoch int64  `json:"last_rendered_epoch"`
+	// Crop is the --area the base map last rendered with ("" for the whole
+	// dimension), so a changed crop re-renders the map
+	Crop string `json:"crop,omitempty"`
 	// RangeHashes maps each range's name to a hash of its render settings
 	// (see rangeHash), so a build on an unchanged world renders only new or
 	// changed ranges. Only ranges that rendered successfully are listed.
