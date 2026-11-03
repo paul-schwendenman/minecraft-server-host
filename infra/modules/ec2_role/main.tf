@@ -66,6 +66,15 @@ resource "aws_iam_role_policy" "route53_dns" {
   })
 }
 
+# Lets the agent preinstalled on the Ubuntu AMI (amazon-ssm-agent snap) register
+# with SSM, for Run Command / Session Manager access without an SSH key.
+# Session Manager shells run as ssm-user, not under sshd, so autoshutdown's SSH
+# check doesn't see them and the instance can power off mid-session.
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.minecraft_ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "minecraft_profile" {
   name = "${var.name}-instance-profile"
   role = aws_iam_role.minecraft_ec2.name
