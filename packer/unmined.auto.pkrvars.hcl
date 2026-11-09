@@ -1,4 +1,4 @@
 unmined_cli = {
-  version = "0.20.10-dev"
-  sha256  = "a47ec942a6d4a0f2e68323ed6c4da3221fe9d09353c2132188042776f96e47d7"
+  version = "0.20.11-dev"
+  sha256  = "2e557e28bc507acc0c0327f676f243f18133dc05e5840ba3fd9317ffb76234b2"
 }
